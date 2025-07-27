@@ -1,3 +1,4 @@
+
 export interface TicketType {
   id: number;
   seat_name: string;
@@ -19,11 +20,19 @@ export interface TicketType {
   user_created: string;
   office_created: string;
   selectedBy?: string;
+  contact_status: number;
 }
 
 export interface IsSelectTicketType {
   id: number;
   username: string;
+}
+
+export interface UserChooserTicketType {
+  id: string,
+  full_name: string;
+  office_name: string;
+  office_id: number;
 }
 
 export interface TicketPayloadUpdate {
@@ -37,10 +46,21 @@ export interface TicketPayloadUpdate {
   ticket_display_price: number;
   payment_method: string;
   booked_status: boolean;
-  user_created: string;
-  office_created: string;
 }
 
 export interface CancelTicketType {
   id: number[];
+}
+
+export interface CopyTicketType {
+  id: number;
+  booked_status: boolean;
+  ticket_phone: string;
+  ticket_email: string;
+  ticket_customer_name: string;
+  ticket_point_up: string;
+  ticket_point_down: string;
+  ticket_note: string;
+  ticket_display_price: number;
+  payment_method: string;
 }

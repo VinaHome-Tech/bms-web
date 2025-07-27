@@ -1,3 +1,5 @@
+import type { AssistantType, DriverType } from "./employeeType";
+
 export interface TripType {
   id: number;
   departure_date: Date;
@@ -9,4 +11,14 @@ export interface TripType {
   trip_type: number;
   tickets_booked: number;
   total_ticket: number;
+
+  note?: string | null;
+  vehicle_id?: number | undefined;
+  total_fare?: number;
+  license_plate?: string | null;
+  vehicle_phone?: string | null;
+  driver?: DriverType[];
+  assistant?: AssistantType[];
 }
+
+

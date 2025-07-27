@@ -19,4 +19,15 @@ export interface Accept_App {
     ams: boolean;
     driver: boolean;
 }
+
+export interface DriverType {
+    id: number;
+    full_name: string;
+    number_phone: string;
+}
  
+export interface AssistantType {
+    id: number;
+    full_name: string;
+    number_phone: string;
+}

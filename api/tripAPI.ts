@@ -29,3 +29,27 @@ export const getListTripByRouteAndDate = async (
     throw error;
   }
 };
+
+export const updateTripInformation = async (
+  id: number,
+  data: TripType
+): Promise<ApiResponse<TripType>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie("access_token");
+  try {
+    return await $fetch<ApiResponse<TripType>>(
+      `${apiGateWay}/v2/trip/update-trip-information/${id}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${cookie.value}`,
+        },
+        body: data,
+      }
+    );
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};

@@ -1,7 +1,23 @@
 <script setup lang="ts">
 import type { TicketType } from '~/types/ticketType';
-import { Location } from '@element-plus/icons-vue';
+import { ArrowDown, Location } from '@element-plus/icons-vue';
 import { formatCurrencyWithoutSymbol } from '~/lib/formatCurrency';
+
+const CONTACT_STATUSES = [
+    { value: 1, label: 'Chưa gọi', color: 'bg-white' },
+    { value: 2, label: 'Phòng vé đã gọi', color: 'bg-blue-500' },
+    { value: 3, label: 'Phòng vé gọi không nghe', color: 'bg-[#FFFF66]' },
+    { value: 4, label: 'Tài xế đã gọi', color: 'bg-green-500' },
+    { value: 5, label: 'Tài xế gọi không nghe', color: 'bg-[#8B6969]' },
+    { value: 6, label: 'Số điện thoại không đúng', color: 'bg-pink-500' },
+    { value: 7, label: 'Đã gọi cho tài xế', color: 'bg-[#00FFFF]' },
+    { value: 8, label: 'Thuê bao không gọi được', color: 'bg-[#CC66FF]' },
+    { value: 9, label: 'Tài xế báo hủy', color: 'bg-red-500' },
+    { value: 10, label: 'Đã nhận tin', color: 'bg-[#FFFFCC]' },
+    { value: 11, label: 'Đã nhận tin trung chuyển', color: 'bg-emerald-200' },
+    { value: 12, label: 'Sai địa chỉ đón', color: 'bg-[#CC3300]' },
+    { value: 13, label: 'Chuyển chuyến khác', color: 'bg-[#336666]' }
+] as const;
 
 const { ticket, onClick, isLoading = false } = defineProps<{
     ticket: TicketType;
@@ -27,6 +43,31 @@ function handleClick() {
         onClick();
     }
 }
+
+const emit = defineEmits<{
+    updateContactStatus: [status: number]
+}>();
+
+// State cho trạng thái liên lạc hiện tại
+const currentContactStatus = ref(ticket.contact_status || 1);
+
+// Xử lý cập nhật trạng thái liên lạc
+function handleContactStatusChange(status: number) {
+    currentContactStatus.value = status;
+    emit('updateContactStatus', status);
+}
+
+// Lấy thông tin status hiện tại
+const getCurrentStatus = computed(() => {
+    return CONTACT_STATUSES.find(s => s.value === currentContactStatus.value) || CONTACT_STATUSES[0];
+});
+
+// Watch để cập nhật khi ticket prop thay đổi
+watch(() => ticket.contact_status, (newStatus) => {
+    if (newStatus) {
+        currentContactStatus.value = newStatus;
+    }
+});
 </script>
 <template>
     <div v-loading="isLoading" element-loading-text="Đang cập nhật vé..." :class="[
@@ -48,9 +89,34 @@ function handleClick() {
 
         <div class="flex-1 relative flex flex-col">
             <div v-if="selectedBy && !isLoading"
-                class="absolute inset-0 bg-gray-200 bg-opacity-50 rounded-b flex items-center justify-center z-10">
-                <div class="bg-white px-2 py-1 rounded shadow-lg">
+                class="absolute inset-0 bg-gray-200 bg-opacity-50 rounded-b flex flex-col items-center justify-center z-10">
+                <!-- Div chứa tên -->
+                <div class="bg-white px-2 py-1 rounded shadow-lg mb-2">
                     <span class="text-sm font-semibold text-gray-800">{{ selectedBy }}</span>
+                </div>
+
+                <!-- Dropdown nằm dưới -->
+                <div v-if="ticket.booked_status">
+                    <el-dropdown @command="handleContactStatusChange">
+                        <span :class="[
+                            'el-dropdown-link px-2 py-1 rounded shadow-lg cursor-pointer text-sm flex items-center gap-1 font-medium text-[14px]',
+                            getCurrentStatus.color
+                        ]">
+                            <span class="text-black">{{ getCurrentStatus.label }}</span>
+                            <el-icon class="el-icon--right">
+                                <ArrowDown />
+                            </el-icon>
+                        </span>
+
+                        <template #dropdown>
+                            <el-dropdown-menu class="w-64">
+                                <el-dropdown-item v-for="status in CONTACT_STATUSES" :key="status.value"
+                                    :command="status.value" :class="[status.color, 'hover:opacity-80']">
+                                    <span class="text-black">{{ status.label }}</span>
+                                </el-dropdown-item>
+                            </el-dropdown-menu>
+                        </template>
+                    </el-dropdown>
                 </div>
             </div>
 
@@ -90,7 +156,9 @@ function handleClick() {
                     <div class="h-[5px] bg-[#0072bc] rounded-lg" />
                 </div>
                 <div v-if="ticket.booked_status" class="px-1">
-                    <span class="text-[12px] font-medium text-gray-600">P: {{ ticket.user_created }} /{{ ticket.office_created }}</span>
+                    <span class="text-[12px] font-medium text-gray-600">P: {{ ticket.user_created }} /{{
+                        ticket.office_created
+                    }}</span>
                 </div>
             </div>
         </div>

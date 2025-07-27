@@ -11,3 +11,7 @@ export interface VehicleType {
     registration_expiry: Date | null;
     maintenance_due: Date | null;
 }
+export interface LicensePlateType {
+    id: number;
+    license_plate: string;
+}

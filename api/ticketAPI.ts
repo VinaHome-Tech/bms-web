@@ -1,4 +1,4 @@
-import type { CancelTicketType, TicketPayloadUpdate, TicketType } from "~/types/ticketType";
+import type { CancelTicketType, CopyTicketType, TicketPayloadUpdate, TicketType, UserChooserTicketType } from "~/types/ticketType";
 import type { ApiResponse } from "./APIResponse";
 
 export const getListTicketsByTrip = async (
@@ -24,7 +24,8 @@ export const getListTicketsByTrip = async (
 };
 
 export const updateTickets = async (
-  data: TicketPayloadUpdate
+  user: UserChooserTicketType,
+  data_update: TicketPayloadUpdate
 ): Promise<ApiResponse<TicketType[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
@@ -37,7 +38,10 @@ export const updateTickets = async (
         headers: {
           Authorization: `Bearer ${cookie.value}`,
         },
-        body: data
+        body: {
+          user,
+          data_update
+        }
       }
     );
   } catch (error) {
@@ -61,6 +65,35 @@ export const cancelTickets = async (
           Authorization: `Bearer ${cookie.value}`,
         },
         body: data
+      }
+    );
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+}
+
+export const copyTickets = async (
+  user: UserChooserTicketType,
+  data_copy: CopyTicketType[],
+  data_pastes: number[]
+): Promise<ApiResponse<TicketType[]>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie("access_token");
+  try {
+    return await $fetch<ApiResponse<TicketType[]>>(
+      `${apiGateWay}/v2/ticket/copy-tickets`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${cookie.value}`,
+        },
+        body: {
+          user,
+          data_copy,
+          data_pastes
+        }
       }
     );
   } catch (error) {

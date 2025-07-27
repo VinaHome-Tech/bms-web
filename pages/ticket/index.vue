@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Calendar from '~/components/widgets/Calendar.vue';
 import {
-  ArrowUpBold, ArrowRightBold, CloseBold, Delete, Rank, Edit
+  ArrowUpBold, ArrowRightBold, CloseBold, Delete, Rank, Edit, Printer, Plus, RefreshLeft, CopyDocument, Finished, Timer, RefreshRight, Setting, DocumentCopy
 } from '@element-plus/icons-vue'
 import type { CollapseModelValue, TabsPaneContext } from 'element-plus'
 import TicketItem from '~/components/widgets/TicketItem.vue';
@@ -9,14 +9,17 @@ import InputNote from '~/components/inputs/inputNote.vue'
 import TripList from '~/components/widgets/TripList.vue'
 import { getListRouteNameActionByCompany } from '~/api/routeAPI';
 import type { DTO_RP_ListRouteName } from '~/types/routeType';
-import { getListTripByRouteAndDate } from '~/api/tripAPI';
+import { getListTripByRouteAndDate, updateTripInformation } from '~/api/tripAPI';
 import { startOfDay, format } from 'date-fns';
 import type { TripType } from '~/types/tripType';
-import { cancelTickets, getListTicketsByTrip, updateTickets } from '~/api/ticketAPI';
+import { cancelTickets, copyTickets, getListTicketsByTrip, updateTickets } from '~/api/ticketAPI';
 import type { CancelTicketType, TicketPayloadUpdate, TicketType } from '~/types/ticketType';
 import { useFirebase } from '~/composables/useFirebase';
 import { get, remove, update } from 'firebase/database';
-import EditTicketDialog from '~/components/widgets/EditTicketDialog.vue';
+import EditTicketDialog from '~/components/dialog/EditTicketDialog.vue';
+import EditTripInformationDialog from '~/components/dialog/EditTripInformationDialog.vue';
+import { formatCurrencyWithoutSymbol } from '~/lib/formatCurrency';
+import { useCopyTicketStore } from '@/stores/useCopyTicketStore'
 
 const { db, ref: dbRef, set, onValue, off } = useFirebase()
 
@@ -267,6 +270,37 @@ const isTicketSelected = (ticket: TicketType) => {
 };
 
 
+const FIREBASE_SYNC_FIELDS = {
+  // Thông tin khách hàng - có thể cập nhật
+  ticket_phone: true,
+  ticket_email: true,
+  ticket_customer_name: true,
+  ticket_point_up: true,
+  ticket_point_down: true,
+  ticket_note: true,
+  ticket_display_price: true,
+  payment_method: true,
+  booked_status: true,
+
+  // Metadata cập nhật - chỉ thêm khi cập nhật
+  updatedAt: true,
+  updatedBy: true,
+
+  // ✅ SỬA: Cho phép sync thông tin tạo khi có dữ liệu từ backend
+  user_created: true,
+  office_created: true,
+
+  // Thông tin ghế - KHÔNG được thay đổi
+  id: false,
+  seat_name: false,
+  seat_row: false,
+  seat_column: false,
+  seat_floor: false,
+  trip_id: false,
+  selectedBy: false,
+} as const;
+
+// ✅ SỬA: Cập nhật setupRealtimeListener để xử lý tốt hơn
 const setupRealtimeListener = (tripId: number) => {
   // Listener cho vé được chọn
   const ticketRef = dbRef(db, `selectedTickets/${tripId}`);
@@ -288,39 +322,101 @@ const setupRealtimeListener = (tripId: number) => {
     selectedTickets.value = selected;
   });
 
-  // Listener cho thông tin vé
+  // ✅ SỬA: Listener cho thông tin vé - ưu tiên thông tin local
   onValue(dbRef(db, `tickets/${tripId}`), (snapshot) => {
     const updatedTickets = snapshot.val();
     if (!updatedTickets) return;
 
-    // Cập nhật danh sách vé local
-    ticketList.value = ticketList.value.map(ticket => {
-      const updatedData = updatedTickets[ticket.id];
-      return updatedData ? { ...ticket, ...updatedData } : ticket;
+    ticketList.value = ticketList.value.map(originalTicket => {
+      const updatedData = updatedTickets[originalTicket.id];
+      if (updatedData) {
+        return {
+          ...originalTicket,    // Giữ nguyên thông tin gốc
+          ...updatedData,       // Merge thông tin từ Firebase
+
+          // ✅ Ưu tiên thông tin từ local nếu Firebase không có
+          user_created: updatedData.user_created || originalTicket.user_created,
+          office_created: updatedData.office_created || originalTicket.office_created,
+
+          // Đảm bảo không ghi đè thông tin ghế
+          id: originalTicket.id,
+          seat_name: originalTicket.seat_name,
+          seat_row: originalTicket.seat_row,
+          seat_column: originalTicket.seat_column,
+          seat_floor: originalTicket.seat_floor,
+        };
+      }
+      return originalTicket;
     });
 
-    console.log("🔄 Đã cập nhật vé từ Firebase");
+    console.log("🔄 Đã cập nhật vé từ Firebase (ưu tiên local)");
   });
 };
-const syncTicketsToFirebase = async (tripId: number, ticketIds: number[], updatedFields: Partial<TicketType>) => {
+
+
+const syncTicketsToFirebase = async (
+  tripId: number,
+  ticketIds: number[],
+  updatedFields: Partial<TicketType>,
+  options: {
+    includeMetadata?: boolean;
+    preserveCreatedFields?: boolean;
+    logSync?: boolean;
+  } = {}) => {
   try {
+    const {
+      includeMetadata = true,
+      preserveCreatedFields = true,
+      logSync = true
+    } = options;
     const updates: Record<string, unknown> = {};
     const timestamp = Date.now();
 
     // Loại bỏ các giá trị undefined
     const sanitizedFields = Object.fromEntries(
-      Object.entries(updatedFields).filter(([_, v]) => v !== undefined)
+      Object.entries(updatedFields).filter(([key, value]) => {
+        // Chỉ đồng bộ field được phép và có giá trị
+        return FIREBASE_SYNC_FIELDS[key as keyof typeof FIREBASE_SYNC_FIELDS] &&
+          value !== undefined &&
+          value !== null;
+      })
     );
 
+    if (preserveCreatedFields) {
+      delete sanitizedFields.user_created;
+      delete sanitizedFields.office_created;
+      delete sanitizedFields.id;
+      delete sanitizedFields.seat_name;
+      delete sanitizedFields.seat_row;
+      delete sanitizedFields.seat_column;
+      delete sanitizedFields.seat_floor;
+      delete sanitizedFields.trip_id;
+    }
+
+    if (includeMetadata) {
+      sanitizedFields.updatedAt = timestamp;
+      sanitizedFields.updatedBy = authStore.full_name || 'unknown';
+    }
+
     ticketIds.forEach(ticketId => {
-      updates[`tickets/${tripId}/${ticketId}`] = {
-        ...sanitizedFields, // Sử dụng object đã được làm sạch
-        updatedAt: timestamp,
-        updatedBy: authStore.full_name || 'unknown'
-      };
+      updates[`tickets/${tripId}/${ticketId}`] = { ...sanitizedFields };
     });
 
+    if (logSync) {
+      console.log('🔄 Firebase Sync:', {
+        tripId,
+        ticketCount: ticketIds.length,
+        ticketIds,
+        syncedFields: Object.keys(sanitizedFields),
+        preservedFields: preserveCreatedFields ? ['user_created', 'office_created'] : [],
+        data: sanitizedFields
+      });
+    }
+
     await update(dbRef(db), updates);
+    if (logSync) {
+      console.log('✅ Firebase sync completed successfully');
+    }
   } catch (error) {
     console.error('Lỗi đồng bộ Firebase:', error);
   }
@@ -334,7 +430,26 @@ const handleClickTabs = async (tab: TabsPaneContext, event: Event) => {
     if (selectedTrip.value?.id) {
       // 1. Gọi API lấy danh sách vé
       await fetchListTicketByTrip(selectedTrip.value.id);
-      await remove(dbRef(db, `selectedTickets/${selectedTrip.value.id}`));
+
+      // ✅ SỬA: Chỉ xóa vé được chọn bởi user hiện tại
+      const tripId = selectedTrip.value.id;
+      const currentUser = authStore.full_name;
+
+      // Lấy danh sách vé đang được chọn
+      const selectedTicketsSnapshot = await get(dbRef(db, `selectedTickets/${tripId}`));
+      if (selectedTicketsSnapshot.exists()) {
+        const selectedUpdates: Record<string, null> = {};
+        Object.entries(selectedTicketsSnapshot.val()).forEach(([ticketId, userName]) => {
+          // Chỉ xóa vé của user hiện tại
+          if (userName === currentUser) {
+            selectedUpdates[`selectedTickets/${tripId}/${ticketId}`] = null;
+          }
+        });
+
+        if (Object.keys(selectedUpdates).length > 0) {
+          await update(dbRef(db), selectedUpdates);
+        }
+      }
 
       // 2. Ép cập nhật lại selectedTickets từ Firebase
       setupRealtimeListener(selectedTrip.value.id);
@@ -354,12 +469,10 @@ const getTicketSelector = (ticket: TicketType) => {
   return found?.selectedBy || null;
 };
 watch(selectedTrip, async (newTrip, oldTrip) => {
-  // Dọn dẹp listener và dữ liệu cũ
   if (oldTrip?.id) {
     await cleanupTripData(oldTrip.id);
   }
 
-  // Thiết lập listener mới
   if (newTrip?.id) {
     setupRealtimeListener(newTrip.id);
   }
@@ -460,35 +573,116 @@ const handleUpdateTickets = async (tickets: TicketPayloadUpdate) => {
   console.log('Cập nhật vé:', tickets);
   loadingItemTicket.value = true;
   tickets.id.forEach(id => updatingTicketIds.value.add(id));
+
   try {
-    const response = await updateTickets(tickets);
-    if (response.result) {
+    const response = await updateTickets(
+      {
+        id: authStore.id,
+        full_name: authStore.full_name,
+        office_name: officeStore.name,
+        office_id: officeStore.id
+      },
+      tickets
+    );
 
-      const updatedIds = new Set(tickets.id);
-      const { id, ...rest } = tickets;
-
-      ticketList.value = ticketList.value.map(ticket => {
-        if (updatedIds.has(ticket.id)) {
-          return { ...ticket, ...rest, booked_status: true };
-        }
-        return ticket;
-      });
-
-      if (selectedTrip.value?.id) {
-        const { id, ...ticketFields } = tickets;
-        await syncTicketsToFirebase(
-          selectedTrip.value!.id,
-          tickets.id,
-          { ...ticketFields, booked_status: true }
+    if (response.success) {
+      // ✅ SỬA: Sử dụng response từ backend thay vì tự tạo
+      if (response.result && Array.isArray(response.result)) {
+        // Cập nhật ticketList với dữ liệu từ backend (đầy đủ thông tin)
+        const updatedTicketsMap = new Map(
+          response.result.map((ticket: TicketType) => [ticket.id, ticket])
         );
+
+        ticketList.value = ticketList.value.map(ticket => {
+          const updatedTicket = updatedTicketsMap.get(ticket.id);
+          if (updatedTicket) {
+            // Merge dữ liệu từ backend (đã có đầy đủ user_created, office_created)
+            return {
+              ...ticket,           // Giữ thông tin cũ
+              ...updatedTicket,    // Merge thông tin mới từ backend
+              booked_status: true  // Đảm bảo trạng thái đã đặt
+            };
+          }
+          return ticket;
+        });
+
+        // ✅ SỬA: Sync Firebase với thông tin đầy đủ từ backend
+        if (selectedTrip.value?.id) {
+          // Lấy thông tin vé đã được cập nhật từ backend
+          const updatedTickets = response.result.filter((ticket: TicketType) =>
+            tickets.id.includes(ticket.id)
+          );
+
+          // Sync từng vé với thông tin đầy đủ
+          for (const ticket of updatedTickets) {
+            await syncTicketsToFirebase(
+              selectedTrip.value.id,
+              [ticket.id],
+              {
+                // Thông tin khách hàng
+                ticket_phone: ticket.ticket_phone,
+                ticket_email: ticket.ticket_email,
+                ticket_customer_name: ticket.ticket_customer_name,
+                ticket_point_up: ticket.ticket_point_up,
+                ticket_point_down: ticket.ticket_point_down,
+                ticket_note: ticket.ticket_note,
+                ticket_display_price: ticket.ticket_display_price,
+                payment_method: ticket.payment_method,
+                booked_status: true,
+
+                // ✅ QUAN TRỌNG: Thêm thông tin người tạo từ backend
+                user_created: ticket.user_created,
+                office_created: ticket.office_created,
+              },
+              {
+                includeMetadata: true,
+                preserveCreatedFields: false, // Cho phép sync user_created, office_created
+                logSync: true
+              }
+            );
+          }
+        }
+      } else {
+        // Fallback: Nếu backend không trả về result, dùng cách cũ
+        const updatedIds = new Set(tickets.id);
+        const { id, ...rest } = tickets;
+
+        ticketList.value = ticketList.value.map(ticket => {
+          if (updatedIds.has(ticket.id)) {
+            return {
+              ...ticket,
+              ...rest,
+              booked_status: true,
+              user_created: ticket.user_created,
+              office_created: ticket.office_created
+            };
+          }
+          return ticket;
+        });
+
+        if (selectedTrip.value?.id) {
+          const { id, ...ticketFields } = tickets;
+          await syncTicketsToFirebase(
+            selectedTrip.value.id,
+            tickets.id,
+            { ...ticketFields, booked_status: true },
+            {
+              includeMetadata: true,
+              preserveCreatedFields: true,
+              logSync: true
+            }
+          );
+        }
       }
+
+      updateTicketsBookedInTrip();
       ElNotification({
         message: h('p', { style: 'color: green' }, 'Cập nhật vé thành công!'),
         type: 'success',
       });
     } else {
       ElNotification({
-        message: h('p', { style: 'color: red' }, 'Cập nhật vé thất bại!'),
+        message: h('p', { style: 'color: red' }, response.message || 'Cập nhật vé thất bại!'),
         type: 'error',
       });
     }
@@ -565,8 +759,10 @@ const handleCancelTickets = async (tickets: CancelTicketType) => {
           await remove(dbRef(db, `selectedTickets/${tripId}/${ticketId}`));
           await remove(dbRef(db, `tickets/${tripId}/${ticketId}`));
         }
-        
+
       }
+
+      updateTicketsBookedInTrip();
 
       ElNotification({
         message: h('p', { style: 'color: green' }, 'Hủy vé thành công!'),
@@ -589,11 +785,241 @@ const handleCancelTickets = async (tickets: CancelTicketType) => {
     updatingTicketIds.value.clear();
   }
 };
+const updateTicketsBookedInTrip = () => {
+  const bookedTicketsCount = ticketList.value.filter(ticket => ticket.booked_status === true).length;
+  console.log(`Số lượng vé đã đặt (booked_status = true): ${bookedTicketsCount}`);
+
+  tripList.value = tripList.value.map(trip => {
+    if (trip.id === selectedTrip.value?.id) {
+      return {
+        ...trip,
+        tickets_booked: bookedTicketsCount
+      };
+    }
+    return trip;
+  });
+
+  selectedTrip.value = {
+    ...selectedTrip.value!,
+    tickets_booked: bookedTicketsCount
+  };
+};
 
 
 const isTicketUpdating = (ticketId: number) => {
   return updatingTicketIds.value.has(ticketId);
 };
+
+const dialogFormEditTripInformation = ref(false)
+const loadingFormEditTripInformation = ref(false);
+const handleOpenFormEditTripInformation = () => {
+  dialogFormEditTripInformation.value = true;
+  console.log('Mở form chỉnh sửa thông tin chuyến:', selectedTrip.value);
+};
+const handleClosedDialogdialogFormEditTripInformation = () => {
+  dialogFormEditTripInformation.value = false;
+  console.log('Đóng form chỉnh sửa thông tin chuyến');
+};
+const handleUpdateTripInformation = async (trip: TripType) => {
+  console.log('Cập nhật thông tin chuyến:', trip);
+  loadingFormEditTripInformation.value = true;
+  try {
+    const response = await updateTripInformation(trip.id, trip);
+    if (response.success) {
+      ElNotification({
+        message: h('p', { style: 'color: green' }, 'Cập nhật thông tin chuyến thành công!'),
+        type: 'success',
+      });
+      if (response.result) {
+        const updatedTripData = response.result || trip;
+        tripList.value = tripList.value.map(t =>
+          t.id === trip.id ? { ...t, ...updatedTripData } : t
+        );
+        if (selectedTrip.value && selectedTrip.value.id === trip.id) {
+          selectedTrip.value = { ...selectedTrip.value, ...updatedTripData };
+        }
+      }
+    } else {
+      ElNotification({
+        message: h('p', { style: 'color: red' }, response.message || 'Cập nhật thông tin chuyến thất bại!'),
+        type: 'error',
+      });
+    }
+  } catch (error) {
+    console.error('Lỗi khi cập nhật thông tin chuyến:', error);
+    ElNotification({
+      message: h('p', { style: 'color: red' }, 'Đã xảy ra lỗi khi cập nhật thông tin chuyến!'),
+      type: 'error',
+    });
+  } finally {
+    loadingFormEditTripInformation.value = false;
+    dialogFormEditTripInformation.value = false;
+  }
+};
+const handleReloadTicketList = () => {
+  if (selectedTrip.value?.id) {
+    fetchListTicketByTrip(selectedTrip.value.id);
+  }
+};
+
+
+const copyTicketStore = useCopyTicketStore()
+const isCopyTicket = ref(false);
+const handleCopyTickets = async () => {
+  console.log('Sao chép vé:', mySelectedTickets.value);
+  ElNotification({
+    message: h('p', { style: 'color: green' }, `Đã sao chép ${mySelectedTickets.value.length} vé!`),
+    type: 'success',
+  });
+  await copyTicketStore.setTickets(mySelectedTickets.value);
+  console.log('Pinia sao chép:', copyTicketStore.mySelectedTickets);
+  await clearAllSelectedTickets();
+  isCopyTicket.value = true;
+}
+const handlePasteTickets = async () => {
+  if (!isCopyTicket.value) {
+    ElNotification({
+      message: h('p', { style: 'color: red' }, 'Chưa sao chép vé nào!'),
+      type: 'warning',
+    });
+    return;
+  }
+  const copiedTickets = copyTicketStore.mySelectedTickets;
+  if (copiedTickets.length === 0) {
+    ElNotification({
+      message: h('p', { style: 'color: red' }, 'Không có vé nào để dán!'),
+      type: 'warning',
+    });
+    return;
+  }
+  loadingItemTicket.value = true;
+  try {
+    const response = await copyTickets(
+      {
+        id: authStore.id,
+        full_name: authStore.full_name,
+        office_name: officeStore.name,
+        office_id: officeStore.id
+      },
+      copiedTickets.map(ticket => ({
+        id: ticket.id,
+        booked_status: ticket.booked_status,
+        ticket_phone: ticket.ticket_phone,
+        ticket_email: ticket.ticket_email,
+        ticket_customer_name: ticket.ticket_customer_name,
+        ticket_point_up: ticket.ticket_point_up,
+        ticket_point_down: ticket.ticket_point_down,
+        ticket_note: ticket.ticket_note,
+        ticket_display_price: ticket.ticket_display_price,
+        payment_method: ticket.payment_method,
+      })),
+      mySelectedTickets.value.map(t => t.id)
+    );
+    if (response.success) {
+      // Xử lý dữ liệu trả về từ API
+      if (response.result && Array.isArray(response.result)) {
+        // Cập nhật ticketList với dữ liệu mới
+        const updatedTicketIds = new Set(mySelectedTickets.value.map(t => t.id));
+
+        ticketList.value = ticketList.value.map(ticket => {
+          if (updatedTicketIds.has(ticket.id)) {
+            // Tìm thông tin vé tương ứng từ response
+            const updatedTicket = response.result?.find((t: TicketType) => t.id === ticket.id);
+            if (updatedTicket) {
+              return {
+                ...ticket,
+                ...updatedTicket,
+                booked_status: true
+              };
+            }
+          }
+          return ticket;
+        });
+
+        // Đồng bộ với Firebase
+        if (selectedTrip.value?.id) {
+          const ticketsToSync = response.result.filter((ticket: TicketType) =>
+            updatedTicketIds.has(ticket.id)
+          );
+
+          for (const ticket of ticketsToSync) {
+            await syncTicketsToFirebase(
+              selectedTrip.value.id,
+              [ticket.id],
+              {
+                ticket_phone: ticket.ticket_phone || '',
+                ticket_email: ticket.ticket_email || '',
+                ticket_customer_name: ticket.ticket_customer_name || '',
+                ticket_point_up: ticket.ticket_point_up || '',
+                ticket_point_down: ticket.ticket_point_down || '',
+                ticket_note: ticket.ticket_note || '',
+                ticket_display_price: ticket.ticket_display_price || 0,
+                payment_method: ticket.payment_method || '',
+                booked_status: true
+              }
+            );
+          }
+        }
+
+        // Cập nhật số lượng vé đã đặt
+        updateTicketsBookedInTrip();
+
+        // Bỏ chọn tất cả vé sau khi dán
+        await clearAllSelectedTickets();
+
+        ElNotification({
+          message: h('p', { style: 'color: green' }, `Dán thành công ${response.result.length} vé!`),
+          type: 'success',
+        });
+      } else {
+        ElNotification({
+          message: h('p', { style: 'color: green' }, 'Sao chép vé thành công!'),
+          type: 'success',
+        });
+      }
+    } else {
+      ElNotification({
+        message: h('p', { style: 'color: red' }, 'Sao chép vé thất bại!'),
+        type: 'error',
+      });
+    }
+  } catch (error) {
+    console.error('Lỗi khi sao chép vé:', error);
+    ElNotification({
+      message: h('p', { style: 'color: red' }, 'Đã xảy ra lỗi khi sao chép vé!'),
+      type: 'error',
+    });
+  } finally {
+    isCopyTicket.value = false;
+  }
+}
+const handleMoveTickets = async () => {
+  console.log('Di chuyển vé:', mySelectedTickets.value);
+}
+
+const handleUpdateContactStatus = async (status: number) => {
+  console.log('Cập nhật trạng thái liên hệ:', status);
+  console.log('Cập nhật trạng thái liên hệ cho vé:', mySelectedTickets.value);
+}
+
+// Ản nút sao chép nếu danh sách vé được chọn có các vé khác số điện thoại nhau
+const hasDifferentPhoneNumbers = computed(() => {
+  const bookedTickets = mySelectedTickets.value.filter(t => t.booked_status === true);
+  if (bookedTickets.length <= 1) {
+    return false;
+  }
+  const phoneNumbers = bookedTickets
+    .map(ticket => ticket.ticket_phone?.trim())
+    .filter(phone => phone && phone !== '');
+  const hasEmptyPhone = bookedTickets.some(ticket => !ticket.ticket_phone?.trim());
+  const hasFilledPhone = bookedTickets.some(ticket => ticket.ticket_phone?.trim());
+  if (hasEmptyPhone && hasFilledPhone) {
+    return true;
+  }
+  const uniquePhoneNumbers = new Set(phoneNumbers);
+  return uniquePhoneNumbers.size > 1;
+});
+
 watch([valueSelectedDate, valueSelectedRoute], ([newDate, newRoute], [oldDate, oldRoute]) => {
   console.log('Ngày:', oldDate, '=>', newDate);
   console.log('Tuyến:', oldRoute, '=>', newRoute);
@@ -656,11 +1082,13 @@ onMounted(() => {
                     <el-col :span="8">
                       <div>
                         <span class="font-medium text-black text-[14px]">Biển số: </span>
-                        <span class="font-medium text-[#0072bc] text-[14px]">50F-003.58</span>
+                        <span class="font-medium text-[#0072bc] text-[14px]">{{ selectedTrip.license_plate || ''
+                        }}</span>
                       </div>
                       <div>
                         <span class="font-medium text-black text-[14px]">Số điện thoại xe: </span>
-                        <span class="font-medium text-[#0072bc] text-[14px]">0877717575</span>
+                        <span class="font-medium text-[#0072bc] text-[14px]">{{ selectedTrip.vehicle_phone || ''
+                        }}</span>
                       </div>
                       <div>
                         <span class="font-medium text-black text-[14px]">Sơ đồ ghế: </span>
@@ -677,11 +1105,16 @@ onMounted(() => {
                     <el-col :span="8">
                       <div>
                         <span class="font-medium text-black text-[14px]">Tài xế: </span>
-                        <span class="font-medium text-[#0072bc] text-[14px]">Đặng Tuấn Thành</span>
+                        <span class="font-medium text-[#0072bc] text-[14px]">
+                          {{selectedTrip.driver?.map(d => `${d.full_name} (${d.number_phone})`).join(', ')}}
+                        </span>
+
                       </div>
                       <div>
                         <span class="font-medium text-black text-[14px]">Phụ xe: </span>
-                        <span class="font-medium text-[#0072bc] text-[14px]">Đặng Tuấn Thành</span>
+                        <span class="font-medium text-[#0072bc] text-[14px]">
+                          {{selectedTrip.assistant?.map(a => `${a.full_name} (${a.number_phone})`).join(', ')}}
+                        </span>
                       </div>
                     </el-col>
                     <el-col :span="8">
@@ -692,7 +1125,9 @@ onMounted(() => {
                       </div>
                       <div>
                         <span class="font-medium text-black text-[14px]">Tiền vé: </span>
-                        <span class="font-medium text-[#0072bc] text-[14px]">13.000.000</span>
+                        <span class="font-medium text-[#0072bc] text-[14px]">0/{{
+                          formatCurrencyWithoutSymbol(selectedTrip.total_fare ??
+                            0) }}</span>
                       </div>
                       <div>
                         <span class="font-medium text-black text-[14px]">Số hàng: </span>
@@ -706,14 +1141,30 @@ onMounted(() => {
                   </el-row>
                   <div>
                     <span class="font-medium text-black text-[14px]">Đặt chỗ: </span>
-                    <span class="font-medium text-[#0072bc] text-[14px]">VP An Sương(4), VP Tân Bình(5), Bến xe miền
-                      đông(10)</span>
+                    <!-- <span class="font-medium text-[#0072bc] text-[14px]">VP An Sương(4), VP Tân Bình(5), Bến xe miền
+                      đông(10)</span> -->
                   </div>
 
                 </el-collapse-item>
               </el-collapse>
 
               <div class="py-2">
+                <div class="flex justify-between items-center">
+                  <div class="mb-2">
+                    <el-button :icon="Printer">In phơi</el-button>
+                    <el-button :icon="RefreshLeft">Lịch sử</el-button>
+                    <el-button :icon="Finished">Xuất bến</el-button>
+                    <el-button :icon="Delete" type="danger" plain>Huỷ chuyến</el-button>
+                    <el-button :icon="Timer">Đổi giờ</el-button>
+                    <el-button :icon="Plus" type="warning" plain>Thêm hàng</el-button>
+
+
+                  </div>
+                  <div class="mb-2">
+                    <el-button :icon="RefreshRight" type="info" @click="handleReloadTicketList" />
+                    <el-button :icon="Setting" type="info" @click="handleOpenFormEditTripInformation" />
+                  </div>
+                </div>
                 <InputNote />
               </div>
             </div>
@@ -729,26 +1180,11 @@ onMounted(() => {
               </div>
             </div>
           </section>
-          <!-- <div class="flex justify-between items-center">
-            <div class="">
-              <el-button :icon="Printer">In phơi</el-button>
-              <el-button :icon="RefreshLeft">Lịch sử</el-button>
-              <el-button :icon="Finished">Xuất bến</el-button>
-              <el-button :icon="Delete" type="danger" plain>Huỷ chuyến</el-button>
-              <el-button :icon="Timer">Đổi giờ</el-button>
-              <el-button :icon="Plus" type="warning" plain>Thêm hàng</el-button>
 
-
-            </div>
-            <div>
-              <el-button :icon="RefreshRight" type="info" />
-              <el-button :icon="Setting" type="info" />
-            </div>
-          </div> -->
         </el-header>
         <el-main>
           <section v-if="selectedTrip" class="mt-1">
-            <div class="bg-white px-2 rounded-lg ">
+            <div class="bg-white px-2 rounded-lg shadow-md">
               <el-tabs v-model="activeTab" @tab-click="handleClickTabs">
                 <el-tab-pane label="Sơ đồ ghế" name="1">
                   <div v-if="loadingListTicket" v-loading="loadingListTicket"
@@ -764,7 +1200,8 @@ onMounted(() => {
                               :style="{ gridTemplateColumns: `repeat(${row.seats.length}, 1fr)` }">
                               <TicketItem v-for="seat in row.seats" :key="seat.id" :ticket="seat"
                                 :onClick="() => handleTicketClick(seat)" :isSelected="isTicketSelected(seat)"
-                                :selectedBy="getTicketSelector(seat)" :isLoading="isTicketUpdating(seat.id)" />
+                                :selectedBy="getTicketSelector(seat)" :isLoading="isTicketUpdating(seat.id)" 
+                                @update-contact-status="(status) => handleUpdateContactStatus(status)"/>
                             </div>
                           </div>
                         </div>
@@ -795,14 +1232,27 @@ onMounted(() => {
                         </div>
                         <div
                           class="bg-purple-50 px-4 py-2 rounded-r-xl flex gap-2 items-center justify-center flex-shrink-0">
+                          <div v-if="isCopyTicket">
+                            <el-tooltip v-if="mySelectedTickets.filter(t => t.booked_status === false).length > 0"
+                              content="Dán vé" placement="top">
+                              <el-button type="success" :icon="DocumentCopy" circle @click="handlePasteTickets" />
+                            </el-tooltip>
+                          </div>
                           <div>
                             <el-tooltip content="Cập nhật thông tin vé" placement="top">
                               <el-button type="warning" :icon="Edit" circle @click="handleOpenFormEditTicket" />
                             </el-tooltip>
                           </div>
+                          <div
+                            v-if="mySelectedTickets.filter(t => t.booked_status === true).length > 0 && !hasDifferentPhoneNumbers">
+                            <el-tooltip content="Sao chép vé" placement="top">
+                              <el-button color="#626aef" :icon="CopyDocument" circle @click="handleCopyTickets" />
+                            </el-tooltip>
+                          </div>
+
                           <div v-if="mySelectedTickets.filter(t => t.booked_status === true).length > 0">
                             <el-tooltip content="Di chuyển vé" placement="top">
-                              <el-button type="primary" :icon="Rank" circle />
+                              <el-button type="primary" :icon="Rank" circle @click="handleMoveTickets" />
                             </el-tooltip>
                           </div>
                           <div v-if="mySelectedTickets.filter(t => t.booked_status === true).length > 0">
@@ -827,13 +1277,27 @@ onMounted(() => {
                 <el-tab-pane label="Thu chi chuyến" name="5">Thu chi chuyến</el-tab-pane>
               </el-tabs>
             </div>
+            <div class="bg-white px-2 rounded-lg mt-1">
+              <el-tabs>
+                <el-tab-pane label="Chờ xử lý" name="1">
+
+                </el-tab-pane>
+                <el-tab-pane label="Vé hủy" name="2">
+
+                </el-tab-pane>
+              </el-tabs>
+            </div>
           </section>
         </el-main>
       </el-container>
     </el-container>
     <EditTicketDialog v-model="dialogFormEditTicket" :selected-tickets="mySelectedTickets"
       :user-name="authStore.full_name" :office-name="officeStore.name" @closed="clearAllSelectedTickets"
-      @update-tickets="handleUpdateTickets" @cancel-tickets="handleCancelTickets"/>
+      @update-tickets="handleUpdateTickets" @cancel-tickets="handleCancelTickets" />
+
+    <EditTripInformationDialog v-model="dialogFormEditTripInformation" :trip="selectedTrip"
+      :company-id="companyStore.id!" :is-updating="loadingFormEditTripInformation"
+      @updated="handleUpdateTripInformation" @closed="handleClosedDialogdialogFormEditTripInformation" />
   </section>
 
 </template>

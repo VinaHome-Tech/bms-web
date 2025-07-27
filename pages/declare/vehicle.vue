@@ -8,7 +8,7 @@ import InputDate from '~/components/inputs/inputDate.vue';
 import type { DrawerProps, FormInstance, FormRules } from 'element-plus'
 import type { VehicleType } from '~/types/vehicleType';
 import { format } from 'date-fns'
-import { createVehicle, getListVehicleByCompany, updateVehicle } from '~/api/vehicleAPI';
+import { createVehicle, deleteVehicle, getListVehicleByCompany, updateVehicle } from '~/api/vehicleAPI';
 definePageMeta({
     layout: 'default',
 })
@@ -81,6 +81,45 @@ const handleEdit = (index: number, row: VehicleType) => {
     currentEditId.value = row.id;
     ruleForm.value = { ...row };
     drawer.value = true;
+};
+const handleDelete = async (index: number, row: VehicleType) => {
+    loading.value = true;
+    try {
+        await ElMessageBox.confirm(
+            'Bạn có chắc chắn muốn xóa phương tiện này?',
+            'Xác nhận xoá',
+            {
+                confirmButtonText: 'Xoá',
+                cancelButtonText: 'Huỷ',
+                type: 'warning',
+            }
+        );
+
+        const response = await deleteVehicle(row.id!);
+        if (response.success) {
+            ElNotification({
+                message: h('p', { style: 'color: teal' }, 'Xóa phương tiện thành công!'),
+                type: 'success',
+            });
+            vehicles.value = vehicles.value.filter(vehicle => vehicle.id !== row.id);
+        } else {
+            ElNotification({
+                message: h('p', { style: 'color: red' }, response.message || 'Xóa phương tiện thất bại!'),
+                type: 'error',
+            });
+            return;
+        }
+    } catch (error) {
+        if (error !== 'cancel' && error !== 'close') {
+            ElNotification({
+                message: h('p', { style: 'color: red' }, 'Xóa phương tiện thất bại!'),
+                type: 'error',
+            });
+            console.error(error);
+        }
+    } finally {
+        loading.value = false;
+    }
 };
 const submitForm = async (formEl: FormInstance | undefined) => {
     if (!formEl) return;
@@ -214,7 +253,7 @@ onMounted(() => {
             <el-button :icon="Plus" type="primary" @click="handleAdd">Thêm phương tiện</el-button>
         </div>
 
-        <el-table v-loading="loading" element-loading-text="Đang tải dữ liệu..." :data="vehicles" style="width: 100%">
+        <el-table v-loading="loading" element-loading-text="Đang tải dữ liệu..." :data="filterTableData" style="width: 100%">
             <el-table-column type="index" label="STT" width="50" />
             <el-table-column label="Biển số xe" prop="license_plate" />
             <el-table-column label="Số điện thoại" prop="phone" />

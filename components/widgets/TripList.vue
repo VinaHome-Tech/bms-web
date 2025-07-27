@@ -46,7 +46,7 @@
 
         <div class="mt-1 flex justify-between items-center">
           <div class="font-semibold text-gray-800 text-sm">
-            Đặng Tuấn Thành
+            {{ Array.isArray(trip.driver) ? trip.driver.map(d => `${d.full_name}`).join(', ') : '' }}
           </div>
           <div class="text-xs text-gray-500">
             {{ trip.seat_chart_name || '' }}
@@ -54,10 +54,10 @@
         </div>
         <div class="mt-1 flex justify-between items-center">
           <div class="font-semibold text-gray-800 text-sm">
-            Đặng Tuấn Thành
+            {{ Array.isArray(trip.assistant) ? trip.assistant.map(a => `${a.full_name}`).join(', ') : '' }}
           </div>
           <div class="text-xs text-gray-500">
-            50F-003.58
+            {{ trip.license_plate || '' }}
           </div>
         </div>
       </div>
@@ -74,8 +74,6 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-
-// Define emits
 const emit = defineEmits<{
   tripSelected: [trip: TripType]
 }>()
