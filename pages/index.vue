@@ -5,13 +5,13 @@ import type { LoginFormType } from '~/types/authType';
 import { ecosystemModules } from '~/mock/ecosystemModules';
 import { loginBMS } from '~/api/authAPI';
 import { ElNotification } from 'element-plus'
-import type { UserInfoType } from '~/types/accountType';
+import type { UserBMSType } from '~/types/userType';
 definePageMeta({
     middleware: ['guest'],
     layout: false,
 })
 const cookie_access_token = useCookie('access_token');
-const authStore = useAuthStore()
+const useUserStore = userStore();
 const handleLogin = async (payload: LoginFormType) => {
     try {
         const response = await loginBMS(payload)
@@ -22,16 +22,17 @@ const handleLogin = async (payload: LoginFormType) => {
                 type: 'success',
             })
             cookie_access_token.value = response.result.access_token;
-            const user: UserInfoType = {
+            const user: UserBMSType = {
                 id: response.result.id,
                 username: response.result.username,
                 full_name: response.result.full_name,
                 company_id: response.result.company_id,
                 role: response.result.role,
+                access_token: response.result.access_token,
                 refresh_token: response.result.refresh_token,
                 expires_in: response.result.expires_in,
             }
-            authStore.setUserInfo(user)
+            useUserStore.setUserInfo(user)
             console.log('Login successful:', response.result)
             navigateTo('/room-work')
         } else {

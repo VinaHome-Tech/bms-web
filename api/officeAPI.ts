@@ -1,7 +1,8 @@
-import type {  OfficeType, DTO_RP_Office_2 } from "~/types/officeType";
+import type {  OfficeType, DTO_RP_Office_2, DTO_RQ_Office } from "~/types/officeType";
 import type { ApiResponse } from "./APIResponse";
+import type { UserActionType } from "~/types/userType";
 
-export const getListOffice = async (company_id: number): Promise<ApiResponse<DTO_RP_Office_2[]>> => {
+export const getListOffice = async (company_id: string): Promise<ApiResponse<DTO_RP_Office_2[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -18,7 +19,7 @@ export const getListOffice = async (company_id: number): Promise<ApiResponse<DTO
   }
 };
 
-export const getListOfficeByCompany = async (company_id: number): Promise<ApiResponse<OfficeType[]>> => {
+export const getListOfficeByCompany = async (company_id: string): Promise<ApiResponse<OfficeType[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -35,7 +36,7 @@ export const getListOfficeByCompany = async (company_id: number): Promise<ApiRes
   }
 }
 
-export const deleteOffice = async (id: number): Promise<ApiResponse<void>> => {
+export const deleteOffice = async (user: UserActionType, id: number): Promise<ApiResponse<void>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -44,6 +45,9 @@ export const deleteOffice = async (id: number): Promise<ApiResponse<void>> => {
       method: "DELETE",
       headers: {
         'Authorization': `Bearer ${cookie.value}`
+      },
+      body: {
+        user
       }
     });
   } catch (error) {
@@ -52,7 +56,7 @@ export const deleteOffice = async (id: number): Promise<ApiResponse<void>> => {
   }
 }
 
-export const createOffice = async (data: OfficeType): Promise<ApiResponse<OfficeType>> => {
+export const createOffice = async (user: UserActionType, data_create: DTO_RQ_Office): Promise<ApiResponse<OfficeType>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -62,7 +66,10 @@ export const createOffice = async (data: OfficeType): Promise<ApiResponse<Office
       headers: {
         'Authorization': `Bearer ${cookie.value}`,
       },
-      body: data
+      body: {
+        user,
+        data_create
+      }
     });
   } catch (error) {
     console.error("API error:", error);
@@ -70,7 +77,7 @@ export const createOffice = async (data: OfficeType): Promise<ApiResponse<Office
   }
 }
 
-export const updateOffice = async (id: number, data: OfficeType): Promise<ApiResponse<OfficeType>> => {
+export const updateOffice = async (user: UserActionType, data_update: DTO_RQ_Office, id: number): Promise<ApiResponse<OfficeType>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -80,7 +87,10 @@ export const updateOffice = async (id: number, data: OfficeType): Promise<ApiRes
       headers: {
         'Authorization': `Bearer ${cookie.value}`,
       },
-      body: data
+      body: {
+        user,
+        data_update
+      }
     });
   } catch (error) {
     console.error("API error:", error);

@@ -9,6 +9,15 @@ export interface OfficeType {
   phones: OfficePhoneType[];
   company_id: number;
 }
+
+export interface DTO_RQ_Office {
+  name: string | null;
+  code: string | null;
+  address: string | null;
+  note: string | null;
+  status: boolean;
+  phones: OfficePhoneType[];
+}
 export interface DTO_RP_Office_2 {
   id: number;
   name: string;

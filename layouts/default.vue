@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import Header from '~/components/layout/Header.vue';
-const authStore = useAuthStore()
+const useUserStore = userStore();
 const officeStore = useOfficeStore();
 const companyStore = useCompanyStore();
 onMounted(async () => {
-    await authStore.loadUserInfo();
+    await useUserStore.loadUserInfo();
     await officeStore.loadOfficeStore();
     await companyStore.loadCompanyStore();
 });

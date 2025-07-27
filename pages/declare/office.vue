@@ -4,12 +4,13 @@ import {
 } from '@element-plus/icons-vue'
 import type { DrawerProps, FormInstance, FormRules } from 'element-plus'
 import { createOffice, deleteOffice, getListOfficeByCompany, updateOffice } from '~/api/officeAPI'
-import type { OfficeType } from '~/types/officeType';
+import type { DTO_RQ_Office, OfficeType } from '~/types/officeType';
 import { format } from 'date-fns'
+import type { UserActionType } from '~/types/userType';
 definePageMeta({
     layout: 'default',
 })
-const companyStore = useCompanyStore();
+const useUserStore = userStore();
 const drawer = ref(false)
 const direction = ref<DrawerProps['direction']>('rtl')
 const isEditMode = ref(false)
@@ -17,8 +18,7 @@ const currentEditId = ref<number | null>(null);
 const offices = ref<OfficeType[]>([]);
 const loading = ref(false);
 const ruleFormRef = ref<FormInstance>()
-const ruleForm = reactive<OfficeType>({
-    id: null,
+const ruleForm = reactive<DTO_RQ_Office>({
     name: null,
     code: null,
     address: null,
@@ -27,8 +27,6 @@ const ruleForm = reactive<OfficeType>({
     phones: [
         { id: null, phone: null, type: 'mobile' }
     ],
-    created_at: null,
-    company_id: companyStore.id,
 });
 const rules = reactive<FormRules>({
     name: [
@@ -90,9 +88,16 @@ const submitForm = async (formEl: FormInstance | undefined) => {
         if (valid) {
             try {
                 if (isEditMode.value && currentEditId.value !== null) {
-                    // Gọi API cập nhật
                     console.log(ruleForm);
-                    const response = await updateOffice(currentEditId.value, ruleForm);
+                    const response = await updateOffice({
+                        id: useUserStore.id,
+                        username: useUserStore.username,
+                        full_name: useUserStore.full_name,
+                        company_id: useUserStore.company_id,
+                    } as UserActionType,
+                        ruleForm as DTO_RQ_Office,
+                        currentEditId.value
+                    );
                     if (response.success) {
                         ElNotification({
                             message: h('p', { style: 'color: teal' }, 'Cập nhật văn phòng thành công!'),
@@ -100,7 +105,18 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                         })
                     }
                 } else {
-                    const response = await createOffice(ruleForm);
+                    console.log(ruleForm);
+
+                    const response = await createOffice(
+                        {
+                            id: useUserStore.id,
+                            username: useUserStore.username,
+                            full_name: useUserStore.full_name,
+                            company_id: useUserStore.company_id,
+                        } as UserActionType,
+                        ruleForm as DTO_RQ_Office
+                    );
+
                     if (response.success) {
                         ElNotification({
                             message: h('p', { style: 'color: teal' }, 'Thêm văn phòng mới thành công!'),
@@ -127,23 +143,31 @@ const handleAdd = () => {
     isEditMode.value = false;
     currentEditId.value = null;
     Object.assign(ruleForm, {
-        id: 0,
         name: null,
         address: null,
         phones: [],
         code: null,
         status: false,
         note: null,
-        company_id: companyStore.id,
     });
     drawer.value = true;
 };
 const handleEdit = (index: number, row: OfficeType) => {
     isEditMode.value = true;
     currentEditId.value = row.id;
-    Object.assign(ruleForm, { ...row });
+
+    Object.assign(ruleForm, {
+        name: row.name,
+        code: row.code,
+        address: row.address,
+        status: row.status,
+        note: row.note,
+        phones: row.phones,
+    });
+
     drawer.value = true;
 };
+
 
 const handleDelete = async (index: number, row: OfficeType) => {
     try {
@@ -157,7 +181,14 @@ const handleDelete = async (index: number, row: OfficeType) => {
             }
         );
 
-        await deleteOffice(row.id!);
+        await deleteOffice({
+            id: useUserStore.id,
+            username: useUserStore.username,
+            full_name: useUserStore.full_name,
+            company_id: useUserStore.company_id,
+        } as UserActionType,
+            row.id!
+        );
         ElNotification({
             message: h('p', { style: 'color: teal' }, 'Xóa văn phòng thành công!'),
             type: 'success',
@@ -177,7 +208,7 @@ const handleDelete = async (index: number, row: OfficeType) => {
 const fetchListOffice = async () => {
     loading.value = true;
     try {
-        const response = await getListOfficeByCompany(Number(companyStore.id));
+        const response = await getListOfficeByCompany(useUserStore.company_id ?? '');
         if (response.result) {
             console.log('Danh sách văn phòng:', response.result);
             offices.value = response.result;
@@ -192,7 +223,7 @@ const fetchListOffice = async () => {
     }
 };
 onMounted(() => {
-    companyStore.loadCompanyStore();
+    useUserStore.loadUserInfo();
     fetchListOffice();
 });
 </script>
@@ -246,9 +277,6 @@ onMounted(() => {
                 </template>
             </el-table-column>
         </el-table>
-        <div class="flex justify-end mt-4">
-            <el-pagination background layout="prev, pager, next" :total="100" />
-        </div>
 
         <el-drawer v-model="drawer" :direction="direction" :before-close="cancelClick">
             <template #header>
@@ -339,4 +367,17 @@ onMounted(() => {
         </el-drawer>
     </section>
 </template>
-<style scoped></style>
+<style scoped>
+:deep(.el-drawer__footer) {
+    padding-bottom: 10px !important;
+    background-color: whitesmoke !important;
+    border-top: 1px solid rgb(240, 240, 240) !important;
+}
+
+:deep(.el-drawer__header) {
+    background-color: whitesmoke !important;
+    border-bottom: 1px solid rgb(240, 240, 240) !important;
+    padding-bottom: 20px;
+    margin-bottom: 0 !important;
+}
+</style>

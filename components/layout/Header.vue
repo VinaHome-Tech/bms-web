@@ -16,6 +16,8 @@ import {
 } from '@element-plus/icons-vue'
 
 import type { Component } from 'vue'
+import { useLogout } from "@/composables/useLogout";
+const { handleLogout } = useLogout();
 const Icons: Record<string, Component> = {
   Menu,
   Search,
@@ -30,7 +32,7 @@ const Icons: Record<string, Component> = {
   Finished
 };
 
-const authStore = useAuthStore();
+const useUserStore = userStore();
 const officeStore = useOfficeStore();
 const companyStore = useCompanyStore();
 // Reactive data
@@ -122,29 +124,29 @@ const menuItems = [
   },
 ];
 
-const logout = async () => {
-  try {
-    await authStore.resetUserInfo();
-    await officeStore.resetOfficeStore();
-    await companyStore.resetCompanyStore();
-    ElNotification({
-      message: h('p', { style: 'color: teal' }, 'Đăng xuất thành công!'),
-      type: 'success',
-    })
-    navigateTo('/');
-  } catch (error) {
-    console.error('Logout failed:', error);
-    ElNotification({
-      message: h('p', { style: 'color: red' }, 'Đăng xuất không thành công!'),
-      type: 'error',
-    })
-  }
-}
+// const logout = async () => {
+//   try {
+//     await useUserStore.resetUserInfo();
+//     await officeStore.resetOfficeStore();
+//     await companyStore.resetCompanyStore();
+//     ElNotification({
+//       message: h('p', { style: 'color: teal' }, 'Đăng xuất thành công!'),
+//       type: 'success',
+//     })
+//     navigateTo('/');
+//   } catch (error) {
+//     console.error('Logout failed:', error);
+//     ElNotification({
+//       message: h('p', { style: 'color: red' }, 'Đăng xuất không thành công!'),
+//       type: 'error',
+//     })
+//   }
+// }
 
 
 
 onMounted(async () => {
-  await authStore.loadUserInfo();
+  await useUserStore.loadUserInfo();
   await officeStore.loadOfficeStore();
   await companyStore.loadCompanyStore();
 });
@@ -287,8 +289,8 @@ onMounted(async () => {
             </el-icon>
           </el-avatar>
           <div class="hidden md:block text-left">
-            <div class="text-sm font-medium text-gray-900">{{ authStore.full_name }}</div>
-            <div class="text-xs text-gray-500">{{ authStore.username }}</div>
+            <div class="text-sm font-medium text-gray-900">{{ useUserStore.full_name }}</div>
+            <div class="text-xs text-gray-500">{{ useUserStore.username }}</div>
           </div>
         </div>
         <template #dropdown>
@@ -301,8 +303,8 @@ onMounted(async () => {
                   </el-icon>
                 </el-avatar>
                 <div>
-                  <div class="text-sm font-medium text-gray-900">{{ authStore.full_name }}</div>
-                  <div class="text-xs text-gray-500">{{ authStore.role }}</div>
+                  <div class="text-sm font-medium text-gray-900">{{ useUserStore.full_name }}</div>
+                  <div class="text-xs text-gray-500">{{ useUserStore.role }}</div>
                 </div>
               </div>
             </div>
@@ -328,7 +330,7 @@ onMounted(async () => {
               <span class="ml-2">Quản lý hệ thống</span>
             </el-dropdown-item>
 
-            <el-dropdown-item divided command="logout" class="text-red-600" @click="logout">
+            <el-dropdown-item divided command="logout" class="text-red-600" @click="handleLogout">
               <el-icon>
                 <SwitchButton />
               </el-icon>

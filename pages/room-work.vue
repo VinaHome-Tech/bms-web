@@ -4,14 +4,15 @@ import { SwitchButton } from '@element-plus/icons-vue'
 import { ElNotification } from 'element-plus'
 import type {  DTO_RP_Office_2 } from '~/types/officeType'
 import { getListOffice } from '~/api/officeAPI'
+import { useLogout } from "@/composables/useLogout";
+const { handleLogout } = useLogout();
 definePageMeta({
   middleware: ['auth'],
   layout: false,
 })
-const authStore = useAuthStore()
+const useUserStore = userStore();
 const officeStore = useOfficeStore();
 const companyStore = useCompanyStore();
-const cookie_access_token = useCookie('access_token');
 
 const selectedOffice = ref<number | null>(null)
 const searchQuery = ref('')
@@ -65,21 +66,13 @@ const confirmSelection = () => {
   }
 };
 
-const handleLogout = () => {
-  ElNotification({
-    message: h('p', { style: 'color: teal' }, 'Đăng xuất thành công!'),
-    type: 'success',
-  });
-  cookie_access_token.value = null;
-  authStore.resetUserInfo();
-  navigateTo('/');
-}
+
 
 const fetchOfficeList = async () => {
   isLoading.value = true;
   try {
-    const res = await getListOffice(Number(authStore.company_id));
-    offices.value = res.result ?? [];
+    // const res = await getListOffice(Number(authStore.company_id));
+    // offices.value = res.result ?? [];
     console.log('Danh sách văn phòng:', offices.value);
   } catch (err) {
     console.error('Lỗi khi lấy danh sách văn phòng:', err);
@@ -89,7 +82,7 @@ const fetchOfficeList = async () => {
 };
 
 onMounted(async () => {
-  await authStore.loadUserInfo();
+  await useUserStore.loadUserInfo();
   await fetchOfficeList();
 });
 </script>
@@ -112,8 +105,8 @@ onMounted(async () => {
             <div class="flex items-center space-x-4">
               <div>
 
-                <p class="text-lg font-semibold text-blue-600">Nhân viên: {{ authStore.full_name }}</p>
-                <p class="text-sm text-gray-500">{{ authStore.username }}</p>
+                <p class="text-lg font-semibold text-blue-600">Nhân viên: {{ useUserStore.full_name }}</p>
+                <p class="text-sm text-gray-500">{{ useUserStore.username }}</p>
               </div>
               <el-button type="danger" :icon="SwitchButton" @click="handleLogout">
                 Đăng xuất
