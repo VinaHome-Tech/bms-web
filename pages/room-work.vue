@@ -2,8 +2,8 @@
 import { ref, computed } from 'vue'
 import { SwitchButton } from '@element-plus/icons-vue'
 import { ElNotification } from 'element-plus'
-import type {  DTO_RP_Office_2 } from '~/types/officeType'
-import { getListOffice } from '~/api/officeAPI'
+import type {  OfficeType } from '~/types/officeType'
+import { getListOfficeRoomWorkByCompany } from '~/api/officeAPI'
 import { useLogout } from "@/composables/useLogout";
 const { handleLogout } = useLogout();
 definePageMeta({
@@ -12,18 +12,17 @@ definePageMeta({
 })
 const useUserStore = userStore();
 const officeStore = useOfficeStore();
-const companyStore = useCompanyStore();
 
 const selectedOffice = ref<number | null>(null)
 const searchQuery = ref('')
 const filterByAvailability = ref(false)
 
-const offices = ref<DTO_RP_Office_2[]>([]);
+const offices = ref<OfficeType[]>([]);
 const isLoading = ref(true);
 
 const filteredOffices = computed(() => {
   let result = offices.value.filter(office =>
-    office.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+    (office.name ?? '').toLowerCase().includes(searchQuery.value.toLowerCase())
   )
 
   if (filterByAvailability.value) {
@@ -44,11 +43,6 @@ const confirmSelection = () => {
       officeStore.setOfficeStore({
         id: office.id,
         name: office.name,
-      });
-      companyStore.setCompanyStore({
-        id: office.company_id,
-        name: office.company_name,
-        code: office.company_code,
       });
       console.log('Văn phòng đã chọn:', office);
 
@@ -71,8 +65,8 @@ const confirmSelection = () => {
 const fetchOfficeList = async () => {
   isLoading.value = true;
   try {
-    // const res = await getListOffice(Number(authStore.company_id));
-    // offices.value = res.result ?? [];
+    const res = await getListOfficeRoomWorkByCompany(useUserStore.company_id ?? '');
+    offices.value = res.result ?? [];
     console.log('Danh sách văn phòng:', offices.value);
   } catch (err) {
     console.error('Lỗi khi lấy danh sách văn phòng:', err);
@@ -160,14 +154,14 @@ onMounted(async () => {
           'bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transition-all duration-300',
           selectedOffice === office.id ? 'ring-4 ring-blue-500 transform scale-105' : 'hover:shadow-lg',
           !office.status ? 'opacity-60 cursor-not-allowed' : ''
-        ]" @click="office.status && selectOffice(office.id)">
-          <div class="p-6">
+        ]" @click="office.status && selectOffice(office.id as number)">
+          <div class="p-4">
             <h3 class="text-xl font-semibold text-gray-800 mb-2">{{ office.name }}</h3>
-            <p class="text-gray-600 mb-3">
+            <p class="text-gray-600 mb-1">
               <span class="text-sm font-medium text-gray-700">Địa chỉ:</span> {{ office.address }}
             </p>
-            <div class="mb-4">
-              <h4 class="text-sm font-medium text-gray-700 mb-2">Số điện thoại:</h4>
+            <div class="mb-1">
+              <h4 class="text-sm font-medium text-gray-700">Số điện thoại:</h4>
               <div class="flex flex-wrap gap-1">
                 <span v-for="phone in office.phones || []" :key="`phone-${phone.id}`"
                   class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">

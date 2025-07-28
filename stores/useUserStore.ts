@@ -8,6 +8,7 @@ export const userStore = defineStore("user_bms", {
     id: null,
     username: null,
     full_name: null,
+    company_name: null,
     company_id: null,
     role: null,
     access_token: null,
@@ -20,6 +21,7 @@ export const userStore = defineStore("user_bms", {
       this.id = user.id;
       this.username = user.username;
       this.full_name = user.full_name;
+      this.company_name = user.company_name;
       this.company_id = user.company_id;
       this.role = user.role;
       this.access_token = user.access_token;
@@ -48,6 +50,7 @@ export const userStore = defineStore("user_bms", {
       this.id = null;
       this.username = null;
       this.full_name = null;
+      this.company_name = null;
       this.company_id = null;
       this.role = null;
       this.access_token = null;

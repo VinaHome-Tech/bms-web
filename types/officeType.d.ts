@@ -7,7 +7,6 @@ export interface OfficeType {
   status: boolean;
   created_at: Date | null;
   phones: OfficePhoneType[];
-  company_id: number;
 }
 
 export interface DTO_RQ_Office {
@@ -36,6 +35,6 @@ export interface OfficePhoneType {
   type: string;
 }
 export interface OfficeStoreType{
-  id: number;
-  name: string;
+  id: number | null;
+  name: string | null;
 }

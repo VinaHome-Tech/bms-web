@@ -1,5 +1,6 @@
 export const useLogout = () => {
   const useUserStore = userStore();
+  const officeStore = useOfficeStore();
   const cookieAccessToken = useCookie("access_token");
 
   const handleLogout = () => {
@@ -9,6 +10,7 @@ export const useLogout = () => {
     });
     cookieAccessToken.value = null;
     useUserStore.resetUserInfo();
+    officeStore.resetOfficeStore();
     navigateTo("/");
   };
 

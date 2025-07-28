@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref } from 'vue'
 // Import các icon từ @element-plus/icons-vue
 import {
   Menu,
@@ -34,7 +34,6 @@ const Icons: Record<string, Component> = {
 
 const useUserStore = userStore();
 const officeStore = useOfficeStore();
-const companyStore = useCompanyStore();
 // Reactive data
 const searchQuery = ref('')
 
@@ -148,7 +147,6 @@ const menuItems = [
 onMounted(async () => {
   await useUserStore.loadUserInfo();
   await officeStore.loadOfficeStore();
-  await companyStore.loadCompanyStore();
 });
 </script>
 <template>
@@ -197,7 +195,7 @@ onMounted(async () => {
 
       <div class="flex items-center space-x-3">
         <div>
-          <h1 class="text-lg font-semibold text-gray-900">{{ companyStore.name }}</h1>
+          <h1 class="text-lg font-semibold text-gray-900">{{ useUserStore.company_name }}</h1>
           <p class="inline-block text-xs text-gray-700 bg-green-300 px-2 py-0.5 rounded">
             {{ officeStore.name }}
           </p>

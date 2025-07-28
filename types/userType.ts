@@ -3,6 +3,7 @@ export interface UserBMSType {
   username: string | null;
   full_name: string | null;
   company_id: string | null;
+  company_name: string | null;
   role: string | null;
   access_token: string | null;
   refresh_token: string | null;

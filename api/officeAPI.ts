@@ -1,13 +1,13 @@
-import type {  OfficeType, DTO_RP_Office_2, DTO_RQ_Office } from "~/types/officeType";
+import type {  OfficeType, DTO_RQ_Office } from "~/types/officeType";
 import type { ApiResponse } from "./APIResponse";
 import type { UserActionType } from "~/types/userType";
 
-export const getListOffice = async (company_id: string): Promise<ApiResponse<DTO_RP_Office_2[]>> => {
+export const getListOfficeRoomWorkByCompany = async (company_id: string): Promise<ApiResponse<OfficeType[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
   try {
-    return await $fetch<ApiResponse<DTO_RP_Office_2[]>>(`${apiGateWay}/v2/office/get-list-office-by-company-2/${company_id}`, {
+    return await $fetch<ApiResponse<OfficeType[]>>(`${apiGateWay}/v2/office/get-list-office-room-work-by-company/${company_id}`, {
       method: "GET",
       headers: {
         'Authorization': `Bearer ${cookie.value}`

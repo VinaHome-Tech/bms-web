@@ -3,8 +3,8 @@ import type { OfficeStoreType } from "~/types/officeType";
 const LOCAL_KEY = "office_store";
 export const useOfficeStore = defineStore("office", {
   state: (): OfficeStoreType => ({
-    id: 0,
-    name: "",
+    id: null,
+    name: null,
   }),
   actions: {
     setOfficeStore(office: OfficeStoreType) {

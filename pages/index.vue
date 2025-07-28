@@ -26,6 +26,7 @@ const handleLogin = async (payload: LoginFormType) => {
                 id: response.result.id,
                 username: response.result.username,
                 full_name: response.result.full_name,
+                company_name: response.result.company_name,
                 company_id: response.result.company_id,
                 role: response.result.role,
                 access_token: response.result.access_token,
