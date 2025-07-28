@@ -1,8 +1,10 @@
-import type { LicensePlateType, VehicleType } from "~/types/vehicleType";
+import type { DTO_RQ_Vehicle, LicensePlateType, VehicleType } from "~/types/vehicleType";
 import type { ApiResponse } from "./APIResponse";
+import type { UserActionType } from "~/types/userType";
 
 export const createVehicle = async (
-  data: VehicleType
+  user: UserActionType,
+  data_create: DTO_RQ_Vehicle
 ): Promise<ApiResponse<VehicleType>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
@@ -15,7 +17,10 @@ export const createVehicle = async (
         headers: {
           Authorization: `Bearer ${cookie.value}`,
         },
-        body: data,
+        body: {
+          user,
+          data_create,
+        },
       }
     );
   } catch (error) {
@@ -25,8 +30,9 @@ export const createVehicle = async (
 };
 
 export const updateVehicle = async (
+  user: UserActionType,
+  data_update: DTO_RQ_Vehicle,
   id: number,
-  data: VehicleType
 ): Promise<ApiResponse<VehicleType>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
@@ -39,7 +45,10 @@ export const updateVehicle = async (
         headers: {
           Authorization: `Bearer ${cookie.value}`,
         },
-        body: data,
+        body: {
+          user,
+          data_update,
+        },
       }
     );
   } catch (error) {
@@ -49,14 +58,14 @@ export const updateVehicle = async (
 }
 
 export const getListVehicleByCompany = async (
-  companyId: number
+  company_id: string
 ): Promise<ApiResponse<VehicleType[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie("access_token");
   try {
     return await $fetch<ApiResponse<VehicleType[]>>(
-      `${apiGateWay}/v2/vehicle/get-list-vehicle-by-company/${companyId}`,
+      `${apiGateWay}/v2/vehicle/get-list-vehicle-by-company/${company_id}`,
       {
         method: "GET",
         headers: {
@@ -71,6 +80,7 @@ export const getListVehicleByCompany = async (
 };
 
 export const deleteVehicle = async (
+  user: UserActionType,
   id: number
 ): Promise<ApiResponse<void>> => {
   const config = useRuntimeConfig();
@@ -83,6 +93,9 @@ export const deleteVehicle = async (
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${cookie.value}`,
+        },
+        body: {
+          user,
         },
       }
     );

@@ -6,14 +6,14 @@ import InputText from '~/components/inputs/inputText.vue';
 import Select from '~/components/inputs/select.vue';
 import InputDate from '~/components/inputs/inputDate.vue';
 import type { DrawerProps, FormInstance, FormRules } from 'element-plus'
-import type { VehicleType } from '~/types/vehicleType';
+import type { DTO_RQ_Vehicle, VehicleType } from '~/types/vehicleType';
 import { format } from 'date-fns'
 import { createVehicle, deleteVehicle, getListVehicleByCompany, updateVehicle } from '~/api/vehicleAPI';
+import type { UserActionType } from '~/types/userType';
 definePageMeta({
     layout: 'default',
 })
-const companyStore = useCompanyStore();
-const authStore = useAuthStore();
+const useUserStore = userStore();
 const drawer = ref(false)
 const direction = ref<DrawerProps['direction']>('rtl')
 const isEditMode = ref(false)
@@ -22,9 +22,7 @@ const loading = ref(false);
 const ruleFormRef = ref<FormInstance>()
 const isSubmitting = ref(false);
 const vehicles = ref<VehicleType[]>([])
-const ruleForm = ref<VehicleType>({
-    id: null,
-    company_id: companyStore.id,
+const ruleForm = ref<DTO_RQ_Vehicle>({
     license_plate: null,
     engine_number: null,
     frame_number: null,
@@ -34,7 +32,6 @@ const ruleForm = ref<VehicleType>({
     phone: null,
     registration_expiry: null,
     maintenance_due: null,
-
 })
 const rules = ref<FormRules>({
     license_plate: [
@@ -62,7 +59,6 @@ const handleAdd = () => {
     isEditMode.value = false;
     currentEditId.value = null;
     Object.assign(ruleForm.value = {
-        id: null,
         license_plate: null,
         engine_number: null,
         frame_number: null,
@@ -72,7 +68,6 @@ const handleAdd = () => {
         phone: null,
         registration_expiry: null,
         maintenance_due: null,
-        company_id: companyStore.id,
     });
     drawer.value = true;
 };
@@ -95,7 +90,13 @@ const handleDelete = async (index: number, row: VehicleType) => {
             }
         );
 
-        const response = await deleteVehicle(row.id!);
+        const response = await deleteVehicle({
+            id: useUserStore.id,
+            username: useUserStore.username,
+            full_name: useUserStore.full_name,
+            company_id: useUserStore.company_id,
+        } as UserActionType,
+            row.id!);
         if (response.success) {
             ElNotification({
                 message: h('p', { style: 'color: teal' }, 'Xóa phương tiện thành công!'),
@@ -129,18 +130,29 @@ const submitForm = async (formEl: FormInstance | undefined) => {
             try {
                 if (isEditMode.value && currentEditId.value !== null) {
                     console.log(ruleForm);
-                    const response = await updateVehicle(currentEditId.value, ruleForm.value);
+                    const response = await updateVehicle(
+                        {
+                            id: useUserStore.id,
+                            username: useUserStore.username,
+                            full_name: useUserStore.full_name,
+                            company_id: useUserStore.company_id,
+                        } as UserActionType,
+                        ruleForm.value as DTO_RQ_Vehicle,
+                        currentEditId.value
+                    );
                     if (response.success) {
                         ElNotification({
                             message: h('p', { style: 'color: teal' }, 'Cập nhật phương tiện thành công!'),
                             type: 'success',
                         })
-                        const index = vehicles.value.findIndex(vehicle => vehicle.id === currentEditId.value);
-                        if (index !== -1) {
-                            vehicles.value[index] = {
-                                ...vehicles.value[index],
-                                ...ruleForm.value
-                            };
+                        if (response.result) {
+                            const index = vehicles.value.findIndex(vehicle => vehicle.id === currentEditId.value);
+                            if (index !== -1) {
+                                vehicles.value[index] = {
+                                    ...vehicles.value[index],
+                                    ...ruleForm.value
+                                };
+                            }
                         }
                     } else {
                         ElNotification({
@@ -150,7 +162,15 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                     }
                 } else {
                     console.log(ruleForm);
-                    const response = await createVehicle(ruleForm.value);
+                    const response = await createVehicle(
+                        {
+                            id: useUserStore.id,
+                            username: useUserStore.username,
+                            full_name: useUserStore.full_name,
+                            company_id: useUserStore.company_id,
+                        } as UserActionType,
+                        ruleForm.value as DTO_RQ_Vehicle
+                    );
                     if (response.success) {
                         ElNotification({
                             message: h('p', { style: 'color: teal' }, 'Thêm phương tiện mới thành công!'),
@@ -189,7 +209,7 @@ const submitForm = async (formEl: FormInstance | undefined) => {
 const fetchListVehicle = async () => {
     loading.value = true;
     try {
-        const response = await getListVehicleByCompany(Number(companyStore.id));
+        const response = await getListVehicleByCompany(useUserStore.company_id || '');
         if (response.success) {
             vehicles.value = response.result || [];
         } else {
@@ -241,8 +261,7 @@ const optionsBrand = [
     { label: 'Khác', value: 'Khác' }
 ];
 onMounted(() => {
-    companyStore.loadCompanyStore();
-    authStore.loadUserInfo();
+    useUserStore.loadUserInfo();
     fetchListVehicle();
 });
 </script>
@@ -253,7 +272,8 @@ onMounted(() => {
             <el-button :icon="Plus" type="primary" @click="handleAdd">Thêm phương tiện</el-button>
         </div>
 
-        <el-table v-loading="loading" element-loading-text="Đang tải dữ liệu..." :data="filterTableData" style="width: 100%">
+        <el-table v-loading="loading" element-loading-text="Đang tải dữ liệu..." :data="filterTableData"
+            style="width: 100%">
             <el-table-column type="index" label="STT" width="50" />
             <el-table-column label="Biển số xe" prop="license_plate" />
             <el-table-column label="Số điện thoại" prop="phone" />
@@ -281,17 +301,23 @@ onMounted(() => {
             <el-table-column label="Hạn bảo dưỡng" prop="maintenance_due">
                 <template #default="{ row }">
                     {{
-                        format(new Date(row.maintenance_due), 'dd/MM/yyyy')
+                        row.maintenance_due
+                            ? format(new Date(row.maintenance_due), 'dd/MM/yyyy')
+                            : ''
                     }}
                 </template>
             </el-table-column>
+
             <el-table-column label="Hạn đăng kiểm" prop="registration_expiry">
                 <template #default="{ row }">
                     {{
-                        format(new Date(row.registration_expiry), 'dd/MM/yyyy')
+                        row.registration_expiry
+                            ? format(new Date(row.registration_expiry), 'dd/MM/yyyy')
+                            : ''
                     }}
                 </template>
             </el-table-column>
+
             <el-table-column align="right">
                 <template #header>
                     <el-input v-model="search" placeholder="Tìm phương tiện" />

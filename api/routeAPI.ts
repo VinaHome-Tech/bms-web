@@ -1,7 +1,8 @@
-import type { DTO_RP_ListRouteName, RouteType } from "~/types/routeType";
+import type { DTO_RP_ListRouteName, DTO_RQ_Route, RouteType } from "~/types/routeType";
 import type { ApiResponse } from "./APIResponse";
+import type { UserActionType } from "~/types/userType";
 
-export const createRoute = async (data: RouteType): Promise<ApiResponse<RouteType>> => {
+export const createRoute = async (user: UserActionType, data_create: DTO_RQ_Route): Promise<ApiResponse<RouteType>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -11,7 +12,10 @@ export const createRoute = async (data: RouteType): Promise<ApiResponse<RouteTyp
       headers: {
         'Authorization': `Bearer ${cookie.value}`,
       },
-      body: data
+      body: {
+        user,
+        data_create
+      }
     });
   } catch (error) {
     console.error("API error:", error);
@@ -19,7 +23,7 @@ export const createRoute = async (data: RouteType): Promise<ApiResponse<RouteTyp
   }
 }
 
-export const updateRoute = async (id: number, data: RouteType): Promise<ApiResponse<RouteType>> => {
+export const updateRoute = async (user: UserActionType, data_update: DTO_RQ_Route, id: number): Promise<ApiResponse<RouteType>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -29,23 +33,9 @@ export const updateRoute = async (id: number, data: RouteType): Promise<ApiRespo
       headers: {
         'Authorization': `Bearer ${cookie.value}`,
       },
-      body: data
-    });
-  } catch (error) {
-    console.error("API error:", error);
-    throw error;
-  }
-}
-
-export const deleteRoute = async (id: number): Promise<ApiResponse<void>> => {
-  const config = useRuntimeConfig();
-  const apiGateWay = config.public.apiGateWay;
-  const cookie = useCookie('access_token');
-  try {
-    return await $fetch<ApiResponse<void>>(`${apiGateWay}/v2/route/delete-route/${id}`, {
-      method: "DELETE",
-      headers: {
-        'Authorization': `Bearer ${cookie.value}`
+      body: {
+        user,
+        data_update
       }
     });
   } catch (error) {
@@ -54,12 +44,32 @@ export const deleteRoute = async (id: number): Promise<ApiResponse<void>> => {
   }
 }
 
-export const getListRouteByCompany = async (companyId: number): Promise<ApiResponse<RouteType[]>> => {
+export const deleteRoute = async (user: UserActionType, id: number): Promise<ApiResponse<void>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
   try {
-    return await $fetch<ApiResponse<RouteType[]>>(`${apiGateWay}/v2/route/get-list-route-by-company/${companyId}`, {
+    return await $fetch<ApiResponse<void>>(`${apiGateWay}/v2/route/delete-route/${id}`, {
+      method: "DELETE",
+      headers: {
+        'Authorization': `Bearer ${cookie.value}`
+      },
+      body: {
+        user
+      }
+    });
+  } catch (error) {
+    console.error("API error:", error);
+    throw error;
+  }
+}
+
+export const getListRouteByCompany = async (company_id: string): Promise<ApiResponse<RouteType[]>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie('access_token');
+  try {
+    return await $fetch<ApiResponse<RouteType[]>>(`${apiGateWay}/v2/route/get-list-route-by-company/${company_id}`, {
       method: "GET",
       headers: {
         'Authorization': `Bearer ${cookie.value}`
@@ -71,7 +81,7 @@ export const getListRouteByCompany = async (companyId: number): Promise<ApiRespo
   }
 }
 
-export const updateRouteOrder = async (data: { route_id: number; display_order: number, company_id: number }): Promise<ApiResponse<RouteType>> => {
+export const updateRouteOrder = async (data: { route_id: number; display_order: number, company_id: string }): Promise<ApiResponse<RouteType>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -89,7 +99,7 @@ export const updateRouteOrder = async (data: { route_id: number; display_order: 
   }
 }
 
-export const getListRouteNameByCompany = async (id:number): Promise<ApiResponse<DTO_RP_ListRouteName[]>> => {
+export const getListRouteNameByCompany = async (id: string): Promise<ApiResponse<DTO_RP_ListRouteName[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -106,7 +116,7 @@ export const getListRouteNameByCompany = async (id:number): Promise<ApiResponse<
   }
 }
 
-export const getListRouteNameActionByCompany = async (id:number): Promise<ApiResponse<DTO_RP_ListRouteName[]>> => {
+export const getListRouteNameActionByCompany = async (id: string): Promise<ApiResponse<DTO_RP_ListRouteName[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');

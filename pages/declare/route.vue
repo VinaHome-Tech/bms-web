@@ -4,16 +4,15 @@ import {
 } from '@element-plus/icons-vue'
 import type { DrawerProps, FormInstance, FormRules } from 'element-plus'
 import { createRoute, deleteRoute, getListRouteByCompany, updateRoute, updateRouteOrder } from '~/api/routeAPI';
-import type { RouteType } from '~/types/routeType';
-import { format } from 'date-fns'
+import type { DTO_RQ_Route, RouteType } from '~/types/routeType';
 import InputText from '~/components/inputs/inputText.vue';
 import InputNumber from '~/components/inputs/inputNumber.vue';
 import { formatCurrency } from '~/lib/formatCurrency';
+import type { UserActionType } from '~/types/userType';
 definePageMeta({
     layout: 'default',
 })
-const companyStore = useCompanyStore();
-const authStore = useAuthStore();
+const useUserStore = userStore();
 const drawer = ref(false)
 const direction = ref<DrawerProps['direction']>('rtl')
 const isEditMode = ref(false)
@@ -34,8 +33,7 @@ const rules = reactive<FormRules>({
     ],
 });
 const ruleFormRef = ref<FormInstance>()
-const ruleForm = reactive<RouteType>({
-    id: null,
+const ruleForm = reactive<DTO_RQ_Route>({
     route_name: null,
     short_name: null,
     route_name_e_ticket: null,
@@ -45,10 +43,6 @@ const ruleForm = reactive<RouteType>({
     status: false,
     distance: null,
     journey: null,
-    display_order: undefined,
-    created_at: null,
-    created_by: authStore.username,
-    company_id: companyStore.id,
 });
 const resetForm = (formEl: FormInstance | undefined) => {
     if (!formEl) return
@@ -63,7 +57,6 @@ const handleAdd = () => {
     isEditMode.value = false;
     currentEditId.value = null;
     Object.assign(ruleForm, {
-        id: null,
         route_name: null,
         short_name: null,
         route_name_e_ticket: null,
@@ -73,8 +66,6 @@ const handleAdd = () => {
         status: false,
         distance: null,
         journey: null,
-        created_by: authStore.username,
-        company_id: companyStore.id,
     });
     drawer.value = true;
 };
@@ -105,15 +96,30 @@ const handleDelete = async (index: number, row: RouteType) => {
             }
         );
 
-        await deleteRoute(row.id!);
-        routes.value = routes.value.filter(route => route.id !== row.id);
-        routes.value.forEach((route, idx) => {
-            route.display_order = idx + 1;
-        });
-        ElNotification({
-            message: h('p', { style: 'color: teal' }, 'Xóa tuyến thành công!'),
-            type: 'success',
-        });
+        const response = await deleteRoute({
+            id: useUserStore.id,
+            username: useUserStore.username,
+            full_name: useUserStore.full_name,
+            company_id: useUserStore.company_id,
+        } as UserActionType,
+            row.id!
+        );
+        if (response.success) {
+            routes.value = routes.value.filter(route => route.id !== row.id);
+            routes.value.forEach((route, idx) => {
+                route.display_order = idx + 1;
+            });
+            ElNotification({
+                message: h('p', { style: 'color: teal' }, 'Xóa tuyến thành công!'),
+                type: 'success',
+            });
+        } else {
+            ElNotification({
+                message: h('p', { style: 'color: red' }, response.message || 'Xóa tuyến thất bại!'),
+                type: 'error',
+            });
+            return;
+        }
     } catch (error) {
         if (error !== 'cancel' && error !== 'close') {
             ElNotification({
@@ -134,7 +140,16 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                 if (isEditMode.value && currentEditId.value !== null) {
 
                     console.log(ruleForm);
-                    const response = await updateRoute(currentEditId.value, ruleForm);
+                    const response = await updateRoute(
+                        {
+                            id: useUserStore.id,
+                            username: useUserStore.username,
+                            full_name: useUserStore.full_name,
+                            company_id: useUserStore.company_id,
+                        } as UserActionType,
+                        ruleForm as DTO_RQ_Route,
+                        currentEditId.value
+                    );
                     if (response.success) {
                         ElNotification({
                             message: h('p', { style: 'color: teal' }, 'Cập nhật tuyến thành công!'),
@@ -149,7 +164,15 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                         }
                     }
                 } else {
-                    const response = await createRoute(ruleForm);
+                    const response = await createRoute(
+                        {
+                            id: useUserStore.id,
+                            username: useUserStore.username,
+                            full_name: useUserStore.full_name,
+                            company_id: useUserStore.company_id,
+                        } as UserActionType,
+                        ruleForm as DTO_RQ_Route
+                    );
                     if (response.success) {
                         ElNotification({
                             message: h('p', { style: 'color: teal' }, 'Thêm tuyến mới thành công!'),
@@ -158,6 +181,12 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                         if (response.result) {
                             routes.value.push(response.result);
                         }
+                    } else {
+                        ElNotification({
+                            message: h('p', { style: 'color: red' }, response.message || 'Thêm tuyến mới thất bại!'),
+                            type: 'error',
+                        });
+                        return;
                     }
                 }
                 drawer.value = false;
@@ -176,7 +205,7 @@ const submitForm = async (formEl: FormInstance | undefined) => {
 const fetchListRoute = async () => {
     loading.value = true;
     try {
-        const response = await getListRouteByCompany(Number(companyStore.id));
+        const response = await getListRouteByCompany(useUserStore.company_id || '');
         if (response.result) {
             routes.value = response.result;
         } else {
@@ -214,8 +243,8 @@ const handleMoveUp = async (item: RouteType, index: number) => {
         prevItem.display_order = currentOrder;
 
         await Promise.all([
-            updateRouteOrder({ route_id: item.id!, display_order: item.display_order, company_id: companyStore.id }),
-            updateRouteOrder({ route_id: prevItem.id!, display_order: prevItem.display_order, company_id: companyStore.id })
+            updateRouteOrder({ route_id: item.id!, display_order: item.display_order, company_id: useUserStore.company_id ?? '' }),
+            updateRouteOrder({ route_id: prevItem.id!, display_order: prevItem.display_order, company_id: useUserStore.company_id ?? '' })
         ]);
 
         routes.value.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
@@ -252,8 +281,8 @@ const handleMoveDown = async (item: RouteType, index: number) => {
 
 
         await Promise.all([
-            updateRouteOrder({ route_id: item.id!, display_order: item.display_order, company_id: companyStore.id }),
-            updateRouteOrder({ route_id: nextItem.id!, display_order: nextItem.display_order, company_id: companyStore.id })
+            updateRouteOrder({ route_id: item.id!, display_order: item.display_order, company_id: useUserStore.company_id ?? '' }),
+            updateRouteOrder({ route_id: nextItem.id!, display_order: nextItem.display_order, company_id: useUserStore.company_id ?? '' })
         ]);
 
         routes.value.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
@@ -274,8 +303,7 @@ const handleMoveDown = async (item: RouteType, index: number) => {
 };
 
 onMounted(() => {
-    companyStore.loadCompanyStore();
-    authStore.loadUserInfo();
+    useUserStore.loadUserInfo();
     fetchListRoute();
 });
 
@@ -302,11 +330,6 @@ onMounted(() => {
             </el-table-column>
 
             <el-table-column label="Ghi chú" prop="note" />
-            <el-table-column label="Cập nhật" prop="created_at">
-                <template #default="scope">
-                    {{ scope.row.created_by }} ({{ format(new Date(scope.row.created_at), 'dd/MM/yyyy - HH:mm') }})
-                </template>
-            </el-table-column>
             <el-table-column label="Vị trí" width="120">
                 <template #default="scope">
                     <el-button-group>
