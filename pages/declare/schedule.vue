@@ -2,8 +2,8 @@
 import {
     Plus, Delete, Edit
 } from '@element-plus/icons-vue'
-import type {  DrawerProps, FormInstance, FormRules } from 'element-plus'
-import type { ScheduleType } from '~/types/scheduleType';
+import type { DrawerProps, FormInstance, FormRules } from 'element-plus'
+import type { DTO_RQ_Schedule, ScheduleType } from '~/types/scheduleType';
 import Select from '~/components/inputs/select.vue'
 import type { DTO_RP_ListRouteName } from '~/types/routeType';
 import { getListRouteNameByCompany } from '~/api/routeAPI';
@@ -12,11 +12,11 @@ import { getSeatChartNameByCompany } from '~/api/seatAPI';
 import InputDate from '~/components/inputs/inputDate.vue';
 import { createSchedule, deleteSchedule, getListSchedulesByCompany, updateSchedule } from '~/api/scheduleAPI';
 import { format } from 'date-fns'
+import type { UserActionType } from '~/types/userType';
 definePageMeta({
     layout: 'default',
 })
-const companyStore = useCompanyStore();
-const authStore = useAuthStore();
+const useUserStore = userStore();
 const drawer = ref(false)
 const direction = ref<DrawerProps['direction']>('rtl')
 const isEditMode = ref(false)
@@ -50,8 +50,7 @@ const cancelClick = () => {
     drawer.value = false;
     ruleFormRef.value?.resetFields();
 }
-const ruleForm = reactive<ScheduleType>({
-    id: null,
+const ruleForm = ref<DTO_RQ_Schedule>({
     route_id: null,
     seat_chart_id: null,
     start_time: '',
@@ -62,15 +61,11 @@ const ruleForm = reactive<ScheduleType>({
     end_date: null,
     trip_type: null,
     is_known_end_date: false,
-    created_at: null,
-    created_by: authStore.username,
-    company_id: companyStore.id,
 });
 const handleAdd = () => {
     isEditMode.value = false;
     currentEditId.value = null;
     Object.assign(ruleForm, {
-        id: null,
         route_id: null,
         seat_chart_id: null,
         start_time: '',
@@ -80,8 +75,6 @@ const handleAdd = () => {
         start_date: null,
         end_date: null,
         is_known_end_date: false,
-        created_by: authStore.username,
-        company_id: companyStore.id,
     });
     drawer.value = true;
 };
@@ -95,7 +88,7 @@ const handleEdit = (index: number, row: ScheduleType) => {
 const fetchListRouteName = async () => {
     loading.value = true;
     try {
-        const response = await getListRouteNameByCompany(Number(companyStore.id));
+        const response = await getListRouteNameByCompany(useUserStore.company_id ?? '');
         if (response.result) {
             routeNames.value = response.result;
             console.log(routeNames.value);
@@ -118,7 +111,7 @@ const fetchListRouteName = async () => {
 const fetchListSeatChartName = async () => {
     loading.value = true;
     try {
-        const response = await getSeatChartNameByCompany(Number(companyStore.id));
+        const response = await getSeatChartNameByCompany(useUserStore.company_id ?? '');
         if (response.result) {
             seatChartNames.value = response.result;
             console.log(seatChartNames.value);
@@ -141,7 +134,7 @@ const fetchListSeatChartName = async () => {
 const fetchListSchedules = async () => {
     loading.value = true;
     try {
-        const response = await getListSchedulesByCompany(Number(companyStore.id));
+        const response = await getListSchedulesByCompany(useUserStore.company_id ?? '');
         if (response.result) {
             schedules.value = response.result;
             console.log("Danh sách lịch chạy:", schedules.value);
@@ -162,23 +155,7 @@ const fetchListSchedules = async () => {
     }
 };
 
-const routeNameOptions = computed(() =>
-    routeNames.value.map(r => ({
-        label: r.route_name,
-        value: r.id
-    }))
-);
-const seatChartNameOptions = computed(() =>
-    seatChartNames.value.map(s => ({
-        label: s.seat_chart_name,
-        value: s.id
-    }))
-);
-const optionsTypeTrip = [
-    { label: 'Chuyến cố định chở khách', value: 1 },
-    { label: 'Chuyến cố định chở hàng', value: 2 },
-    { label: 'Xe hợp đồng', value: 3 },
-]
+
 
 const handleDelete = async (index: number, row: ScheduleType) => {
     loading.value = true;
@@ -193,7 +170,15 @@ const handleDelete = async (index: number, row: ScheduleType) => {
             }
         );
 
-        await deleteSchedule(row.id!);
+        await deleteSchedule(
+            {
+                id: useUserStore.id,
+                username: useUserStore.username,
+                full_name: useUserStore.full_name,
+                company_id: useUserStore.company_id,
+            } as UserActionType,
+            row.id!
+        );
         schedules.value = schedules.value.filter(schedule => schedule.id !== row.id);
         ElNotification({
             message: h('p', { style: 'color: teal' }, 'Xóa lịch chạy thành công!'),
@@ -219,7 +204,16 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                 if (isEditMode.value && currentEditId.value !== null) {
 
                     console.log(ruleForm);
-                    const response = await updateSchedule(currentEditId.value, ruleForm);
+                    const response = await updateSchedule(
+                        {
+                            id: useUserStore.id,
+                            username: useUserStore.username,
+                            full_name: useUserStore.full_name,
+                            company_id: useUserStore.company_id,
+                        } as UserActionType,
+                        ruleForm.value as DTO_RQ_Schedule,
+                        currentEditId.value
+                    );
                     if (response.success) {
                         ElNotification({
                             message: h('p', { style: 'color: teal' }, 'Cập nhật lịch chạy thành công!'),
@@ -240,7 +234,15 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                     }
                 } else {
                     console.log('Thêm lịch chạy mới:', ruleForm);
-                    const response = await createSchedule(ruleForm);
+                    const response = await createSchedule(
+                        {
+                            id: useUserStore.id,
+                            username: useUserStore.username,
+                            full_name: useUserStore.full_name,
+                            company_id: useUserStore.company_id,
+                        } as UserActionType,
+                        ruleForm.value as DTO_RQ_Schedule
+                    );
                     if (response.success) {
                         ElNotification({
                             message: h('p', { style: 'color: green' }, 'Thêm lịch chạy thành công!'),
@@ -270,35 +272,51 @@ const submitForm = async (formEl: FormInstance | undefined) => {
     });
 
 }
-const showSeatChart = computed(() => ruleForm.trip_type === 1 || ruleForm.trip_type === 3)
+const routeNameOptions = computed(() =>
+    routeNames.value.map(r => ({
+        label: r.route_name,
+        value: r.id
+    }))
+);
+const seatChartNameOptions = computed(() =>
+    seatChartNames.value.map(s => ({
+        label: s.seat_chart_name,
+        value: s.id
+    }))
+);
+const optionsTypeTrip = [
+    { label: 'Chuyến cố định chở khách', value: 1 },
+    { label: 'Chuyến cố định chở hàng', value: 2 },
+    { label: 'Xe hợp đồng', value: 3 },
+]
+const showSeatChart = computed(() => ruleForm.value.trip_type === 1 || ruleForm.value.trip_type === 3)
 watch(
-    () => ruleForm.trip_type,
+    () => ruleForm.value.trip_type,
     (newVal) => {
         if (newVal === 2) {
-            ruleForm.seat_chart_id = null
+            ruleForm.value.seat_chart_id = null
         }
     }
 )
-watch(() => ruleForm.repeat_type, (newType, oldType) => {
+watch(() => ruleForm.value.repeat_type, (newType, oldType) => {
     if (newType !== oldType) {
         if (newType === 'weekday') {
-            ruleForm.odd_even_type = ''
-            // ruleForm.weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
+            ruleForm.value.odd_even_type = ''
+            // ruleForm.value.weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
         } else if (newType === 'odd_even') {
-            // ruleForm.weekdays = []
-            ruleForm.odd_even_type = 'odd'
+            // ruleForm.value.weekdays = []
+            ruleForm.value.odd_even_type = 'odd'
         }
     }
 })
-watch(() => ruleForm.is_known_end_date, (val) => {
+watch(() => ruleForm.value.is_known_end_date, (val) => {
     if (!val) {
-        ruleForm.end_date = null;
+        ruleForm.value.end_date = null;
     }
 })
 
 onMounted(() => {
-    companyStore.loadCompanyStore();
-    authStore.loadUserInfo();
+    useUserStore.loadUserInfo();
     fetchListRouteName();
     fetchListSeatChartName();
     fetchListSchedules();
@@ -340,12 +358,6 @@ onMounted(() => {
                     }}
                 </template>
             </el-table-column>
-
-            <el-table-column label="Cập nhật" prop="created_at">
-                <template #default="scope">
-                    {{ scope.row.created_by }} ({{ format(new Date(scope.row.created_at), 'dd/MM/yyyy - HH:mm') }})
-                </template>
-            </el-table-column>
             <el-table-column align="right">
                 <template #header>
                     Tùy chọn
@@ -361,28 +373,24 @@ onMounted(() => {
         <el-drawer v-model="drawer" :direction="direction" :before-close="cancelClick">
             <template #header>
                 <div class="font-semibold text-lg text-black">{{ isEditMode ? 'Chỉnh sửa lịch chạy' : 'Thêm lịch chạy'
-                    }}</div>
+                }}</div>
             </template>
             <template #default>
                 <el-form ref="ruleFormRef" :model="ruleForm" :rules="rules" label-width="auto">
                     <div>
                         <h2 class="text-gray-500 font-medium mb-5">THÔNG TIN LỊCH CHẠY</h2>
 
-                        <Select
-v-model="ruleForm.route_id" prop="route_id" label="Tuyến" :options="routeNameOptions"
+                        <Select v-model="ruleForm.route_id" prop="route_id" label="Tuyến" :options="routeNameOptions"
                             clearable />
-                        <Select
-v-model="ruleForm.trip_type" prop="trip_type" label="Loại chuyến"
+                        <Select v-model="ruleForm.trip_type" prop="trip_type" label="Loại chuyến"
                             :options="optionsTypeTrip" clearable />
-                        <Select
-v-if="showSeatChart" v-model="ruleForm.seat_chart_id" prop="seat_chart_id"
+                        <Select v-if="showSeatChart" v-model="ruleForm.seat_chart_id" prop="seat_chart_id"
                             label="Sơ đồ ghế" :options="seatChartNameOptions" clearable />
                         <el-form-item prop="start_time" label-position="top">
                             <template #label>
                                 <span class="text-sm font-medium text-gray-700">Thời gian khởi hành</span>
                             </template>
-                            <el-time-select
-v-model="ruleForm.start_time" start="00:05" step="00:05" end="23:55"
+                            <el-time-select v-model="ruleForm.start_time" start="00:05" step="00:05" end="23:55"
                                 placeholder="Chọn thời gian" style="width: 180px" />
                         </el-form-item>
                         <div class="mb-4">
@@ -416,14 +424,12 @@ v-model="ruleForm.start_time" start="00:05" step="00:05" end="23:55"
                             </el-radio-group>
                         </div>
                         <el-checkbox v-model="ruleForm.is_known_end_date" label="Đã biết ngày dừng" />
-                        <InputDate
-v-model="ruleForm.start_date" label="Ngày bắt đầu" prop="start_date"
+                        <InputDate v-model="ruleForm.start_date" label="Ngày bắt đầu" prop="start_date"
                             placeholder="Chọn ngày" type="date" format="DD/MM/YYYY" value-format="YYYY-MM-DD"
                             clearable />
 
 
-                        <InputDate
-v-if="ruleForm.is_known_end_date" v-model="ruleForm.end_date" label="Ngày kết thúc"
+                        <InputDate v-if="ruleForm.is_known_end_date" v-model="ruleForm.end_date" label="Ngày kết thúc"
                             prop="end_date" placeholder="Chọn ngày" type="date" format="DD/MM/YYYY"
                             value-format="YYYY-MM-DD" clearable />
                     </div>

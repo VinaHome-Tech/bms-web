@@ -1,7 +1,8 @@
-import type { ScheduleType } from "~/types/scheduleType";
+import type { DTO_RQ_Schedule, ScheduleType } from "~/types/scheduleType";
 import type { ApiResponse } from "./APIResponse";
+import type { UserActionType } from "~/types/userType";
 
-export const createSchedule = async (data: ScheduleType): Promise<ApiResponse<ScheduleType>> => {
+export const createSchedule = async (user: UserActionType, data_create: DTO_RQ_Schedule): Promise<ApiResponse<ScheduleType>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -11,7 +12,10 @@ export const createSchedule = async (data: ScheduleType): Promise<ApiResponse<Sc
       headers: {
         'Authorization': `Bearer ${cookie.value}`,
       },
-      body: data
+      body: {
+        user,
+        data_create
+      }
     });
   } catch (error) {
     console.error("API error:", error);
@@ -19,7 +23,7 @@ export const createSchedule = async (data: ScheduleType): Promise<ApiResponse<Sc
   }
 }
 
-export const getListSchedulesByCompany = async (id: number): Promise<ApiResponse<ScheduleType[]>> => {
+export const getListSchedulesByCompany = async (id: string): Promise<ApiResponse<ScheduleType[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -36,7 +40,7 @@ export const getListSchedulesByCompany = async (id: number): Promise<ApiResponse
   }
 }
 
-export const deleteSchedule = async (id: number): Promise<ApiResponse<void>> => {
+export const deleteSchedule = async (user: UserActionType, id: number): Promise<ApiResponse<void>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -45,6 +49,9 @@ export const deleteSchedule = async (id: number): Promise<ApiResponse<void>> => 
       method: "DELETE",
       headers: {
         'Authorization': `Bearer ${cookie.value}`
+      },
+      body: {
+        user
       }
     });
   } catch (error) {
@@ -53,7 +60,7 @@ export const deleteSchedule = async (id: number): Promise<ApiResponse<void>> => 
   }
 }
 
-export const updateSchedule = async (id: number, data: ScheduleType): Promise<ApiResponse<ScheduleType>> => {
+export const updateSchedule = async (user: UserActionType, data_update: DTO_RQ_Schedule, id: number): Promise<ApiResponse<ScheduleType>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -63,7 +70,10 @@ export const updateSchedule = async (id: number, data: ScheduleType): Promise<Ap
       headers: {
         'Authorization': `Bearer ${cookie.value}`,
       },
-      body: data
+      body: {
+        user,
+        data_update
+      }
     });
   } catch (error) {
     console.error("API error:", error);

@@ -1,7 +1,8 @@
-import type { SeatChartNameType, SeatChartType } from "~/types/seatType";
+import type { DTO_RQ_SeatChart, SeatChartNameType, SeatChartType } from "~/types/seatType";
 import type { ApiResponse } from "./APIResponse";
+import type { UserActionType } from "~/types/userType";
 
-export const createSeatChart = async (data: SeatChartType): Promise<ApiResponse<SeatChartType>> => {
+export const createSeatChart = async (user: UserActionType, data_create: DTO_RQ_SeatChart): Promise<ApiResponse<SeatChartType>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -11,7 +12,10 @@ export const createSeatChart = async (data: SeatChartType): Promise<ApiResponse<
       headers: {
         'Authorization': `Bearer ${cookie.value}`,
       },
-      body: data
+      body: {
+        user,
+        data_create
+      }
     });
   } catch (error) {
     console.error("API error:", error);
@@ -19,12 +23,12 @@ export const createSeatChart = async (data: SeatChartType): Promise<ApiResponse<
   }
 }
 
-export const getSeatChartByCompany = async (companyId: number): Promise<ApiResponse<SeatChartType[]>> => {
+export const getSeatChartByCompany = async (company_id: string): Promise<ApiResponse<SeatChartType[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
   try {
-    return await $fetch<ApiResponse<SeatChartType[]>>(`${apiGateWay}/v2/seat/get-seat-chart-by-company/${companyId}`, {
+    return await $fetch<ApiResponse<SeatChartType[]>>(`${apiGateWay}/v2/seat/get-seat-chart-by-company/${company_id}`, {
       method: "GET",
       headers: {
         'Authorization': `Bearer ${cookie.value}`,
@@ -36,7 +40,7 @@ export const getSeatChartByCompany = async (companyId: number): Promise<ApiRespo
   }
 }
 
-export const getSeatChartNameByCompany = async (id: number): Promise<ApiResponse<SeatChartNameType[]>> => {
+export const getSeatChartNameByCompany = async (id: string): Promise<ApiResponse<SeatChartNameType[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -53,7 +57,7 @@ export const getSeatChartNameByCompany = async (id: number): Promise<ApiResponse
   }
 }
 
-export const deleteSeatChart = async (seatChartId: number): Promise<ApiResponse<null>> => {
+export const deleteSeatChart = async (seatChartId: number, user: UserActionType): Promise<ApiResponse<null>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -62,6 +66,9 @@ export const deleteSeatChart = async (seatChartId: number): Promise<ApiResponse<
       method: "DELETE",
       headers: {
         'Authorization': `Bearer ${cookie.value}`,
+      },
+      body: {
+        user
       }
     });
   } catch (error) {
@@ -70,7 +77,7 @@ export const deleteSeatChart = async (seatChartId: number): Promise<ApiResponse<
   }
 }
 
-export const updateSeatChart = async (id: number, data: SeatChartType): Promise<ApiResponse<SeatChartType>> => {
+export const updateSeatChart = async (user: UserActionType, data_update: DTO_RQ_SeatChart, id: number): Promise<ApiResponse<SeatChartType>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
@@ -80,7 +87,10 @@ export const updateSeatChart = async (id: number, data: SeatChartType): Promise<
       headers: {
         'Authorization': `Bearer ${cookie.value}`,
       },
-      body: data
+      body: {
+        user,
+        data_update
+      }
     });
   } catch (error) {
     console.error("API error:", error);

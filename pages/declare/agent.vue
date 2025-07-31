@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import type { DrawerProps, FormInstance, FormRules } from 'element-plus'
-import type { AgentType } from '~/types/agentType';
+import type { AgentType, DTO_RQ_Agent } from '~/types/agentType';
 import InputText from '~/components/inputs/inputText.vue';
 import InputNumber from '~/components/inputs/inputNumber.vue';
 import {
     Plus, Delete, Edit
 } from '@element-plus/icons-vue'
 import { createAgent, deleteAgent, getListAgentByCompany, updateAgent } from '~/api/agentAPI';
+import type { UserActionType } from '~/types/userType';
 definePageMeta({
     layout: 'default',
 })
-const companyStore = useCompanyStore();
-const authStore = useAuthStore();
+const useUserStore = userStore();
 const drawer = ref(false)
 const direction = ref<DrawerProps['direction']>('rtl')
 const isEditMode = ref(false)
@@ -20,32 +20,29 @@ const loading = ref(false);
 const agents = ref<AgentType[]>([]);
 const ruleFormRef = ref<FormInstance>()
 const isSubmitting = ref(false);
-const ruleForm = ref<AgentType>({
-    id: null,
-    full_name: null,
+const ruleForm = ref<DTO_RQ_Agent>({
+    name: null,
     code: null,
-    phone_number: null,
+    phone: null,
     note: null,
     address: null,
     username: null,
     password: null,
     status: false,
     email: null,
-    company_code: companyStore.code,
-    company_id: companyStore.id,
     discount_ticket_type: '%',
     discount_ticket_value: 0,
     discount_goods_type: '%',
     discount_goods_value: 0,
 })
 const rules: FormRules = {
-    full_name: [
+    name: [
         { required: true, message: 'Vui lòng nhập tên đại lý', trigger: 'blur' },
     ],
     code: [
         { required: true, message: 'Vui lòng nhập mã đại lý', trigger: 'blur' },
     ],
-    phone_number: [
+    phone: [
         { required: true, message: 'Vui lòng nhập số điện thoại', trigger: 'blur' },
         { pattern: /^0[0-9]{9}$/, message: 'Số điện thoại không hợp lệ', trigger: 'blur' }
     ],
@@ -77,7 +74,7 @@ const filterTableData = computed(() =>
     agents.value.filter(
         (data) =>
             !search.value ||
-            (data.full_name ?? '').toLowerCase().includes(search.value.toLowerCase())
+            (data.name ?? '').toLowerCase().includes(search.value.toLowerCase())
     )
 )
 
@@ -85,18 +82,15 @@ const handleAdd = () => {
     isEditMode.value = false;
     currentEditId.value = null;
     ruleForm.value = {
-        id: null,
-        full_name: null,
+        name: null,
         code: null,
-        phone_number: null,
+        phone: null,
         note: null,
         address: null,
         username: null,
         password: null,
         status: false,
         email: null,
-        company_code: companyStore.code,
-        company_id: companyStore.id,
         discount_ticket_type: '%',
         discount_ticket_value: 0,
         discount_goods_type: '%',
@@ -118,7 +112,14 @@ const handleDelete = async (index: number, row: AgentType) => {
             }
         );
 
-        await deleteAgent(row.id!);
+        await deleteAgent(
+            {
+                id: useUserStore.id,
+                username: useUserStore.username,
+                full_name: useUserStore.full_name,
+                company_id: useUserStore.company_id,
+            } as UserActionType,
+            row.id!);
         agents.value = agents.value.filter(agent => agent.id !== row.id);
         ElNotification({
             message: h('p', { style: 'color: teal' }, 'Xóa đại lý thành công!'),
@@ -145,7 +146,15 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                 if (isEditMode.value && currentEditId.value !== null) {
 
                     console.log(ruleForm);
-                    const response = await updateAgent(currentEditId.value, ruleForm.value);
+                    const response = await updateAgent({
+                        id: useUserStore.id,
+                        username: useUserStore.username,
+                        full_name: useUserStore.full_name,
+                        company_id: useUserStore.company_id,
+                    } as UserActionType,
+                        ruleForm.value as DTO_RQ_Agent,
+                        currentEditId.value 
+                    );
                     if (response.success) {
                         ElNotification({
                             message: h('p', { style: 'color: teal' }, 'Cập nhật đại lý thành công!'),
@@ -158,10 +167,23 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                                 ...ruleForm.value
                             };
                         }
+                    } else {
+                        ElNotification({
+                            message: h('p', { style: 'color: red' }, response.message || 'Cập nhật đại lý thất bại!'),
+                            type: 'error',
+                        });
                     }
                 } else {
                     console.log(ruleForm);
-                    const response = await createAgent(ruleForm.value);
+                    const response = await createAgent(
+                        {
+                            id: useUserStore.id,
+                            username: useUserStore.username,
+                            full_name: useUserStore.full_name,
+                            company_id: useUserStore.company_id,
+                        } as UserActionType,
+                        ruleForm.value as DTO_RQ_Agent
+                    );
                     if (response.success) {
                         ElNotification({
                             message: h('p', { style: 'color: teal' }, 'Thêm đại lý mới thành công!'),
@@ -169,12 +191,12 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                         })
                         if (response.result) {
                             agents.value.push(response.result);
-                        } else {
-                            ElNotification({
-                                message: h('p', { style: 'color: red' }, response.message || 'Thêm đại lý thất bại!'),
-                                type: 'error',
-                            });
                         }
+                    } else {
+                        ElNotification({
+                            message: h('p', { style: 'color: red' }, response.message || 'Thêm đại lý thất bại!'),
+                            type: 'error',
+                        });
                     }
                 }
                 drawer.value = false;
@@ -200,7 +222,7 @@ const submitForm = async (formEl: FormInstance | undefined) => {
 const fetchListAgent = async () => {
     loading.value = true;
     try {
-        const response = await getListAgentByCompany(Number(companyStore.id));
+        const response = await getListAgentByCompany(useUserStore.company_id ?? '');
         if (response.result) {
             agents.value = response.result || [];
         } else {
@@ -220,8 +242,7 @@ const fetchListAgent = async () => {
     }
 };
 onMounted(() => {
-    companyStore.loadCompanyStore();
-    authStore.loadUserInfo();
+    useUserStore.loadUserInfo();
     fetchListAgent();
 });
 </script>
@@ -234,9 +255,9 @@ onMounted(() => {
         <el-table v-loading="loading" element-loading-text="Đang tải dữ liệu..." :data="filterTableData"
             style="width: 100%">
             <el-table-column type="index" label="STT" width="50" />
-            <el-table-column label="Tên đại lý" prop="full_name" />
+            <el-table-column label="Tên đại lý" prop="name" />
             <el-table-column label="Tài khoản" prop="username" />
-            <el-table-column label="Số điện thoại" prop="phone_number" />
+            <el-table-column label="Số điện thoại" prop="phone" />
             <el-table-column label="Trạng thái" prop="status">
                 <template #default="scope">
                     <el-tag :type="scope.row.status ? 'success' : 'danger'">
@@ -269,21 +290,20 @@ onMounted(() => {
         <el-drawer v-model="drawer" :direction="direction" :before-close="cancelClick" size="50%">
             <template #header>
                 <div class="font-semibold text-lg text-black">{{ isEditMode ? 'Chỉnh sửa đại lý' : 'Thêm đại lý'
-                    }}</div>
+                }}</div>
             </template>
             <template #default>
                 <el-form ref="ruleFormRef" :model="ruleForm" :rules="rules" label-width="auto">
                     <el-row>
                         <el-col :span="12" class="pr-5">
                             <h2 class="text-gray-500 font-medium mb-5">THÔNG TIN ĐẠI LÝ</h2>
-                            <InputText v-model="ruleForm.full_name" prop="full_name" label="Tên đại lý" />
+                            <InputText v-model="ruleForm.name" prop="name" label="Tên đại lý" />
                             <InputText v-if="!isEditMode" v-model="ruleForm.username" prop="username"
                                 label="Tài khoản" />
                             <InputText v-if="!isEditMode" v-model="ruleForm.password" prop="password"
                                 label="Mật khẩu" />
                             <InputText v-model="ruleForm.code" prop="code" label="Mã đại lý" />
-                            <InputText v-model="ruleForm.phone_number" prop="phone_number"
-                                label="Số điện thoại liên lạc" />
+                            <InputText v-model="ruleForm.phone" prop="phone" label="Số điện thoại liên lạc" />
                             <InputText v-model="ruleForm.email" prop="email" label="Email" />
                             <InputText v-model="ruleForm.address" prop="address" label="Địa chỉ" />
                             <InputText v-model="ruleForm.note" prop="note" label="Ghi chú" />

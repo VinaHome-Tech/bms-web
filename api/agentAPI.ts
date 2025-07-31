@@ -1,21 +1,26 @@
-import type { AgentNameType, AgentType } from "~/types/agentType";
+import type { AgentNameType, AgentType, DTO_RQ_Agent } from "~/types/agentType";
 import type { ApiResponse } from "./APIResponse";
+import type { UserActionType } from "~/types/userType";
 
 export const createAgent = async (
-  data: AgentType
+  user: UserActionType,
+  data_create: DTO_RQ_Agent
 ): Promise<ApiResponse<AgentType>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie("access_token");
   try {
     return await $fetch<ApiResponse<AgentType>>(
-      `${apiGateWay}/v1/agent/create-agent`,
+      `${apiGateWay}/v3/bus-agent/create-agent-account`,
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${cookie.value}`,
         },
-        body: data,
+        body: {
+          user,
+          data_create,
+        },
       }
     );
   } catch (error) {
@@ -25,14 +30,14 @@ export const createAgent = async (
 };
 
 export const getListAgentByCompany = async (
-  companyId: number
+  company_id: string
 ): Promise<ApiResponse<AgentType[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie("access_token");
   try {
     return await $fetch<ApiResponse<AgentType[]>>(
-      `${apiGateWay}/v1/agent/get-list-agent-by-company/${companyId}`,
+      `${apiGateWay}/v3/bus-agent/get-list-agent-by-company/${company_id}`,
       {
         method: "GET",
         headers: {
@@ -44,7 +49,7 @@ export const getListAgentByCompany = async (
     console.error("API error:", error);
     throw error;
   }
-}
+};
 
 export const getListAgentNameByCompany = async (
   companyId: number
@@ -54,7 +59,7 @@ export const getListAgentNameByCompany = async (
   const cookie = useCookie("access_token");
   try {
     return await $fetch<ApiResponse<AgentNameType[]>>(
-      `${apiGateWay}/v1/agent/get-list-agent-name-by-company/${companyId}`,
+      `${apiGateWay}/v3/bus-agent/get-list-agent-name-by-company/${companyId}`,
       {
         method: "GET",
         headers: {
@@ -66,24 +71,28 @@ export const getListAgentNameByCompany = async (
     console.error("API error:", error);
     throw error;
   }
-}
+};
 
 export const updateAgent = async (
-  id: string,
-  data: AgentType
+  user: UserActionType,
+  data_update: DTO_RQ_Agent,
+  id: string
 ): Promise<ApiResponse<AgentType>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie("access_token");
   try {
     return await $fetch<ApiResponse<AgentType>>(
-      `${apiGateWay}/v1/agent/update-agent/${id}`,
+      `${apiGateWay}/v3/bus-agent/update-agent-account/${id}`,
       {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${cookie.value}`,
         },
-        body: data,
+        body: {
+          user,
+          data_update,
+        },
       }
     );
   } catch (error) {
@@ -93,6 +102,7 @@ export const updateAgent = async (
 };
 
 export const deleteAgent = async (
+  user: UserActionType,
   id: string
 ): Promise<ApiResponse<void>> => {
   const config = useRuntimeConfig();
@@ -100,11 +110,14 @@ export const deleteAgent = async (
   const cookie = useCookie("access_token");
   try {
     return await $fetch<ApiResponse<void>>(
-      `${apiGateWay}/v1/agent/delete-agent/${id}`,
+      `${apiGateWay}/v3/bus-agent/delete-agent-account/${id}`,
       {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${cookie.value}`,
+        },
+        body: {
+          user,
         },
       }
     );

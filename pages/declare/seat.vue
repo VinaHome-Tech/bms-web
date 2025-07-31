@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import type { FormInstance } from 'element-plus'
-import type { SeatChartType, SeatType } from '~/types/seatType';
+import type { DTO_RQ_SeatChart, SeatChartType, SeatType } from '~/types/seatType';
 import { createSeatChart, deleteSeatChart, getSeatChartByCompany, updateSeatChart } from '~/api/seatAPI';
-import { format } from 'date-fns';
+import type { UserActionType } from '~/types/userType';
 definePageMeta({
     layout: 'default',
 })
 
-const companyStore = useCompanyStore();
-const authStore = useAuthStore();
+const useUserStore = userStore();
 const isEditMode = ref(false)
 const currentEditId = ref<number | null>(null);
 const loading = ref(false);
@@ -51,13 +50,13 @@ const optionsRow = Array.from({ length: 10 }, (_, i) => ({
 const fetchSeatCharts = async () => {
     loading.value = true;
     try {
-        const response = await getSeatChartByCompany(Number(companyStore.id));
+        const response = await getSeatChartByCompany(useUserStore.company_id ?? '');
         if (response.result) {
             seatChart.value = response.result;
             console.log('Danh sách sơ đồ ghế:', seatChart.value);
         } else {
             ElNotification({
-                message: h('p', { style: 'color: red' }, 'Không có dữ liệu sơ đồ ghế!'),
+                message: h('p', { style: 'color: red' }, response.message || 'Không có dữ liệu sơ đồ ghế!'),
                 type: 'error',
             });
         }
@@ -74,7 +73,7 @@ const fetchSeatCharts = async () => {
 
 
 
-const ruleForm = reactive<SeatChartType>({
+const ruleForm = reactive<DTO_RQ_SeatChart>({
     id: null,
     seat_chart_name: null,
     seat_chart_type: 1,
@@ -82,9 +81,6 @@ const ruleForm = reactive<SeatChartType>({
     total_row: 1,
     total_column: 1,
     seats: [],
-    created_at: null,
-    created_by: authStore.username,
-    company_id: companyStore.id,
 });
 
 
@@ -192,7 +188,6 @@ const handleRowClick = (row: SeatChartType) => {
     ruleForm.total_floor = row.total_floor;
     ruleForm.total_row = row.total_row;
     ruleForm.total_column = row.total_column;
-    ruleForm.created_by = row.created_by || authStore.username;
     ruleForm.seats = row.seats || [];
 
     console.log('Đã chọn sơ đồ:', row);
@@ -202,14 +197,11 @@ const handleExit = (formEl: FormInstance | undefined) => {
     formEl.resetFields()
     isEditMode.value = false;
     currentEditId.value = null;
-    ruleForm.id = null;
     ruleForm.seat_chart_name = null;
     ruleForm.seat_chart_type = 1;
     ruleForm.total_floor = 1;
     ruleForm.total_row = 1;
     ruleForm.total_column = 1;
-    ruleForm.created_by = authStore.username;
-    ruleForm.company_id = companyStore.id;
     ruleForm.seats = [];
 };
 const handleDelete = async () => {
@@ -217,7 +209,7 @@ const handleDelete = async () => {
     isSubmitting.value = true;
     try {
         await ElMessageBox.confirm(
-            'Bạn có chắc chắn muốn xóa tài khoản này?',
+            'Bạn có chắc chắn muốn xóa sơ đồ này?',
             'Xác nhận xoá',
             {
                 confirmButtonText: 'Xoá',
@@ -226,13 +218,28 @@ const handleDelete = async () => {
             }
         );
 
-        await deleteSeatChart(currentEditId.value);
-        ElNotification({
-            message: h('p', { style: 'color: green' }, 'Xoá sơ đồ thành công!'),
-            type: 'success',
-        });
-        seatChart.value = seatChart.value.filter(item => item.id !== currentEditId.value);
-        handleExit(ruleFormRef.value);
+        const response = await deleteSeatChart(currentEditId.value, {
+            id: useUserStore.id,
+            username: useUserStore.username,
+            full_name: useUserStore.full_name,
+            company_id: useUserStore.company_id,
+        } as UserActionType);
+        if (response.success) {
+            ElNotification({
+                message: h('p', { style: 'color: green' }, 'Xoá sơ đồ thành công!'),
+                type: 'success',
+            });
+            seatChart.value = seatChart.value.filter(item => item.id !== currentEditId.value);
+            handleExit(ruleFormRef.value);
+        } else {
+            ElNotification({
+                message: h('p', { style: 'color: red' }, response.message || 'Xoá sơ đồ thất bại!'),
+                type: 'error',
+            });
+            return;
+        }
+
+
     } catch (error) {
         if (error !== 'cancel') {
             ElNotification({
@@ -254,7 +261,16 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                 if (isEditMode.value && currentEditId.value !== null) {
 
                     console.log(ruleForm);
-                    const response = await updateSeatChart(currentEditId.value, ruleForm);
+                    const response = await updateSeatChart(
+                        {
+                            id: useUserStore.id,
+                            username: useUserStore.username,
+                            full_name: useUserStore.full_name,
+                            company_id: useUserStore.company_id,
+                        } as UserActionType,
+                        ruleForm as DTO_RQ_SeatChart,
+                        currentEditId.value,
+                    );
                     if (response.success) {
                         ElNotification({
                             message: h('p', { style: 'color: teal' }, 'Cập nhật sơ đồ thành công!'),
@@ -262,10 +278,9 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                         })
                         const index = seatChart.value.findIndex(seat_chart => seat_chart.id === currentEditId.value);
                         if (index !== -1) {
-                            seatChart.value[ index ] = {
-                                ...seatChart.value[ index ],
+                            seatChart.value[index] = {
+                                ...seatChart.value[index],
                                 ...ruleForm,
-                                created_at: seatChart.value[ index ].created_at
                             };
 
                         }
@@ -273,7 +288,15 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                     }
                 } else {
                     console.log('Thêm mới sơ đồ ghế:', ruleForm);
-                    const response = await createSeatChart(ruleForm);
+                    const response = await createSeatChart(
+                        {
+                            id: useUserStore.id,
+                            username: useUserStore.username,
+                            full_name: useUserStore.full_name,
+                            company_id: useUserStore.company_id,
+                        } as UserActionType,
+                        ruleForm as DTO_RQ_SeatChart
+                    );
                     if (response.success) {
                         ElNotification({
                             message: h('p', { style: 'color: green' }, 'Thêm sơ đồ ghế mới thành công!'),
@@ -324,8 +347,7 @@ const optionsCategorySeatChart = [
     { label: 'Phòng VIP (Cabin đôi)', value: 6 },
 ]
 onMounted(() => {
-    companyStore.loadCompanyStore();
-    authStore.loadUserInfo();
+    useUserStore.loadUserInfo();
     fetchSeatCharts();
 });
 </script>
@@ -334,6 +356,7 @@ onMounted(() => {
     <section>
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold">DANH SÁCH SƠ ĐỒ GHẾ</h3>
+
         </div>
 
         <el-row :gutter="20" class="mb-4">
@@ -347,14 +370,6 @@ onMounted(() => {
                             <br />
                             <span class="text-gray-500 text-sm">{{optionsCategorySeatChart.find(item => item.value ===
                                 scope.row.seat_chart_type)?.label}}</span>
-                        </template>
-                    </el-table-column>
-                    <el-table-column label="Cập nhật">
-                        <template #default="scope">
-                            <span class="text-gray-500 text-sm">{{ scope.row.created_by }}</span>
-                            <br />
-                            <span class="text-gray-500 text-sm">{{ format(scope.row.created_at, 'dd/MM/yyyy HH:mm')
-                                }}</span>
                         </template>
                     </el-table-column>
                 </el-table>

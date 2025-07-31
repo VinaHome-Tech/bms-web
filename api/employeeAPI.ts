@@ -1,51 +1,20 @@
-import type { AssistantType, DriverType, EmployeeType } from "~/types/employeeType";
+import type { AssistantType, DriverType, DTO_RQ_Employee, EmployeeType } from "~/types/employeeType";
 import type { ApiResponse } from "./APIResponse";
+import type { UserActionType } from "~/types/userType";
 
-export const createEmployee = async (data: EmployeeType): Promise<ApiResponse<EmployeeType>> => {
+export const createEmployee = async (user: UserActionType, data_create: DTO_RQ_Employee): Promise<ApiResponse<EmployeeType>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
   try {
-    return await $fetch<ApiResponse<EmployeeType>>(`${apiGateWay}/v1/account/create-account-staff`, {
+    return await $fetch<ApiResponse<EmployeeType>>(`${apiGateWay}/v3/bus-account/create-employee-account`, {
       method: "POST",
       headers: {
         'Authorization': `Bearer ${cookie.value}`,
       },
-      body: data
-    });
-  } catch (error) {
-    console.error("API error:", error);
-    throw error;
-  }
-}
-
-export const updateEmployee = async (id: number, data: EmployeeType): Promise<ApiResponse<EmployeeType>> => {
-  const config = useRuntimeConfig();
-  const apiGateWay = config.public.apiGateWay;
-  const cookie = useCookie('access_token');
-  try {
-    return await $fetch<ApiResponse<EmployeeType>>(`${apiGateWay}/v1/account/update-account-staff/${id}`, {
-      method: "PUT",
-      headers: {
-        'Authorization': `Bearer ${cookie.value}`,
-      },
-      body: data
-    });
-  } catch (error) {
-    console.error("API error:", error);
-    throw error;
-  }
-}
-
-export const deleteEmployee = async (id: number): Promise<ApiResponse<void>> => {
-  const config = useRuntimeConfig();
-  const apiGateWay = config.public.apiGateWay;
-  const cookie = useCookie('access_token');
-  try {
-    return await $fetch<ApiResponse<void>>(`${apiGateWay}/v1/account/delete-account-staff/${id}`, {
-      method: "DELETE",
-      headers: {
-        'Authorization': `Bearer ${cookie.value}`
+      body: {
+        user,
+        data_create
       }
     });
   } catch (error) {
@@ -54,12 +23,53 @@ export const deleteEmployee = async (id: number): Promise<ApiResponse<void>> => 
   }
 }
 
-export const getListEmployeeByCompany = async (companyId: number): Promise<ApiResponse<EmployeeType[]>> => {
+export const updateEmployee = async (user: UserActionType, data_update: DTO_RQ_Employee, id: string): Promise<ApiResponse<EmployeeType>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
   try {
-    return await $fetch<ApiResponse<EmployeeType[]>>(`${apiGateWay}/v1/account/get-list-account-by-company/${companyId}`, {
+    return await $fetch<ApiResponse<EmployeeType>>(`${apiGateWay}/v3/bus-account/update-employee-account/${id}`, {
+      method: "PUT",
+      headers: {
+        'Authorization': `Bearer ${cookie.value}`,
+      },
+      body: {
+        user,
+        data_update
+      }
+    });
+  } catch (error) {
+    console.error("API error:", error);
+    throw error;
+  }
+}
+
+export const deleteEmployee = async (user: UserActionType, id: string): Promise<ApiResponse<void>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie('access_token');
+  try {
+    return await $fetch<ApiResponse<void>>(`${apiGateWay}/v3/bus-account/delete-employee-account/${id}`, {
+      method: "DELETE",
+      headers: {
+        'Authorization': `Bearer ${cookie.value}`
+      },
+      body: {
+        user
+      }
+    });
+  } catch (error) {
+    console.error("API error:", error);
+    throw error;
+  }
+}
+
+export const getListEmployeeByCompany = async (company_id: string): Promise<ApiResponse<EmployeeType[]>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie('access_token');
+  try {
+    return await $fetch<ApiResponse<EmployeeType[]>>(`${apiGateWay}/v3/bus-account/get-list-account-employee-by-company/${company_id}`, {
       method: "GET",
       headers: {
         'Authorization': `Bearer ${cookie.value}`,

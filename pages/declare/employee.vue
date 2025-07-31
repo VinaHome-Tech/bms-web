@@ -3,21 +3,21 @@ import {
     Plus, Operation
 } from '@element-plus/icons-vue'
 import type { DrawerProps, FormInstance, FormRules } from 'element-plus'
-import type { EmployeeType } from '~/types/employeeType';
+import type { DTO_RQ_Employee, EmployeeType } from '~/types/employeeType';
 import InputText from '~/components/inputs/inputText.vue';
 import InputDate from '~/components/inputs/inputDate.vue';
 import Select from '~/components/inputs/select.vue';
 import { createEmployee, deleteEmployee, getListEmployeeByCompany, updateEmployee } from '~/api/employeeAPI';
 import { format } from 'date-fns'
+import type { UserActionType } from '~/types/userType';
 definePageMeta({
     layout: 'default',
 })
-const companyStore = useCompanyStore();
-const authStore = useAuthStore();
+const useUserStore = userStore();
 const drawer = ref(false)
-const direction = ref<DrawerProps[ 'direction' ]>('rtl')
+const direction = ref<DrawerProps['direction']>('rtl')
 const isEditMode = ref(false)
-const currentEditId = ref<number | null>(null);
+const currentEditId = ref<string | null>(null);
 const loading = ref(false);
 const ruleFormRef = ref<FormInstance>()
 const employees = ref<EmployeeType[]>([]);
@@ -27,27 +27,24 @@ const filterTableData = computed(() =>
     employees.value.filter(
         (data) =>
             !search.value ||
-            (data.full_name ?? '').toLowerCase().includes(search.value.toLowerCase()) ||
-            (data.number_phone ?? '').toLowerCase().includes(search.value.toLowerCase())
+            (data.name ?? '').toLowerCase().includes(search.value.toLowerCase()) ||
+            (data.phone ?? '').toLowerCase().includes(search.value.toLowerCase())
     )
 )
-const ruleForm = reactive<EmployeeType>({
-    id: null,
+const ruleForm = ref<DTO_RQ_Employee>({
     username: null,
     password: null,
-    number_phone: null,
-    full_name: null,
+    phone: null,
+    name: null,
     email: null,
     address: null,
     date_of_birth: null,
-    gender: '',
+    gender: null,
     status: false,
-    role: '',
-    company_id: companyStore.id,
+    role: null,
     accept_app: {
         bms: false,
         cms: false,
-        ams: false,
         driver: false,
     }
 });
@@ -60,23 +57,19 @@ const rules: FormRules = {
         { required: true, message: 'Vui lòng nhập mật khẩu', trigger: 'blur' },
         { min: 6, max: 20, message: 'Mật khẩu phải từ 6 đến 20 ký tự', trigger: 'blur' }
     ],
-    full_name: [
+    name: [
         { required: true, message: 'Vui lòng nhập họ và tên', trigger: 'blur' },
         { min: 2, max: 50, message: 'Họ và tên phải từ 2 đến 50 ký tự', trigger: 'blur' }
     ],
-    number_phone: [
+    phone: [
         { required: true, message: 'Vui lòng nhập số điện thoại', trigger: 'blur' },
-        { pattern: /^0[0-9]{9}$/, message: 'Số điện thoại không hợp lệ', trigger: [ 'blur', 'change' ] }
+        { pattern: /^0[0-9]{9}$/, message: 'Số điện thoại không hợp lệ', trigger: ['blur', 'change'] }
     ],
     role: [
         { required: true, message: 'Vui lòng chọn vai trò', trigger: 'change' }
     ],
     gender: [
         { required: true, message: 'Vui lòng chọn giới tính', trigger: 'change' }
-    ],
-    address: [
-        { required: true, message: 'Vui lòng nhập địa chỉ', trigger: 'blur' },
-        { min: 5, max: 100, message: 'Địa chỉ phải từ 5 đến 100 ký tự', trigger: 'blur' }
     ],
 };
 const resetForm = (formEl: FormInstance | undefined) => {
@@ -92,22 +85,19 @@ const handleAdd = () => {
     isEditMode.value = false;
     currentEditId.value = null;
     Object.assign(ruleForm, {
-        id: null,
         username: null,
         password: null,
-        number_phone: null,
-        full_name: null,
+        phone: null,
+        name: null,
         email: null,
         address: null,
-        date_of_birth: new Date(),
+        date_of_birth: null,
         gender: null,
         status: false,
-        role: '', // Changed from null to empty string
-        company_id: companyStore.id,
+        role: null,
         accept_app: {
             bms: false,
             cms: false,
-            ams: false,
             driver: false,
         }
     });
@@ -115,14 +105,23 @@ const handleAdd = () => {
 }
 const handleEdit = (index: number, row: EmployeeType) => {
     isEditMode.value = true;
-    currentEditId.value = row.id;
-    Object.assign(ruleForm, { ...row });
+    currentEditId.value = row.id != null ? String(row.id) : null;
+    ruleForm.value = { ...row, password: null };
     drawer.value = true;
 };
 const handleUnlock = async (index: number, row: EmployeeType) => {
     try {
 
-        await updateEmployee(row.id!, { ...row, status: true });
+        // await updateEmployee(
+        //     {
+        //         id: useUserStore.id,
+        //         username: useUserStore.username,
+        //         full_name: useUserStore.full_name,
+        //         company_id: useUserStore.company_id,
+        //     } as UserActionType,
+        //     { ...row, status: true },
+        //     row.id!
+        // );
         row.status = true;
         ElNotification({
             message: h('p', { style: 'color: teal' }, 'Mở khoá tài khoản thành công!'),
@@ -138,7 +137,16 @@ const handleUnlock = async (index: number, row: EmployeeType) => {
 
 const handleLock = async (index: number, row: EmployeeType) => {
     try {
-        await updateEmployee(row.id!, { ...row, status: false });
+        // await updateEmployee(
+        //     {
+        //         id: useUserStore.id,
+        //         username: useUserStore.username,
+        //         full_name: useUserStore.full_name,
+        //         company_id: useUserStore.company_id,
+        //     } as UserActionType,
+        //     { ...row, status: false },
+        //     row.id!
+        // );
         row.status = false;
         ElNotification({
             message: h('p', { style: 'color: teal' }, 'Khoá tài khoản thành công!'),
@@ -154,7 +162,7 @@ const handleLock = async (index: number, row: EmployeeType) => {
 
 
 const handleChangePassword = (index: number, row: EmployeeType) => {
-
+    console.log(row);
     ElNotification({
         message: h('p', { style: 'color: orange' }, 'Chức năng đổi mật khẩu đang phát triển!'),
         type: 'warning',
@@ -170,7 +178,14 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                 if (isEditMode.value && currentEditId.value !== null) {
 
                     console.log(ruleForm);
-                    const response = await updateEmployee(currentEditId.value, ruleForm);
+                    const response = await updateEmployee({
+                        id: useUserStore.id,
+                        username: useUserStore.username,
+                        full_name: useUserStore.full_name,
+                        company_id: useUserStore.company_id,
+                    } as UserActionType,
+                        ruleForm.value as DTO_RQ_Employee,
+                        currentEditId.value);
                     if (response.success) {
                         ElNotification({
                             message: h('p', { style: 'color: teal' }, 'Cập nhật tài khoản thành công!'),
@@ -178,15 +193,30 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                         })
                         const index = employees.value.findIndex(employee => employee.id === currentEditId.value);
                         if (index !== -1) {
-                            employees.value[ index ] = {
-                                ...employees.value[ index ],
-                                ...ruleForm
+                            employees.value[index] = {
+                                ...employees.value[index],
+                                ...ruleForm.value,
+                                gender: ruleForm.value.gender ?? '',
+                                role: ruleForm.value.role ?? '',
                             };
                         }
+                    } else {
+                        ElNotification({
+                            message: h('p', { style: 'color: red' }, response.message || 'Cập nhật tài khoản thất bại!'),
+                            type: 'error',
+                        });
                     }
                 } else {
                     console.log(ruleForm);
-                    const response = await createEmployee(ruleForm);
+                    const response = await createEmployee(
+                        {
+                            id: useUserStore.id,
+                            username: useUserStore.username,
+                            full_name: useUserStore.full_name,
+                            company_id: useUserStore.company_id,
+                        } as UserActionType,
+                        ruleForm.value as DTO_RQ_Employee
+                    );
                     if (response.success) {
                         ElNotification({
                             message: h('p', { style: 'color: teal' }, 'Thêm tài khoản mới thành công!'),
@@ -195,6 +225,11 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                         if (response.result) {
                             employees.value.push(response.result);
                         }
+                    } else {
+                        ElNotification({
+                            message: h('p', { style: 'color: red' }, response.message || 'Thêm tài khoản mới thất bại!'),
+                            type: 'error',
+                        });
                     }
                 }
                 drawer.value = false;
@@ -220,7 +255,7 @@ const submitForm = async (formEl: FormInstance | undefined) => {
 const fetchListEmployees = async () => {
     loading.value = true;
     try {
-        const response = await getListEmployeeByCompany(Number(companyStore.id));
+        const response = await getListEmployeeByCompany(useUserStore.company_id || '');
         if (response.result) {
             employees.value = response.result;
             console.log('Danh sách nhân viên:', employees.value);
@@ -252,7 +287,13 @@ const handleDelete = async (index: number, row: EmployeeType) => {
             }
         );
 
-        await deleteEmployee(row.id!);
+        await deleteEmployee({
+            id: useUserStore.id,
+            username: useUserStore.username,
+            full_name: useUserStore.full_name,
+            company_id: useUserStore.company_id,
+        } as UserActionType,
+            row.id!);
         ElNotification({
             message: h('p', { style: 'color: teal' }, 'Xóa tài khoản thành công!'),
             type: 'success',
@@ -269,8 +310,7 @@ const handleDelete = async (index: number, row: EmployeeType) => {
     }
 };
 onMounted(() => {
-    companyStore.loadCompanyStore();
-    authStore.loadUserInfo();
+    useUserStore.loadUserInfo();
     fetchListEmployees();
 });
 const categoryGenderOptions = [
@@ -297,14 +337,14 @@ const categoryRoleOptions = [
             <el-table-column type="index" label="STT" width="50" />
             <el-table-column label="Tài khoản">
                 <template #default="scope">
-                    <span class="font-semibold">{{ scope.row.full_name }}</span>
+                    <span class="font-semibold">{{ scope.row.name }}</span>
                     <br />
                     <span class="text-gray-500 text-sm">{{ scope.row.username }}</span>
                 </template>
             </el-table-column>
             <el-table-column label="Thông tin liên hệ" width="250">
                 <template #default="scope">
-                    <span class="text-gray-500">{{ scope.row.number_phone }}</span>
+                    <span class="text-gray-500">{{ scope.row.phone }}</span>
                     <br />
                     <span class="text-gray-500">{{ scope.row.email }}</span>
                 </template>
@@ -324,7 +364,8 @@ const categoryRoleOptions = [
                     </el-tag>
 
                     <br />
-                    <el-tag class="text-gray-500">{{ scope.row.date_of_birth ? format(new Date(scope.row.date_of_birth),
+                    <el-tag class="text-gray-500" v-if="scope.row.date_of_birth">{{ scope.row.date_of_birth ? format(new
+                        Date(scope.row.date_of_birth),
                         'dd/MM/yyyy') : '' }}</el-tag>
                 </template>
             </el-table-column>
@@ -347,7 +388,6 @@ const categoryRoleOptions = [
                             : scope.row.role === 'STAFF' ? 'Nhân viên'
                                 : scope.row.role === 'DRIVER' ? 'Tài xế'
                                     : scope.row.role === 'ASSISTANT' ? 'Phụ xe'
-                                        : scope.row.role === 'AGENT' ? 'Đại lý'
                                             : 'Khác' }}
                     </el-tag>
 
@@ -385,11 +425,13 @@ const categoryRoleOptions = [
                                     @click="handleUnlock(scope.$index, scope.row)">Mở khoá tài khoản</el-dropdown-item>
                                 <el-dropdown-item v-if="scope.row.status"
                                     @click="handleLock(scope.$index, scope.row)">Khoá tài khoản</el-dropdown-item>
-                                <el-dropdown-item @click="handleChangePassword(scope.$index, scope.row)">Đổi mật khẩu</el-dropdown-item>
+                                <el-dropdown-item @click="handleChangePassword(scope.$index, scope.row)">Đổi mật
+                                    khẩu</el-dropdown-item>
                                 <el-dropdown-item @click="handleEdit(scope.$index, scope.row)">Chỉnh sửa tài
                                     khoản</el-dropdown-item>
-                                <el-dropdown-item @click="handleDelete(scope.$index, scope.row)">Xoá tài
-                                    khoản</el-dropdown-item>
+                                <el-dropdown-item @click="handleDelete(scope.$index, scope.row)">
+                                    <span class="text-red-500">Xoá tài khoản</span>
+                                </el-dropdown-item>
                             </el-dropdown-menu>
                         </template>
                     </el-dropdown>
@@ -412,8 +454,8 @@ const categoryRoleOptions = [
                         <el-col :span="12" class="pr-5">
                             <h2 class="text-gray-500 font-medium mb-5">THÔNG TIN CÁ NHÂN</h2>
 
-                            <InputText v-model="ruleForm.full_name" prop="full_name" label="Họ và tên" />
-                            <InputText v-model="ruleForm.number_phone" prop="number_phone" label="Số điện thoại" />
+                            <InputText v-model="ruleForm.name" prop="name" label="Họ và tên" />
+                            <InputText v-model="ruleForm.phone" prop="phone" label="Số điện thoại" />
                             <InputText v-model="ruleForm.email" prop="email" label="Email" />
                             <InputText v-model="ruleForm.address" prop="address" label="Địa chỉ" />
                             <InputDate v-model="ruleForm.date_of_birth" prop="date_of_birth" label="Ngày sinh"
@@ -449,12 +491,6 @@ const categoryRoleOptions = [
                                     <span class="text-sm font-medium text-gray-700">Phần mềm Quản lý hàng hóa</span>
                                 </template>
                                 <el-switch v-model="ruleForm.accept_app.cms" size="large" />
-                            </el-form-item>
-                            <el-form-item prop="accept_app.ams" label-position="top">
-                                <template #label>
-                                    <span class="text-sm font-medium text-gray-700">Phần mềm Đại lý bán vé</span>
-                                </template>
-                                <el-switch v-model="ruleForm.accept_app.ams" size="large" />
                             </el-form-item>
                             <el-form-item prop="accept_app.driver" label-position="top">
                                 <template #label>
