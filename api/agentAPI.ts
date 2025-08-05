@@ -126,3 +126,25 @@ export const deleteAgent = async (
     throw error;
   }
 };
+
+export const getAgencyListByCompany = async (
+  company_id: string
+): Promise<ApiResponse<AgentNameType[]>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie("access_token");
+  try {
+    return await $fetch<ApiResponse<AgentNameType[]>>(
+      `${apiGateWay}/v3/bus-agent/get-agency-list-by-company/${company_id}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${cookie.value}`,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("API error:", error);
+    throw error;
+  }
+}

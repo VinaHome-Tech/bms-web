@@ -1,54 +1,51 @@
 <script setup lang="ts">
-import type { TripType } from '~/types/tripType';
+import type { DTO_RQ_UpdateTrip, TripType } from '~/types/tripType';
 import { Checked } from '@element-plus/icons-vue';
 import type { LicensePlateType } from '~/types/vehicleType';
 import { getLicensePlateByCompany } from '~/api/vehicleAPI';
 import type { AssistantType, DriverType } from '~/types/employeeType';
 import { getListAssistantByCompany, getListDriverByCompany } from '~/api/employeeAPI';
+import { userStore } from '~/stores/useUserStore';
 
 const props = defineProps<{
     modelValue: boolean
     trip?: TripType | null
-    companyId: number
     isUpdating?: boolean
 }>()
-const companyStore = useCompanyStore();
-const localCompanyId = ref(props.companyId);
-const tripModel = ref<TripType>({
-    id: props.trip?.id || 0,
+
+const useUserStore = userStore();
+
+const tripModel = ref<DTO_RQ_UpdateTrip>({
+    trip_id: props.trip?.trip_id || 0,
     departure_time: props.trip?.departure_time || '',
     seat_chart_id: props.trip?.seat_chart_id || 0,
-    seat_chart_name: props.trip?.seat_chart_name || '',
-    route_id: props.trip?.route_id || 0,
-    departure_date: props.trip?.departure_date
-        ? (typeof props.trip.departure_date === 'string'
-            ? new Date(props.trip.departure_date)
-            : props.trip.departure_date)
-        : new Date(),
 
-    route_name: props.trip?.route_name || '',
     vehicle_id: props.trip?.vehicle_id || undefined,
     driver: Array.isArray(props.trip?.driver) ? props.trip.driver : [],
     assistant: Array.isArray(props.trip?.assistant) ? props.trip.assistant : [],
     note: props.trip?.note || '',
     trip_type: props.trip?.trip_type || 0,
-    tickets_booked: props.trip?.tickets_booked || 0,
-    total_ticket: props.trip?.total_ticket || 0,
 });
 
+const handleUpdateTrip = () => {
+    if (props.isUpdating) return;
+    console.log('Updating trip with model:', tripModel.value);
+    emit('updated', tripModel.value);
+}
 
 
 watch(
     () => props.trip,
     (newTrip) => {
         if (newTrip) {
-            tripModel.value = {
-                ...newTrip,
-                vehicle_id: typeof newTrip.vehicle_id === 'number' ? newTrip.vehicle_id : undefined,
-                driver: Array.isArray(newTrip.driver) ? newTrip.driver : [],
-                assistant: Array.isArray(newTrip.assistant) ? newTrip.assistant : [],
-                note: newTrip.note ?? ''
-            };
+            tripModel.value.trip_id = newTrip.trip_id || 0;
+            tripModel.value.departure_time = newTrip.departure_time || '';
+            tripModel.value.seat_chart_id = newTrip.seat_chart_id || 0;
+            tripModel.value.vehicle_id = typeof newTrip.vehicle_id === 'number' ? newTrip.vehicle_id : undefined;
+            tripModel.value.driver = Array.isArray(newTrip.driver) ? newTrip.driver : [];
+            tripModel.value.assistant = Array.isArray(newTrip.assistant) ? newTrip.assistant : [];
+            tripModel.value.note = newTrip.note ?? '';
+            tripModel.value.trip_type = newTrip.trip_type || 0;
         }
     },
     { immediate: true }
@@ -59,25 +56,21 @@ watch(
 const emit = defineEmits<{
     (e: 'update:modelValue', value: boolean): void
     (e: 'closed'): void
-    (e: 'updated', trip: TripType): void
+    (e: 'updated', trip: DTO_RQ_UpdateTrip): void
 }>()
 
 const visible = ref(props.modelValue)
 watch(
     () => props.modelValue,
     (newValue) => {
-        visible.value = newValue
+        visible.value = newValue;
+        
     }
 )
-const handleUpdateTrip = () => {
-    if (props.isUpdating) return;
-
-    emit('updated', tripModel.value);
-    console.log('Cập nhật chuyến:', tripModel.value);
-}
 
 watch(visible, (newValue) => {
     emit('update:modelValue', newValue)
+
 })
 
 function handleClose() {
@@ -91,7 +84,7 @@ const loadingVehicle = ref(false);
 const fetchListVehicle = async () => {
     loadingVehicle.value = true;
     try {
-        const response = await getLicensePlateByCompany(localCompanyId.value);
+        const response = await getLicensePlateByCompany(useUserStore.company_id ?? '');
         if (response.success) {
             licensePlate.value = response.result ?? [];
             console.log('Danh sách biển số xe:', licensePlate.value);
@@ -116,7 +109,7 @@ const driverList = ref<DriverType[]>([]);
 const fetchListDriver = async () => {
     loadingDriver.value = true;
     try {
-        const response = await getListDriverByCompany(localCompanyId.value);
+        const response = await getListDriverByCompany(useUserStore.company_id ?? '');
         if (response.success) {
             driverList.value = response.result ?? [];
             console.log('Danh sách tài xế:', driverList.value);
@@ -141,7 +134,7 @@ const assistantList = ref<AssistantType[]>([]);
 const fetchListAssistant = async () => {
     loadingAssistant.value = true;
     try {
-        const response = await getListAssistantByCompany(localCompanyId.value);
+        const response = await getListAssistantByCompany(useUserStore.company_id ?? '');
         if (response.success) {
             assistantList.value = response.result ?? [];
             console.log('Danh sách phụ xe:', assistantList.value);
@@ -162,19 +155,29 @@ const fetchListAssistant = async () => {
     }
 };
 
-onMounted(() => {
-    console.log('Công ty ID:', props.companyId);
-    if (props.companyId == 0) {
-        companyStore.loadCompanyStore();
-        localCompanyId.value = companyStore.id;
-        console.log('Công ty ID PROP:', localCompanyId.value);
-    } else if (props.companyId !== 0) {
-        localCompanyId.value = props.companyId;
-        fetchListVehicle();
-        fetchListDriver();
-        fetchListAssistant();
-        console.log('Công ty ID PINIA:', localCompanyId.value);
-    }
+const onDriverChange = (selectedDrivers: DriverType[]) => {
+    console.log('Driver selection changed:', selectedDrivers);
+    tripModel.value.driver = selectedDrivers.map(driver => ({
+        id: driver.id,
+        name: driver.name,
+        phone: driver.phone
+    }));
+};
+
+const onAssistantChange = (selectedAssistants: AssistantType[]) => {
+    console.log('Assistant selection changed:', selectedAssistants);
+    tripModel.value.assistant = selectedAssistants.map(assistant => ({
+        id: assistant.id,
+        name: assistant.name,
+        phone: assistant.phone
+    }));
+};
+
+onMounted(async () => {
+    await useUserStore.loadUserInfo();
+    fetchListVehicle();
+    fetchListDriver();
+    fetchListAssistant();
 });
 </script>
 <template>
@@ -196,7 +199,7 @@ onMounted(() => {
                                 <label class="text-sm font-medium text-gray-700">Giờ khởi hành</label>
                             </template>
                             <el-time-select v-model="tripModel.departure_time" style="width: 240px" start="00:05"
-                                step="00:05" end="23:55" placeholder="Chọn thời gian" />
+                                step="00:05" end="23:55" placeholder="Chọn thời gian" format="hh:mm"/>
                         </el-form-item>
                     </el-col>
                     <el-col :span="12">
@@ -219,18 +222,23 @@ onMounted(() => {
                     </template>
                     <el-select v-model="tripModel.driver" filterable multiple placeholder="Chọn tài xế"
                         :loading="loadingDriver" loading-text="Đang tải danh sách tài xế..."
-                        no-data-text="Không có dữ liệu tài xế" :disabled="loadingDriver" value-key="id">
-                        <el-option v-for="item in driverList" :key="item.id" :label="item.full_name" :value="item" />
+                        no-data-text="Không có dữ liệu tài xế" :disabled="loadingDriver" value-key="id"
+                        @change="onDriverChange">
+                        <el-option v-for="item in driverList" :key="item.id" :label="item.name"
+                            :value="{ id: item.id, name: item.name, phone: item.phone }" />
                     </el-select>
                 </el-form-item>
+
                 <el-form-item label-position="top">
                     <template #label>
                         <label class="text-sm font-medium text-gray-700">Phụ xe</label>
                     </template>
                     <el-select v-model="tripModel.assistant" filterable multiple placeholder="Chọn phụ xe"
                         :loading="loadingAssistant" loading-text="Đang tải danh sách phụ xe..."
-                        no-data-text="Không có dữ liệu phụ xe" :disabled="loadingAssistant" value-key="id">
-                        <el-option v-for="item in assistantList" :key="item.id" :label="item.full_name" :value="item" />
+                        no-data-text="Không có dữ liệu phụ xe" :disabled="loadingAssistant" value-key="id"
+                        @change="onAssistantChange">
+                        <el-option v-for="item in assistantList" :key="item.id" :label="item.name"
+                            :value="{ id: item.id, name: item.name, phone: item.phone }" />
                     </el-select>
                 </el-form-item>
                 <el-form-item label-position="top">

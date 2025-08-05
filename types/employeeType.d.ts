@@ -32,13 +32,13 @@ export interface Accept_App {
 }
 
 export interface DriverType {
-    id: number;
-    full_name: string;
-    number_phone: string;
+    id: string;
+    name: string;
+    phone: string;
 }
  
 export interface AssistantType {
-    id: number;
-    full_name: string;
-    number_phone: string;
+    id: string;
+    name: string;
+    phone: string;
 }

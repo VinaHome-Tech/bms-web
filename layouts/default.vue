@@ -11,7 +11,7 @@ onMounted(async () => {
 </script>
 <template>
     <div class=" bg-gray-100">
-        <Header />
+        <Header/>
 
         <section class="p-2 mt-[60px]">
             <slot />

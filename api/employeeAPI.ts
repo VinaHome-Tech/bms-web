@@ -81,12 +81,12 @@ export const getListEmployeeByCompany = async (company_id: string): Promise<ApiR
   }
 }
 
-export const getListDriverByCompany = async (id: number): Promise<ApiResponse<DriverType[]>> => {
+export const getListDriverByCompany = async (id: string): Promise<ApiResponse<DriverType[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
   try {
-    return await $fetch<ApiResponse<DriverType[]>>(`${apiGateWay}/v1/account/get-list-driver-by-company/${id}`, {
+    return await $fetch<ApiResponse<DriverType[]>>(`${apiGateWay}/v3/bus-account/get-list-driver-by-company/${id}`, {
       method: "GET",
       headers: {
         'Authorization': `Bearer ${cookie.value}`,
@@ -98,12 +98,12 @@ export const getListDriverByCompany = async (id: number): Promise<ApiResponse<Dr
   }
 }
 
-export const getListAssistantByCompany = async (id: number): Promise<ApiResponse<AssistantType[]>> => {
+export const getListAssistantByCompany = async (id: string): Promise<ApiResponse<AssistantType[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
   try {
-    return await $fetch<ApiResponse<AssistantType[]>>(`${apiGateWay}/v1/account/get-list-assistant-by-company/${id}`, {
+    return await $fetch<ApiResponse<AssistantType[]>>(`${apiGateWay}/v3/bus-account/get-list-assistant-by-company/${id}`, {
       method: "GET",
       headers: {
         'Authorization': `Bearer ${cookie.value}`,

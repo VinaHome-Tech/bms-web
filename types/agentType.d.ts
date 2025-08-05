@@ -33,5 +33,5 @@ export interface DTO_RQ_Agent {
 
 export interface AgentNameType {
   id: string;
-  full_name: string;
+  name: string;
 }

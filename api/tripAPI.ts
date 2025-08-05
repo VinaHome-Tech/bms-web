@@ -1,10 +1,11 @@
-import type { TripType } from "~/types/tripType";
+import type { DTO_RQ_UpdateTrip, TripType } from "~/types/tripType";
 import type { ApiResponse } from "./APIResponse";
+import type { UserActionType } from "~/types/userType";
 
 export const getListTripByRouteAndDate = async (
   valueDate: Date | string,
   valueRoute: number | string,
-  companyId: number | null
+  companyId: string | null
 ): Promise<ApiResponse<TripType[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
@@ -32,7 +33,8 @@ export const getListTripByRouteAndDate = async (
 
 export const updateTripInformation = async (
   id: number,
-  data: TripType
+  user: UserActionType,
+  data_update: DTO_RQ_UpdateTrip
 ): Promise<ApiResponse<TripType>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
@@ -45,7 +47,10 @@ export const updateTripInformation = async (
         headers: {
           Authorization: `Bearer ${cookie.value}`,
         },
-        body: data,
+        body: {
+          user,
+          data_update,
+        },
       }
     );
   } catch (error) {

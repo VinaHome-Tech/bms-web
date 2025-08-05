@@ -11,7 +11,7 @@
     </div>
 
     <div v-else class="space-y-3">
-      <div v-for="trip in sortedTrips" :key="trip.id"
+      <div v-for="trip in sortedTrips" :key="trip.trip_id"
         class="bg-white px-4 py-2 border-2 border-gray-200 rounded-lg  hover:shadow-md transition-shadow cursor-pointer"
         @click="handleTripClick(trip)">
         <div class="flex justify-between items-start mb-2">
@@ -46,7 +46,7 @@
 
         <div class="mt-1 flex justify-between items-center">
           <div class="font-semibold text-gray-800 text-sm">
-            {{ Array.isArray(trip.driver) ? trip.driver.map(d => `${d.full_name}`).join(', ') : '' }}
+            {{ Array.isArray(trip.driver) ? trip.driver.map(d => `${d.name}`).join(', ') : '' }}
           </div>
           <div class="text-xs text-gray-500">
             {{ trip.seat_chart_name || '' }}
@@ -54,7 +54,7 @@
         </div>
         <div class="mt-1 flex justify-between items-center">
           <div class="font-semibold text-gray-800 text-sm">
-            {{ Array.isArray(trip.assistant) ? trip.assistant.map(a => `${a.full_name}`).join(', ') : '' }}
+            {{ Array.isArray(trip.assistant) ? trip.assistant.map(a => `${a.name}`).join(', ') : '' }}
           </div>
           <div class="text-xs text-gray-500">
             {{ trip.license_plate || '' }}

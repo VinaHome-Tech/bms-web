@@ -1,7 +1,7 @@
 import type { AssistantType, DriverType } from "./employeeType";
 
 export interface TripType {
-  id: number;
+  trip_id: number;
   departure_date: Date;
   departure_time: string;
   seat_chart_id: number;
@@ -19,6 +19,17 @@ export interface TripType {
   vehicle_phone?: string | null;
   driver?: DriverType[];
   assistant?: AssistantType[];
+}
+
+export interface DTO_RQ_UpdateTrip {
+  trip_id: number;
+  departure_time: string;
+  seat_chart_id: number;
+  note?: string | null;
+  vehicle_id?: number | undefined;
+  driver: DriverType[];
+  assistant: AssistantType[];
+  trip_type: number;
 }
 
 

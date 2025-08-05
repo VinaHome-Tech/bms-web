@@ -79,11 +79,18 @@ const handleAdd = () => {
     drawer.value = true;
 };
 const handleEdit = (index: number, row: ScheduleType) => {
-    isEditMode.value = true;
-    currentEditId.value = row.id;
-    Object.assign(ruleForm, { ...row });
-    drawer.value = true;
+  isEditMode.value = true;
+  currentEditId.value = row.id;
+  const startTimeFormatted = row.start_time?.slice(0, 5) || '';
+
+  Object.assign(ruleForm.value, {
+    ...row,
+    start_time: startTimeFormatted,
+  });
+
+  drawer.value = true;
 };
+
 
 const fetchListRouteName = async () => {
     loading.value = true;
@@ -219,12 +226,11 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                             message: h('p', { style: 'color: teal' }, 'Cập nhật lịch chạy thành công!'),
                             type: 'success',
                         })
-                        const index = schedules.value.findIndex(schedule => schedule.id === currentEditId.value);
-                        if (index !== -1) {
-                            schedules.value[index] = {
-                                ...schedules.value[index],
-                                ...ruleForm
-                            };
+                        if (response.result) {
+                            const index = schedules.value.findIndex(schedule => schedule.id === currentEditId.value);
+                            if (index !== -1) {
+                                schedules.value[index] = response.result;
+                            }
                         }
                     } else {
                         ElNotification({
@@ -391,7 +397,7 @@ onMounted(() => {
                                 <span class="text-sm font-medium text-gray-700">Thời gian khởi hành</span>
                             </template>
                             <el-time-select v-model="ruleForm.start_time" start="00:05" step="00:05" end="23:55"
-                                placeholder="Chọn thời gian" style="width: 180px" />
+                                placeholder="Chọn thời gian" style="width: 180px" format="HH:mm"/>
                         </el-form-item>
                         <div class="mb-4">
                             <span class="text-sm font-medium text-gray-700 block mb-3">Lặp lại lịch</span>

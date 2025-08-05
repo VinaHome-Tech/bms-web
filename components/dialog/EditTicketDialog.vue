@@ -1,20 +1,25 @@
 <script setup lang="ts">
-import type { CancelTicketType, TicketPayloadUpdate, TicketType } from '~/types/ticketType'
+import type { CancelTicketType, DTO_RQ_UpdateTicket, TicketType } from '~/types/ticketType'
 import { Checked, Printer, Delete } from '@element-plus/icons-vue'
+import type { AgentNameType } from '~/types/agentType';
+import { getAgencyListByCompany } from '~/api/agentAPI';
 
 const props = defineProps<{
     modelValue: boolean
     selectedTickets?: TicketType[]
-    userName?: string
-    officeName?: string
 }>()
+const useOffice = useOfficeStore()
+const useUserStore = userStore();
 
 const localTickets = ref<TicketType[]>([])
 
 watch(
     () => props.selectedTickets,
     (val) => {
-        localTickets.value = val ? val.map(ticket => ({ ...ticket })) : []
+        localTickets.value = val ? val.map(ticket => ({ ...ticket })) : [];
+        localTickets.value.forEach(ticket => {
+            ticket.payment_method = ticket.payment_method || 'TTTX';
+        });
     },
     { immediate: true, deep: true }
 )
@@ -22,8 +27,9 @@ watch(
 const emit = defineEmits<{
     (e: 'update:modelValue', value: boolean): void
     (e: 'closed'): void
-    (e: 'updateTickets', tickets: TicketPayloadUpdate): void
+    (e: 'updateTickets', tickets: DTO_RQ_UpdateTicket): void
     (e: 'cancelTickets', tickets: CancelTicketType): void
+    (e: 'print', tickets: TicketType[]): void
 }>()
 
 const visible = ref(props.modelValue)
@@ -38,6 +44,9 @@ watch(
 watch(visible, (val) => {
     emit('update:modelValue', val)
 })
+const handlePrintTickets = () => {
+    emit('print', localTickets.value);
+}
 
 function handleClose() {
     visible.value = false
@@ -47,9 +56,9 @@ function handleUpdateDataTicket() {
     if (localTickets.value.length === 0) return
     const ids = localTickets.value.map(ticket => ticket.id)
     const base = localTickets.value[0]
-    const updatePayload: TicketPayloadUpdate = {
+    const updatePayload: DTO_RQ_UpdateTicket = {
         id: ids,
-        ticket_phone: base.ticket_phone ,
+        ticket_phone: base.ticket_phone,
         ticket_email: base.ticket_email,
         ticket_customer_name: base.ticket_customer_name,
         ticket_point_up: base.ticket_point_up,
@@ -57,9 +66,10 @@ function handleUpdateDataTicket() {
         ticket_note: base.ticket_note,
         ticket_display_price: Number(base.ticket_display_price),
         payment_method: base.payment_method,
-        booked_status: base.booked_status,
-        user_created: props.userName || '',
-        office_created: props.officeName || '',
+        office_id: useOffice.id,
+        agent_id: base.agent_id,
+        transit_up: base.transit_up || false,
+        transit_down: base.transit_down || false,
     }
     emit('updateTickets', updatePayload)
     visible.value = false;
@@ -69,6 +79,36 @@ function handleCancelTicket() {
     const ids = localTickets.value.map(ticket => ticket.id)
     emit('cancelTickets', { id: ids })
 }
+
+const agencyList = ref<AgentNameType[]>([]);
+const loadingAgency = ref(false);
+const fetchListAgency = async () => {
+    loadingAgency.value = true;
+    try {
+        const response = await getAgencyListByCompany(useUserStore.company_id ?? '');
+        if (response.success) {
+            agencyList.value = response.result ?? [];
+            console.log('Danh sách đại lý:', agencyList.value);
+        } else {
+            ElNotification({
+                message: h('p', { style: 'color: red' }, response.message || 'Lỗi khi lấy danh sách đại lý'),
+                type: 'error',
+            });
+        }
+    } catch (error) {
+        console.error('Lỗi khi lấy danh sách đại lý:', error);
+        ElNotification({
+            message: h('p', { style: 'color: red' }, 'Lỗi khi lấy danh sách đại lý'),
+            type: 'error',
+        });
+    } finally {
+        loadingAgency.value = false;
+    }
+};
+onMounted(async () => {
+    await useUserStore.loadUserInfo();
+    fetchListAgency();
+});
 </script>
 <template>
     <el-dialog v-model="visible" width="700" @close="handleClose" style="padding: 0px;">
@@ -159,15 +199,26 @@ function handleCancelTicket() {
                                         <template #label>
                                             <span class="text-sm font-semibold">Đại lý</span>
                                         </template>
-                                        <el-select placeholder="Chọn đại lý">
-                                            <el-option label="Thanh toán trên xe" value="TTTX" />
-                                            <el-option label="Thanh toán tại quầy" value="TTTQ" />
-                                            <el-option label="Thanh toán trực tuyến (Online)" value="ONLINE" />
-                                            <el-option label="Chuyển khoản" value="CK" />
-                                            <el-option label="Đại lý thu" value="DLT" />
-                                            <el-option label="Không thu tiền" value="KTT" />
+                                        <el-select v-model="localTickets[0].agent_id" filterable
+                                            placeholder="Chọn đại lý" :loading="loadingAgency"
+                                            loading-text="Đang tải danh sách đại lý..."
+                                            no-data-text="Không có dữ liệu xe" clearable>
+                                            <el-option v-for="item in agencyList" :key="item.id" :label="item.name"
+                                                :value="item.id" />
                                         </el-select>
                                     </el-form-item>
+                                    <div class="flex items-center justify-between">
+                                        <el-form-item>
+                                        <el-checkbox v-model="localTickets[0].transit_up" >
+                                            <span class="text-black">Trung chuyển đón</span>
+                                        </el-checkbox>
+                                    </el-form-item>
+                                    <el-form-item>
+                                        <el-checkbox v-model="localTickets[0].transit_down">
+                                            <span class="text-black">Trung chuyển trả</span>
+                                        </el-checkbox>
+                                    </el-form-item>
+                                    </div>
                                 </el-col>
                             </el-row>
                         </el-form>
@@ -190,7 +241,7 @@ function handleCancelTicket() {
                     @click="handleUpdateDataTicket">
                     Cập nhật
                 </el-button>
-                <el-button type="warning" :icon="Printer">In vé</el-button>
+                <el-button type="warning" :icon="Printer" @click="handlePrintTickets">In vé</el-button>
                 <el-button type="danger" :icon="Delete" @click="handleCancelTicket">Hủy vé</el-button>
                 <el-button @click="handleClose">Đóng</el-button>
 

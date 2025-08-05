@@ -1,4 +1,4 @@
-import type { DTO_RQ_Vehicle, LicensePlateType, VehicleType } from "~/types/vehicleType";
+import type { DTO_RP_RegistrationExpiry, DTO_RQ_Vehicle, LicensePlateType, VehicleType } from "~/types/vehicleType";
 import type { ApiResponse } from "./APIResponse";
 import type { UserActionType } from "~/types/userType";
 
@@ -106,7 +106,7 @@ export const deleteVehicle = async (
 };
 
 export const getLicensePlateByCompany = async (
-  id: number
+  id: string
 ): Promise<ApiResponse<LicensePlateType[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
@@ -114,6 +114,28 @@ export const getLicensePlateByCompany = async (
   try {
     return await $fetch<ApiResponse<LicensePlateType[]>>(
       `${apiGateWay}/v2/vehicle/get-license-plate-by-company/${id}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${cookie.value}`,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("API error:", error);
+    throw error;
+  }
+};
+
+export const getListRegistrationExpiry = async (
+  company_id: string
+): Promise<ApiResponse<DTO_RP_RegistrationExpiry[]>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie("access_token");
+  try {
+    return await $fetch<ApiResponse<DTO_RP_RegistrationExpiry[]>>(
+      `${apiGateWay}/v2/vehicle/get-list-registration-expiry/${company_id}`,
       {
         method: "GET",
         headers: {
