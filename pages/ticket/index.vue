@@ -14,62 +14,21 @@ import { get, update } from 'firebase/database';
 import EditTicketDialog from '~/components/dialog/EditTicketDialog.vue';
 import EditTripInformationDialog from '~/components/dialog/EditTripInformationDialog.vue';
 import { formatCurrencyWithoutSymbol } from '~/lib/formatCurrency';
-import { useRouteSelection } from '~/composables/useRouteSelection';
 import { useTripManagement } from '~/composables/useTripManagement';
-import { useTicketManagement } from '~/composables/useTicketManagement';
+import { useTicketManagement, queryRouteID, queryDate, queryTripID, queryTicketID } from '~/composables/useTicketManagement';
 import { userStore } from '~/stores/useUserStore';
 import { useOfficeStore } from '~/stores/officeStore';
 import { useCompanyStore } from '~/stores/companyStore';
 import CustomerTable from '~/components/table/CustomerTable.vue';
 import TransitUpTable from '~/components/table/TransitUpTable.vue';
 import TransitDownTable from '~/components/table/TransitDownTable.vue';
+import CargoTable from '~/components/table/CargoTable.vue';
+import CargoDialog from '~/components/dialog/CargoDialog.vue';
+definePageMeta({
+  layout: 'default',
+})
 
 
-const {
-  routeNames,
-  valueSelectedRoute,
-  loadingListRouteName,
-  fetchListRouteName,
-  handleRouteChange
-} = useRouteSelection();
-const {
-  // ticketList,
-  loadingListTicket,
-  // selectedTickets,
-  fetchListTicketByTrip,
-  getFloorSeats,
-  getAvailableFloors,
-  setupRealtimeListener,
-  isTicketSelected,
-  clearAllSelectedTickets,
-  handleTicketClick,
-  getTicketSelector,
-
-  tripList,
-  mySelectedTickets,
-  dialogFormEditTicket,
-  updatingTicketIds,
-  handleOpenFormEditTicket,
-  handleCancelTickets,
-  handleUpdateTickets,
-  isCopyTicket,
-  // isMoveTicket,
-  handleCopyTickets,
-  handlePasteTickets,
-  handleMoveTickets,
-  cancelMoveTickets,
-  handleUpdateContactStatus,
-  fetchListCustomerByTrip,
-  loadingTabCustomer,
-  listCustomer,
-  loadingTransitUp,
-  loadingTransitDown,
-  listTransitUp,
-  listTransitDown,
-  fetchListTransitUpByTrip,
-  fetchListTransitDownByTrip,
-  handlePrintTickets,
-} = useTicketManagement();
 const {
   // tripList,
   // selectedTrip, 
@@ -83,6 +42,17 @@ const {
 
 } = useTripManagement();
 
+const {
+  handleOpenCargoDialog,
+  handleClosedDialogCargo,
+  dialogFormCargo,
+  isEditCargo,
+  handleSaveCargo,
+  cargoData,
+  loadingCargoTable,
+  loadingCargoSubmit,
+} = useCargoManagement();
+
 
 const { db, ref: dbRef, off } = useFirebase()
 
@@ -95,6 +65,9 @@ function handleDateChange(date: Date) {
   console.log('Ngày được chọn:', date)
   valueSelectedDate.value = date;
   console.log('Ngày chọn:', valueSelectedDate.value);
+  if (queryDate.value !== date) {
+    queryDate.value = date;
+  }
 }
 
 
@@ -268,20 +241,248 @@ const hasDifferentPhoneNumbers = computed(() => {
   const uniquePhoneNumbers = new Set(phoneNumbers);
   return uniquePhoneNumbers.size > 1;
 });
+const {
+  routeNames,
+  loadingListRouteName,
+  valueSelectedRoute,
+  fetchListRouteName,
+  handleRouteChange,
+  // ticketList,
+  loadingListTicket,
+  // selectedTickets,
+  fetchListTicketByTrip,
+  getFloorSeats,
+  getAvailableFloors,
+  setupRealtimeListener,
+  isTicketSelected,
+  clearAllSelectedTickets,
+  handleTicketClick,
+  getTicketSelector,
+
+  tripList,
+  mySelectedTickets,
+  dialogFormEditTicket,
+  updatingTicketIds,
+  handleOpenFormEditTicket,
+  handleCancelTickets,
+  handleUpdateTickets,
+  isCopyTicket,
+  // isMoveTicket,
+  handleCopyTickets,
+  handlePasteTickets,
+  handleMoveTickets,
+  cancelMoveTickets,
+  handleUpdateContactStatus,
+  fetchListCustomerByTrip,
+  loadingTabCustomer,
+  listCustomer,
+  loadingTransitUp,
+  loadingTransitDown,
+  listTransitUp,
+  listTransitDown,
+  fetchListTransitUpByTrip,
+  fetchListTransitDownByTrip,
+  handlePrintTickets,
+
+} = useTicketManagement();
+
+
 
 watch([valueSelectedDate, valueSelectedRoute], ([newDate, newRoute], [oldDate, oldRoute]) => {
   console.log('Ngày:', oldDate, '=>', newDate);
   console.log('Tuyến:', oldRoute, '=>', newRoute);
-  fetchListTripByRouteAndDate(newDate, newRoute, useUserStore.company_id ?? '');
-  selectedTrip.value = null;
+
+  if (newDate && newRoute) {
+    fetchListTripByRouteAndDate(newDate, newRoute as number, useUserStore.company_id ?? '');
+
+    // ✅ Reset selectedTrip chỉ khi không có queryTripID
+    if (!queryTripID.value) {
+      selectedTrip.value = null;
+    }
+  }
+
+  console.log("QUERY ROUTE ID:", queryRouteID.value);
+  console.log("QUERY DATE:", queryDate.value);
+  console.log("QUERY TRIP ID:", queryTripID.value);
+  console.log("QUERY TICKET ID:", queryTicketID.value);
 });
+
+// ✅ THÊM: Watcher cho tripList - chạy sau khi có danh sách chuyến
+watch(tripList, async (newTripList) => {
+  console.log('🔍 tripList changed, length:', newTripList.length);
+  console.log('🔍 queryTripID current:', queryTripID.value);
+
+  // Nếu có queryTripID và tripList đã được load
+  if (queryTripID.value && newTripList.length > 0) {
+    const foundTrip = newTripList.find(trip => trip.trip_id === queryTripID.value);
+    if (foundTrip) {
+      console.log('✅ Đã tự động chọn chuyến sau khi load danh sách:', foundTrip);
+      selectedTrip.value = foundTrip;
+      activeTab.value = '1';
+      await fetchListTicketByTrip(foundTrip.trip_id);
+      if (queryTicketID.value) {
+        const targetTicket = ticketList.value.find(ticket => ticket.id === queryTicketID.value);
+        if (targetTicket) {
+          console.log('✅ Đã tìm thấy vé cần chọn:', targetTicket);
+          
+          await handleTicketClick(targetTicket);
+          
+          console.log('✅ Đã tự động chọn vé:', targetTicket.id);
+        } else {
+          console.warn('⚠️ Không tìm thấy vé với ID:', queryTicketID.value);
+        }
+      }
+    } else {
+      console.warn('⚠️ Không tìm thấy chuyến với ID trong danh sách mới:', queryTripID.value);
+    }
+  }
+});
+
+// ✅ SỬA: Watcher duy nhất cho queryTripID
+watch(queryTripID, async (newValue, oldValue) => {
+  console.log('🔍 queryTripID changed:', oldValue, '=>', newValue);
+  console.log('🔍 tripList current:', tripList.value);
+  console.log('🔍 selectedTrip current:', selectedTrip.value);
+
+  // ✅ Trường hợp 1: Chuyển chuyến mới
+  if (newValue && newValue !== oldValue && tripList.value.length > 0) {
+    const foundTrip = tripList.value.find(trip => trip.trip_id === newValue);
+    if (foundTrip) {
+      console.log('✅ Đã tìm thấy chuyến từ query (tripList có sẵn):', foundTrip);
+      selectedTrip.value = foundTrip;
+      activeTab.value = '1';
+      
+      // ✅ Clear vé đang chọn trước khi fetch tickets mới
+      clearAllSelectedTickets();
+      
+      // ✅ Fetch tickets cho chuyến mới
+      await fetchListTicketByTrip(foundTrip.trip_id);
+      
+      // ✅ Nếu có queryTicketID, tự động chọn vé
+      if (queryTicketID.value) {
+        const targetTicket = ticketList.value.find(ticket => ticket.id === queryTicketID.value);
+        if (targetTicket) {
+          console.log('✅ Đã tìm thấy vé cần chọn:', targetTicket);
+          await handleTicketClick(targetTicket);
+          console.log('✅ Đã tự động chọn vé:', targetTicket.id);
+        } else {
+          console.warn('⚠️ Không tìm thấy vé với ID:', queryTicketID.value);
+        }
+      }
+    } else {
+      console.warn('⚠️ Không tìm thấy chuyến với ID:', newValue);
+    }
+  } 
+  // ✅ Trường hợp 2: Cùng chuyến hiện tại, chỉ cần tìm vé
+  else if (newValue && selectedTrip.value && selectedTrip.value.trip_id === newValue) {
+    console.log('🔍 Cùng chuyến hiện tại, chỉ cần xử lý vé:', newValue);
+    
+    // ✅ QUAN TRỌNG: Luôn clear vé đang chọn trước
+    clearAllSelectedTickets();
+    
+    // ✅ Nếu có queryTicketID, tự động chọn vé mới
+    if (queryTicketID.value) {
+      // Đảm bảo ticketList đã có dữ liệu
+      if (ticketList.value.length === 0) {
+        await fetchListTicketByTrip(selectedTrip.value.trip_id);
+      }
+      
+      const targetTicket = ticketList.value.find(ticket => ticket.id === queryTicketID.value);
+      if (targetTicket) {
+        console.log('✅ Đã tìm thấy vé trong chuyến hiện tại:', targetTicket);
+        await handleTicketClick(targetTicket);
+        console.log('✅ Đã chọn vé mới trong cùng chuyến:', targetTicket.id);
+      } else {
+        console.warn('⚠️ Không tìm thấy vé với ID trong chuyến hiện tại:', queryTicketID.value);
+      }
+    } else {
+      console.log('✅ Đã clear selection trong cùng chuyến');
+    }
+  }
+  else if (newValue && tripList.value.length === 0) {
+    console.log('⏳ queryTripID đã set, đang chờ tripList được load...');
+  }
+});
+
+// ✅ SỬA: Watcher riêng cho queryTicketID để xử lý khi chỉ thay đổi vé
+watch(queryTicketID, async (newValue, oldValue) => {
+  console.log('🔍 queryTicketID changed:', oldValue, '=>', newValue);
+  console.log('🔍 selectedTrip current:', selectedTrip.value);
+  console.log('🔍 queryTripID current:', queryTripID.value);
+  
+  // ✅ Chỉ xử lý khi có chuyến đã chọn và queryTripID không thay đổi
+  if (selectedTrip.value && queryTripID.value === selectedTrip.value.trip_id && newValue !== oldValue) {
+    
+    // ✅ QUAN TRỌNG: Luôn clear vé đang chọn trước
+    clearAllSelectedTickets();
+    
+    if (newValue) {
+      // Đảm bảo ticketList đã có dữ liệu
+      if (ticketList.value.length === 0) {
+        await fetchListTicketByTrip(selectedTrip.value.trip_id);
+      }
+      
+      const targetTicket = ticketList.value.find(ticket => ticket.id === newValue);
+      if (targetTicket) {
+        console.log('✅ Tìm vé mới trong chuyến hiện tại:', targetTicket);
+        await handleTicketClick(targetTicket);
+        console.log('✅ Đã chọn vé mới:', targetTicket.id);
+      } else {
+        console.warn('⚠️ Không tìm thấy vé với ID:', newValue);
+      }
+    } else {
+      console.log('✅ Đã clear selection do queryTicketID bị xóa');
+    }
+  }
+});
+
+watch(queryRouteID, (newValue) => {
+  console.log('🔍 queryRouteID changed:', newValue);
+  console.log('🔍 valueSelectedRoute current:', valueSelectedRoute.value);
+  console.log('🔍 routeNames available:', routeNames.value.map(r => ({ id: r.id, name: r.route_name })));
+
+  if (newValue) {
+    const routeExists = routeNames.value.some(r => r.id === newValue);
+    if (routeExists) {
+      valueSelectedRoute.value = newValue;
+      console.log('✅ Đã tự động chọn route:', newValue);
+    } else {
+      console.warn('⚠️ Route không tồn tại trong danh sách:', newValue);
+    }
+  }
+});
+
+watch(queryDate, (newValue) => {
+  console.log('🔍 queryDate changed:', newValue);
+  console.log('🔍 valueSelectedDate current:', valueSelectedDate.value);
+
+  if (newValue) {
+    valueSelectedDate.value = newValue;
+    console.log('✅ Đã tự động chọn date:', newValue);
+  }
+});
+
+// ✅ SỬA: Watcher để đồng bộ khi routeNames được load
+watch(routeNames, (newRouteNames) => {
+  // Nếu có queryRouteID và routeNames đã được load
+  if (queryRouteID.value && newRouteNames.length > 0) {
+    const routeExists = newRouteNames.some(r => r.id === queryRouteID.value);
+    if (routeExists) {
+      valueSelectedRoute.value = queryRouteID.value;
+      console.log('✅ Đã set route sau khi load danh sách:', queryRouteID.value);
+    }
+  }
+});
+
 
 onMounted(() => {
   useUserStore.loadUserInfo();
   companyStore.loadCompanyStore();
   officeStore.loadOfficeStore();
   fetchListRouteName(useUserStore.company_id ?? '');
+
 });
+
 </script>
 
 <template>
@@ -289,8 +490,8 @@ onMounted(() => {
     <el-container>
       <el-aside width="20%" class="">
         <div>
-          <el-select v-model="valueSelectedRoute" :loading="loadingListRouteName" placeholder="Chọn tuyến"
-            @change="handleRouteChange">
+          <el-select v-model="queryRouteID!" :loading="loadingListRouteName" placeholder="Chọn tuyến"
+            @change="(value) => { valueSelectedRoute = value; handleRouteChange(value); }">
             <el-option v-for="item in routeNames" :key="item.id" :label="item.route_name" :value="item.id" />
             <template #empty>
               <span v-if="loadingListRouteName">Đang tải danh sách tuyến...</span>
@@ -453,13 +654,10 @@ onMounted(() => {
                               class="grid gap-1 w-full"
                               :style="{ gridTemplateColumns: `repeat(${row.seats.length}, 1fr)` }">
                               <TicketItem v-for="seat in row.seats" :key="seat.id" :ticket="seat"
-                                :onClick="() => handleTicketClick(seat)" 
-                                :isSelected="isTicketSelected(seat)"
-                                :selectedBy="getTicketSelector(seat)" 
-                                :isLoading="isTicketUpdating(seat.id)"
+                                :onClick="() => handleTicketClick(seat)" :isSelected="isTicketSelected(seat)"
+                                :selectedBy="getTicketSelector(seat)" :isLoading="isTicketUpdating(seat.id)"
                                 @update-contact-status="(status) => handleUpdateContactStatus(status)"
-                                :is-move-ticket="isMoveTicket"
-                                 />
+                                :is-move-ticket="isMoveTicket" />
                             </div>
                           </div>
                         </div>
@@ -580,7 +778,16 @@ onMounted(() => {
                     <TransitDownTable :data="listTransitDown" :loading="loadingTransitDown" />
                   </div>
                 </el-tab-pane>
-                <el-tab-pane label="Hàng hóa" name="4">Hàng hóa</el-tab-pane>
+                <el-tab-pane label="Hàng hóa" name="4">
+                  <div class="py-2" style="text-align: right;">
+                    <el-button type="warning" :icon="Plus" plain @click="handleOpenCargoDialog">Thêm hàng
+                      mới</el-button>
+                    <el-button type="primary" :icon="Printer" plain>In danh sách</el-button>
+                  </div>
+                  <CargoTable />
+                  <CargoDialog v-model="dialogFormCargo" @closed="handleClosedDialogCargo" :is-edit="isEditCargo"
+                    @save="handleSaveCargo" />
+                </el-tab-pane>
                 <el-tab-pane label="Thu chi chuyến" name="5">Thu chi chuyến</el-tab-pane>
               </el-tabs>
             </div>
@@ -598,11 +805,8 @@ onMounted(() => {
         </el-main>
       </el-container>
     </el-container>
-    <EditTicketDialog v-model="dialogFormEditTicket" 
-    :selected-tickets="mySelectedTickets"
-      @closed="clearAllSelectedTickets" 
-      @update-tickets="handleUpdateTickets" 
-      @cancel-tickets="handleCancelTickets"
+    <EditTicketDialog v-model="dialogFormEditTicket" :selected-tickets="mySelectedTickets"
+      @closed="clearAllSelectedTickets" @update-tickets="handleUpdateTickets" @cancel-tickets="handleCancelTickets"
       @print="handlePrintTickets" />
 
     <EditTripInformationDialog v-model="dialogFormEditTripInformation" :trip="selectedTrip"

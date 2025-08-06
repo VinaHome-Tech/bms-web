@@ -28,7 +28,17 @@ const selectedDate = ref<Date | null>(
         ? (typeof props.modelValue === 'string' ? new Date(props.modelValue) : props.modelValue)
         : null // <-- Thay bằng null khi không có giá trị
 )
-
+watch(() => props.modelValue, (newValue) => {
+    if (newValue) {
+        const dateValue = typeof newValue === 'string' ? new Date(newValue) : newValue
+        selectedDate.value = dateValue
+        
+        // ✅ Cập nhật currentMonth để hiển thị tháng của ngày được chọn
+        currentMonth.value = new Date(dateValue.getFullYear(), dateValue.getMonth(), 1)
+        
+        console.log('📅 Calendar sync với queryDate:', dateValue)
+    }
+}, { immediate: true })
 const currentMonth = ref(new Date())
 
 // Computed

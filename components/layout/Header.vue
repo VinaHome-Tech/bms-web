@@ -18,6 +18,9 @@ import {
 import type { Component } from 'vue'
 import { useLogout } from "@/composables/useLogout";
 import { querySearchTickets } from '~/api/ticketAPI';
+import type { DTO_RP_SearchTicket } from '~/types/ticketType';
+import { formatDate } from '~/lib/formatDate';
+import { formatCurrency } from '~/lib/formatCurrency';
 const { handleLogout } = useLogout();
 const Icons: Record<string, Component> = {
   Menu,
@@ -32,11 +35,11 @@ const Icons: Record<string, Component> = {
   HomeFilled,
   Finished
 };
+const { handleQueryTicket } = useTicketManagement();
+
 
 const useUserStore = userStore();
 const officeStore = useOfficeStore();
-// Reactive data
-// const searchQuery = ref('')
 
 
 const notifications = ref([
@@ -124,54 +127,84 @@ const menuItems = [
   },
 ];
 
-// const logout = async () => {
-//   try {
-//     await useUserStore.resetUserInfo();
-//     await officeStore.resetOfficeStore();
-//     await companyStore.resetCompanyStore();
-//     ElNotification({
-//       message: h('p', { style: 'color: teal' }, 'Đăng xuất thành công!'),
-//       type: 'success',
-//     })
-//     navigateTo('/');
-//   } catch (error) {
-//     console.error('Logout failed:', error);
-//     ElNotification({
-//       message: h('p', { style: 'color: red' }, 'Đăng xuất không thành công!'),
-//       type: 'error',
-//     })
-//   }
-// }
 const searchQuery = ref('')
-const searchResults = ref([])
 
 let debounceTimeout: ReturnType<typeof setTimeout> | null = null
 
-const querySearch = (queryString: string, callback: (results: any[]) => void) => {
+const groupTicketsByPhoneAndTrip = (tickets: DTO_RP_SearchTicket[]) => {
+  const grouped = new Map<string, DTO_RP_SearchTicket>()
+  
+  tickets.forEach(ticket => {
+    const key = `${ticket.ticket_phone}_${ticket.trip_id}`
+    
+    if (grouped.has(key)) {
+      const existingTicket = grouped.get(key)!
+      
+      // ✅ Gộp seat_name
+      if (existingTicket.seat_name && ticket.seat_name) {
+        const existingSeats = existingTicket.seat_name.split(', ')
+        const newSeats = ticket.seat_name.split(', ')
+        const allSeats = [...new Set([...existingSeats, ...newSeats])]
+        existingTicket.seat_name = allSeats.join(', ')
+      } else if (ticket.seat_name) {
+        existingTicket.seat_name = ticket.seat_name
+      }
+      
+      // ✅ Cộng dồn giá tiền
+      existingTicket.ticket_display_price = (existingTicket.ticket_display_price || 0) + (ticket.ticket_display_price || 0)
+      
+    } else {
+      // ✅ Giữ nguyên ticket đầu tiên (để lấy ID)
+      grouped.set(key, { ...ticket })
+    }
+  })
+  
+  return Array.from(grouped.values())
+}
+
+// ✅ THÊM: Helper function để format seat display
+const formatSeatDisplay = (seatName: string) => {
+  if (!seatName) return ''
+  
+  const seats = seatName.split(', ')
+  
+  if (seats.length === 1) {
+    return `Ghế ${seats[0]}`
+  } else if (seats.length <= 3) {
+    return `Ghế ${seats.join(', ')}`
+  } else {
+    return `Ghế ${seats.slice(0, 2).join(', ')} +${seats.length - 2}`
+  }
+}
+
+const querySearch = (queryString: string, callback: (results: DTO_RP_SearchTicket[]) => void) => {
   // Clear previous timeout
   if (debounceTimeout) {
     clearTimeout(debounceTimeout)
   }
-  
+
   debounceTimeout = setTimeout(async () => {
     if (!queryString.trim()) {
       callback([])
       return
     }
-    
+
     if (queryString.trim().length < 4) {
       callback([])
       return
     }
-    
+
     try {
       console.log('Searching for:', queryString)
-      
+
       const response = await querySearchTickets(queryString, useUserStore.company_id ?? '')
       console.log('Search results:', response)
       
-
+      // ✅ THÊM: Gộp các vé có cùng phone và trip_id
+      const groupedResults = groupTicketsByPhoneAndTrip(response.result || [])
       
+      callback(groupedResults)
+
     } catch (error) {
       console.error('Lỗi tìm kiếm vé:', error)
       ElMessage.error('Không thể tìm kiếm vé. Vui lòng thử lại sau.')
@@ -179,6 +212,7 @@ const querySearch = (queryString: string, callback: (results: any[]) => void) =>
     }
   }, 800)
 }
+
 const cleanup = () => {
   if (debounceTimeout) {
     clearTimeout(debounceTimeout)
@@ -186,10 +220,12 @@ const cleanup = () => {
   }
 }
 
-const handleSelect = (item) => {
-  console.log('Selected item:', item)
- 
+const handleSelectTicket = (item: Record<string, any>): void => {
+  const ticket = item as DTO_RP_SearchTicket;
+  handleQueryTicket(ticket);
 }
+
+
 onMounted(async () => {
   await useUserStore.loadUserInfo();
   await officeStore.loadOfficeStore();
@@ -254,50 +290,81 @@ onMounted(async () => {
 
     <!-- Center Section - Search -->
     <div class="flex-1 max-w-md mx-4 hidden sm:block ">
-      <el-autocomplete
-      v-model="searchQuery"
-      :fetch-suggestions="querySearch"
-      placeholder="Tìm kiếm theo số điện thoại"
-      size="large"
-      class="w-full custom-autocomplete"
-      :trigger-on-focus="false"
-      :debounce="300"
-      @select="handleSelect"
-      popper-class="custom-autocomplete-popper"
-    >
-      <template #prefix>
-        <el-icon>
-          <Search />
-        </el-icon>
-      </template>
-      
-      <template #default="{ item }">
-        <div class="flex items-center space-x-3 py-2 px-1 hover:bg-blue-50 rounded-lg transition-colors duration-150 group">
-          <div class="flex-shrink-0 w-10 h-10 bg-gradient-to-r from-emerald-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
-            {{ item.name.charAt(0) }}
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
-              {{ item.name }}
+      <el-autocomplete v-model="searchQuery" :fetch-suggestions="querySearch" placeholder="Tìm kiếm theo số điện thoại"
+        size="large" class="w-full custom-autocomplete" :trigger-on-focus="false" :debounce="900" @select="handleSelectTicket"
+        popper-class="custom-autocomplete-popper">
+        <template #prefix>
+          <el-icon>
+            <Search />
+          </el-icon>
+        </template>
+
+        <template #default="{ item }">
+          <div class="flex items-center justify-between hover:from-blue-50 hover:to-indigo-50 transition-all duration-200">
+            <div class="flex-1 min-w-0 py-1">
+
+              <div class="flex items-center space-x-2">
+                <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                </svg>
+                <span class="text-sm font-medium text-green-600">
+                  {{ item.ticket_phone }}
+                </span>
+                <span v-if="item.ticket_customer_name">-</span>
+                <span class="text-sm font-medium text-gray-500">
+                  {{ item.ticket_customer_name }}
+                </span>
+              </div>
+              
+              <div class="flex items-center space-x-2 py-[1px]">
+                <svg class="w-4 h-4 text-orange-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                </svg>
+                <span class="text-sm text-gray-700 truncate">{{ item.route_name }}</span>
+
+                <!-- ✅ SỬA: Hiển thị nhiều ghế -->
+                <span v-if="item.seat_name" class="inline-flex items-center px-2 py-1 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 rounded-full text-xs font-medium shadow-sm">
+                  <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+                  </svg>
+                  <!-- ✅ Hiển thị nhiều ghế, format đẹp -->
+                  {{ formatSeatDisplay(item.seat_name) }}
+                </span>
+              </div>
+              
+              <div class="flex items-center mt-1">
+                <div class="flex items-center space-x-1 px-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                  <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span class="text-sm font-semibold text-green-700">
+                    {{ item.departure_time ? item.departure_time.split(':').slice(0, 2).join(':') : '' }}
+                  </span>
+                  <span>-</span>
+                  <span class="text-sm font-semibold text-green-700">
+                    {{ formatDate(item.departure_date) }}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div class="text-sm text-blue-600 font-medium mt-0.5">
-              {{ item.phone }}
-            </div>
-            <div class="text-xs text-gray-500 mt-1 flex items-center">
-              <svg class="w-3 h-3 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
-              </svg>
-              <span class="truncate">{{ item.address }}</span>
+
+            <div class="flex-shrink-0 ml-4">
+              <div class="flex flex-col items-center space-y-1">
+                <div class="w-8 h-8 rounded-full bg-gray-50 group-hover:bg-blue-100 flex items-center justify-center transition-colors duration-200">
+                  <svg class="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+                <div>
+                  <span class="text-sm font-medium text-red-600 whitespace-nowrap">
+                    {{ formatCurrency(item.ticket_display_price) }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="flex-shrink-0">
-            <svg class="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-        </div>
-      </template>
-    </el-autocomplete>
+        </template>
+      </el-autocomplete>
     </div>
 
     <!-- Right Section -->

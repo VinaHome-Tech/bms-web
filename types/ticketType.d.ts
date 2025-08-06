@@ -125,3 +125,16 @@ export interface DTO_RP_ListTransitDownByTrip {
   ticket_point_down: string;
   seat_name: string;
 }
+
+export class DTO_RP_SearchTicket {
+  ticket_id: number;
+  trip_id: number;
+  route_id: number;
+  route_name: string;
+  departure_date: Date;
+  departure_time: string;
+  seat_name: string;
+  ticket_phone: string;
+  ticket_customer_name: string;
+  ticket_display_price: number;
+}

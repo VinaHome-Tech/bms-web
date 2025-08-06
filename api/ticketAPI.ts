@@ -4,6 +4,7 @@ import type {
   DTO_RP_ListCustomerByTrip,
   DTO_RP_ListTransitDownByTrip,
   DTO_RP_ListTransitUpByTrip,
+  DTO_RP_SearchTicket,
   DTO_RQ_UpdateTicket,
   TicketType,
 } from "~/types/ticketType";
@@ -247,7 +248,7 @@ export const querySearchTickets = async (
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie("access_token");
   try {
-    return await $fetch<ApiResponse<any[]>>(`${apiGateWay}/v2/ticket/search-tickets`, {
+    return await $fetch<ApiResponse<DTO_RP_SearchTicket[]>>(`${apiGateWay}/v2/ticket/search-tickets`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${cookie.value}`,

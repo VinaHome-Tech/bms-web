@@ -1,4 +1,5 @@
 import { remove, update } from "firebase/database";
+import { getListRouteNameActionByCompany } from "~/api/routeAPI";
 import {
   cancelTickets,
   copyTickets,
@@ -11,11 +12,13 @@ import {
   updateTickets,
 } from "~/api/ticketAPI";
 import { userStore } from "~/stores/useUserStore";
+import type { DTO_RP_ListRouteName } from "~/types/routeType";
 import type {
   CancelTicketType,
   DTO_RP_ListCustomerByTrip,
   DTO_RP_ListTransitDownByTrip,
   DTO_RP_ListTransitUpByTrip,
+  DTO_RP_SearchTicket,
   DTO_RQ_UpdateTicket,
   TicketType,
 } from "~/types/ticketType";
@@ -24,6 +27,10 @@ export const ticketList = ref<TicketType[]>([]);
 export const isMoveTicket = ref(false);
 export const loadingMoveTicket = ref(false);
 export const selectedTickets = ref<TicketType[]>([]);
+export const queryRouteID = ref<number | null>(null);
+export const queryDate = ref<Date | string>(new Date());
+export const queryTripID = ref<number | null>(null);
+export const queryTicketID = ref<number | null>(null);
 export const useTicketManagement = () => {
   const loadingListTicket = ref(false);
   const useUserStore = userStore();
@@ -1517,7 +1524,115 @@ export const useTicketManagement = () => {
     }
   };
 
+  const routeNames = ref<DTO_RP_ListRouteName[]>([]);
+  const loadingListRouteName = ref(false);
+  const valueSelectedRoute = ref<number | null>(null);
+
+  const fetchListRouteName = async (company_id: string) => {
+    loadingListRouteName.value = true;
+    try {
+      const response = await getListRouteNameActionByCompany(company_id);
+      if (response.success) {
+        if (response.result) {
+          console.log("Danh sách tuyến:", response.result);
+          routeNames.value = response.result;
+          //   if (routeNames.value.length > 0) {
+          //     valueSelectedRoute.value = routeNames.value[0].id;
+          //   }
+        }
+      } else {
+        ElNotification({
+          message: h(
+            "p",
+            { style: "color: red" },
+            response.message || "Không thể tải danh sách tuyến!"
+          ),
+          type: "error",
+        });
+      }
+    } catch (error) {
+      ElNotification({
+        message: h(
+          "p",
+          { style: "color: red" },
+          "Đã xảy ra lỗi khi tải danh sách tuyến!"
+        ),
+        type: "error",
+      });
+      console.error("Error fetching route names:", error);
+    } finally {
+      loadingListRouteName.value = false;
+    }
+  };
+
+  const handleRouteChange = (id: number) => {
+    const selectedRoute = routeNames.value.find((r) => r.id === id);
+    valueSelectedRoute.value = selectedRoute ? selectedRoute.id : 0;
+    console.log("Tuyến được chọn:", selectedRoute);
+    console.log("ID tuyến:", valueSelectedRoute.value);
+  };
+
+
+
+  const isSettingProgrammatically = ref(false);
+
+  const handleQueryTicket = async (item: DTO_RP_SearchTicket) => {
+    console.log("Selected item:", item);
+    try {
+      console.log("Truy vấn vé với route_id:", item.route_id);
+      
+      // Set flag trước khi thao tác
+      isSettingProgrammatically.value = true;
+      
+      if (routeNames.value.length === 0) {
+        console.log("Danh sách route chưa load, đang tải...");
+        await fetchListRouteName(useUserStore.company_id ?? '');
+      }
+      
+      const selectedRoute = routeNames.value.find(
+        (r) => r.id === item.route_id
+      );
+      
+      if (selectedRoute) {
+        // Đợi một tick để đảm bảo routeNames đã được cập nhật
+        await nextTick();
+        
+        queryRouteID.value = item.route_id;
+        queryDate.value = item.departure_date;
+        queryTripID.value = item.trip_id;
+        queryTicketID.value = item.ticket_id;
+
+        console.log("Query route_id:", queryRouteID.value);
+        console.log("Query departure_date:", queryDate.value);
+        console.log("Query trip_id:", queryTripID.value);
+        console.log("Query ticket_id:", queryTicketID.value);
+
+        return {
+          success: true,
+          routeId: item.route_id,
+          selectedRoute
+        };
+      } else {
+        console.warn("Không tìm thấy route với ID:", item.route_id);
+        return { success: false, error: "Route not found" };
+      }
+    } catch (error) {
+      console.error("Lỗi khi truy vấn vé:", error);
+      return { success: false, error };
+    } finally {
+      // Reset flag sau khi hoàn thành
+      setTimeout(() => {
+        isSettingProgrammatically.value = false;
+      }, 100);
+    }
+  }
   return {
+    routeNames,
+    loadingListRouteName,
+    valueSelectedRoute,
+    fetchListRouteName,
+    handleRouteChange,
+    handleQueryTicket,
     // ticketList,
     // selectedTickets,
     loadingListTicket,
