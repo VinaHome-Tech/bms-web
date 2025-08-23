@@ -297,6 +297,7 @@ export const useTicketManagement = () => {
       selectedTickets.value = selectedTickets.value.filter(
         (t) => t.selectedBy !== useUserStore.full_name
       );
+
     } catch (error) {
       console.error("Lỗi khi bỏ chọn vé khỏi Firebase:", error);
       ElNotification({
@@ -686,6 +687,11 @@ export const useTicketManagement = () => {
 
       if (response.success) {
         if (response.result && Array.isArray(response.result)) {
+          await clearAllSelectedTickets();
+          selectedTickets.value.length = 0;
+          queryDate.value = '';
+          queryTripID.value = null;
+          queryTicketID.value = null;
           const updatedTicketsMap = new Map(
             response.result.map((ticket: TicketType) => [ticket.id, ticket])
           );
@@ -771,6 +777,7 @@ export const useTicketManagement = () => {
         }
 
         updateTicketsBookedInTrip();
+        
         ElNotification({
           message: h("p", { style: "color: green" }, "Cập nhật vé thành công!"),
           type: "success",

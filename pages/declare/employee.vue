@@ -10,6 +10,8 @@ import Select from '~/components/inputs/select.vue';
 import { createEmployee, deleteEmployee, getListEmployeeByCompany, updateEmployee } from '~/api/employeeAPI';
 import { format } from 'date-fns'
 import type { UserActionType } from '~/types/userType';
+import type { ChangePasswordStaffType } from '~/types/accountType';
+import { changePasswordStaff } from '~/api/authAPI';
 definePageMeta({
     layout: 'default',
 })
@@ -160,15 +162,41 @@ const handleLock = async (index: number, row: EmployeeType) => {
     }
 };
 
-
+const dialogChangePasswordStaff = ref(false);
+const selectedUserId = ref<string | null>(null);
+const loadingChangePassword = ref(false);
 const handleChangePassword = (index: number, row: EmployeeType) => {
     console.log(row);
-    ElNotification({
-        message: h('p', { style: 'color: orange' }, 'Chức năng đổi mật khẩu đang phát triển!'),
-        type: 'warning',
-    });
+    dialogChangePasswordStaff.value = true;
+    selectedUserId.value = row.id;
 };
-
+const handleSavePassword = async (data: ChangePasswordStaffType) => {
+    loadingChangePassword.value = true;
+    try { 
+        const response = await changePasswordStaff(data);
+        if (response.success) {
+            ElNotification({
+                message: h('p', { style: 'color: teal' }, 'Đổi mật khẩu thành công!'),
+                type: 'success',
+            });
+        } else {
+            ElNotification({
+                message: h('p', { style: 'color: red' }, response.message || 'Đổi mật khẩu thất bại!'),
+                type: 'error',
+            });
+        }
+    } catch (error) {
+        console.error('Error changing password:', error);
+        ElNotification({
+            message: h('p', { style: 'color: red' }, 'Đã xảy ra lỗi khi đổi mật khẩu!'),
+            type: 'error',
+        });
+    } finally {
+        loadingChangePassword.value = false;
+        dialogChangePasswordStaff.value = false;
+        selectedUserId.value = null;
+    }
+}
 const submitForm = async (formEl: FormInstance | undefined) => {
     if (!formEl) return;
     isSubmitting.value = true;
@@ -510,6 +538,12 @@ const categoryRoleOptions = [
             </template>
         </el-drawer>
 
+        <DialogChangePasswordStaffDialog
+            v-model="dialogChangePasswordStaff"
+            :loading="loadingChangePassword"
+            :user-id="selectedUserId"
+            @save="handleSavePassword"
+        />
     </section>
 </template>
 <style scoped>

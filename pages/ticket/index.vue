@@ -294,8 +294,7 @@ watch([valueSelectedDate, valueSelectedRoute], ([newDate, newRoute], [oldDate, o
 
   if (newDate && newRoute) {
     fetchListTripByRouteAndDate(newDate, newRoute as number, useUserStore.company_id ?? '');
-
-    // ✅ Reset selectedTrip chỉ khi không có queryTripID
+    selectedTrip.value = null;
     if (!queryTripID.value) {
       selectedTrip.value = null;
     }
