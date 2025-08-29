@@ -17,3 +17,25 @@ export interface UserInfoType {
   refresh_token: string;
   expires_in: number;
 }
+
+export interface ChangePasswordType {
+  user_id: string;
+  old_password: string | null;
+  new_password: string | null;
+  confirm_password: string | null;
+}
+export interface ChangePasswordStaffType {
+  user_id: string | null;
+  new_password: string | null;
+  confirm_password: string | null;
+}
+
+export interface AccountSettingType {
+  id: string;
+  phone: string;
+  email: string;
+  name: string;
+  address: string;
+  date_of_birth: Date | null;
+  gender: string | null;
+}

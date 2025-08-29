@@ -1,6 +1,7 @@
 import type { AssistantType, DriverType, DTO_RQ_Employee, EmployeeType } from "~/types/employeeType";
 import type { ApiResponse } from "./APIResponse";
 import type { UserActionType } from "~/types/userType";
+import type { AccountSettingType } from "~/types/accountType";
 
 export const createEmployee = async (user: UserActionType, data_create: DTO_RQ_Employee): Promise<ApiResponse<EmployeeType>> => {
   const config = useRuntimeConfig();
@@ -104,6 +105,23 @@ export const getListAssistantByCompany = async (id: string): Promise<ApiResponse
   const cookie = useCookie('access_token');
   try {
     return await $fetch<ApiResponse<AssistantType[]>>(`${apiGateWay}/v3/bus-account/get-list-assistant-by-company/${id}`, {
+      method: "GET",
+      headers: {
+        'Authorization': `Bearer ${cookie.value}`,
+      }
+    });
+  } catch (error) {
+    console.error("API error:", error);
+    throw error;
+  }
+}
+
+export const getInfomationUserById = async (id: string): Promise<ApiResponse<AccountSettingType>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie('access_token');
+  try {
+    return await $fetch<ApiResponse<AccountSettingType>>(`${apiGateWay}/v3/bus-account/get-user-info-bms/${id}`, {
       method: "GET",
       headers: {
         'Authorization': `Bearer ${cookie.value}`,
