@@ -46,17 +46,19 @@ const confirmSelection = () => {
       });
       console.log('Văn phòng đã chọn:', office);
 
-      ElNotification({
-        message: h('p', { style: 'color: teal' }, 'Bắt đầu làm việc tại: ' + office.name),
-        type: 'success',
-      })
+      // ElNotification({
+      //   message: h('p', { style: 'color: teal' }, 'Bắt đầu làm việc tại: ' + office.name),
+      //   type: 'success',
+      // })
+      notifySuccess('Bắt đầu làm việc tại: ' + office.name)
       navigateTo('/dashboard');
     }
   } else {
-    ElNotification({
-      message: h('p', { style: 'color: teal' }, 'Vui lòng chọn một văn phòng!'),
-      type: 'error',
-    })
+    // ElNotification({
+    //   message: h('p', { style: 'color: teal' }, 'Vui lòng chọn một văn phòng!'),
+    //   type: 'error',
+    // })
+    notifyWarning('Vui lòng chọn một văn phòng!')
   }
 };
 
@@ -82,30 +84,27 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 py-8">
-    <div class="max-w-6xl mx-auto px-4">
+  <div class="min-h-screen bg-gray-50 py-2">
+    <div class="max-w-6xl mx-auto px-2">
       <!-- Header -->
-      <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-800 mb-2">
+      <div class="bg-white rounded-lg shadow-md p-4 md:p-6 mb-8">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4 gap-4">
+          <div class="flex-1">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
               Chào mừng bạn đến với Phần mềm Quản lý bán vé!
             </h1>
             <p class="text-gray-600">
               Vui lòng chọn văn phòng mà bạn sẽ làm việc
             </p>
           </div>
-          <div class="text-right">
-            <div class="flex items-center space-x-4">
-              <div>
-
-                <p class="text-lg font-semibold text-blue-600">Nhân viên: {{ useUserStore.full_name }}</p>
-                <p class="text-sm text-gray-500">{{ useUserStore.username }}</p>
-              </div>
-              <el-button type="danger" :icon="SwitchButton" @click="handleLogout">
-                Đăng xuất
-              </el-button>
+          <div class="flex flex-col sm:flex-row sm:items-center gap-3 lg:text-right">
+            <div class="flex-1 sm:flex-none">
+              <p class="text-base md:text-lg font-semibold text-blue-600">Nhân viên: {{ useUserStore.full_name }}</p>
+              <p class="text-sm text-gray-500">{{ useUserStore.username }}</p>
             </div>
+            <el-button class="w-full sm:w-auto" type="danger" :icon="SwitchButton" @click="handleLogout">
+              Đăng xuất
+            </el-button>
           </div>
         </div>
         <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
@@ -117,19 +116,32 @@ onMounted(async () => {
       </div>
 
       <!-- Search and Filter -->
-      <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <div class="flex flex-col md:flex-row gap-4 items-center">
-          <div class="flex-1">
-            <input v-model="searchQuery" type="text" placeholder="Tìm kiếm theo tên hoặc địa chỉ văn phòng..."
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+      <div class="bg-white rounded-lg shadow-md p-2 md:p-6 mb-3">
+        <div class="flex flex-col gap-4">
+          <!-- Search Input -->
+          <div class="w-full">
+            <input 
+              v-model="searchQuery" 
+              type="text" 
+              placeholder="Tìm kiếm theo tên hoặc địa chỉ văn phòng..."
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+            >
           </div>
-          <div class="flex items-center gap-4">
+          
+          <!-- Filter Controls -->
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <label class="flex items-center cursor-pointer">
-              <input v-model="filterByAvailability" type="checkbox"
-                class="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-              <span class="text-sm text-gray-700">Chỉ văn phòng đang hoạt động</span>
+              <input 
+                v-model="filterByAvailability" 
+                type="checkbox"
+                class="mr-3 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              >
+              <span class="text-sm md:text-base text-gray-700">Chỉ văn phòng đang hoạt động</span>
             </label>
-            <el-button @click="() => { searchQuery = ''; filterByAvailability = false }">
+            <el-button 
+              class="w-full sm:w-auto"
+              @click="() => { searchQuery = ''; filterByAvailability = false }"
+            >
               Xóa bộ lọc
             </el-button>
           </div>
@@ -149,10 +161,10 @@ onMounted(async () => {
         </p>
       </div>
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-2">
         <div v-for="office in filteredOffices" :key="`office-${office.id}`" :class="[
           'bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transition-all duration-300',
-          selectedOffice === office.id ? 'ring-4 ring-blue-500 transform scale-105' : 'hover:shadow-lg',
+          selectedOffice === office.id ? 'ring-4 ring-blue-500 transform scale-100' : 'hover:shadow-lg',
           !office.status ? 'opacity-60 cursor-not-allowed' : ''
         ]" @click="office.status && selectOffice(office.id as number)">
           <div class="p-4">

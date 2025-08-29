@@ -30,8 +30,8 @@ onMounted(async () => {
 });
 </script>
 <template>
-    <div class="px-5">
-        <h3 class="text-base font-medium pb-1 pt-2">HẠN ĐĂNG KIỂM</h3>
+    <div class="">
+        <h3 class="text-base font-medium pb-1">HẠN ĐĂNG KIỂM</h3>
         <el-table v-loading="loadingVehicle" element-loading-text="Đang tải dữ liệu..." :data="listVehicle"
             style="width: 100%" border
             :header-cell-style="{ backgroundColor: '#0072bc', color: '#fff', fontWeight: 'bold' }">

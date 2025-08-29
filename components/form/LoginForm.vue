@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { FormInstance, FormRules } from 'element-plus';
 import type { LoginFormType } from '~/types/authType';
-
+defineProps<{
+  loading?: boolean
+}>()
 const emit = defineEmits<{
   (e: 'submit', payload: LoginFormType): void
 }>()
@@ -46,7 +48,7 @@ const validateAndSubmit = async () => {
             <el-input v-model="ruleForm.password" type="password" placeholder="Nhập mật khẩu" size="large" />
         </el-form-item>
         <el-form-item>
-            <el-button type="primary" class="w-full mt-5" size="large" @click="validateAndSubmit">
+            <el-button type="primary" class="w-full mt-5" size="large" @click="validateAndSubmit" :loading="loading">
                 <span class="text-base font-semibold tracking-wide">Đăng nhập</span>
             </el-button>
         </el-form-item>

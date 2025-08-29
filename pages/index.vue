@@ -4,7 +4,6 @@ import LoginForm from '~/components/form/LoginForm.vue';
 import type { LoginFormType } from '~/types/authType';
 import { ecosystemModules } from '~/mock/ecosystemModules';
 import { loginBMS } from '~/api/authAPI';
-import { ElNotification } from 'element-plus'
 import type { UserBMSType } from '~/types/userType';
 definePageMeta({
     middleware: ['guest'],
@@ -12,15 +11,13 @@ definePageMeta({
 })
 const cookie_access_token = useCookie('access_token');
 const useUserStore = userStore();
+const submitLoading = ref(false);
 const handleLogin = async (payload: LoginFormType) => {
+    submitLoading.value = true;
     try {
         const response = await loginBMS(payload)
         if (response.success && response.result) {
-
-            ElNotification({
-                message: h('p', { style: 'color: teal' }, 'Đăng nhập thành công!'),
-                type: 'success',
-            })
+            notifySuccess('Đăng nhập thành công!')
             cookie_access_token.value = response.result.access_token;
             const user: UserBMSType = {
                 id: response.result.id,
@@ -34,20 +31,16 @@ const handleLogin = async (payload: LoginFormType) => {
                 expires_in: response.result.expires_in,
             }
             useUserStore.setUserInfo(user)
-            console.log('Login successful:', response.result)
+            // console.log('Login successful:', response.result)
             navigateTo('/room-work')
         } else {
-            ElNotification({
-                message: h('p', { style: 'color: teal' }, response.message || 'Đăng nhập thất bại!'),
-                type: 'error',
-            })
+            notifyError(response.message || 'Đăng nhập thất bại!')
         }
     } catch (err) {
-        ElNotification({
-            message: h('p', { style: 'color: teal' }, 'Lỗi đăng nhập, vui lòng thử lại sau!'),
-            type: 'error',
-        })
+        notifyError('Lỗi đăng nhập, vui lòng thử lại sau!')
         console.error('Login error:', err)
+    } finally {
+        submitLoading.value = false;
     }
 }
 
@@ -68,7 +61,7 @@ function goToDetail(item: { route?: string }) {
                         Chúc bạn có một ngày làm việc hiệu quả!
                     </div>
                     <div class="mt-10">
-                        <LoginForm @submit="handleLogin" />
+                        <LoginForm :loading="submitLoading" @submit="handleLogin" />
                     </div>
 
                     <div class="mt-5 text-center">
