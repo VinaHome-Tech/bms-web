@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { SwitchButton } from '@element-plus/icons-vue'
-import { ElNotification } from 'element-plus'
 import type {  OfficeType } from '~/types/officeType'
 import { getListOfficeRoomWorkByCompany } from '~/api/officeAPI'
 import { useLogout } from "@/composables/useLogout";
@@ -46,18 +45,10 @@ const confirmSelection = () => {
       });
       console.log('Văn phòng đã chọn:', office);
 
-      // ElNotification({
-      //   message: h('p', { style: 'color: teal' }, 'Bắt đầu làm việc tại: ' + office.name),
-      //   type: 'success',
-      // })
       notifySuccess('Bắt đầu làm việc tại: ' + office.name)
       navigateTo('/dashboard');
     }
   } else {
-    // ElNotification({
-    //   message: h('p', { style: 'color: teal' }, 'Vui lòng chọn một văn phòng!'),
-    //   type: 'error',
-    // })
     notifyWarning('Vui lòng chọn một văn phòng!')
   }
 };

@@ -144,3 +144,17 @@ onMounted(async () => {
     </el-dialog>
 
 </template>
+<style>
+.el-dialog__header {
+    background-color: #0072bc;
+    padding-bottom: 10px;
+}
+
+.el-dialog__headerbtn {
+    color: white;
+}
+
+.el-dialog__footer {
+    padding-top: 0;
+}
+</style>

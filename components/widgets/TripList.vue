@@ -12,8 +12,18 @@
 
     <div v-else class="space-y-3">
       <div v-for="trip in sortedTrips" :key="trip.trip_id"
-        class="bg-white px-4 py-2 border-2 border-gray-200 rounded-lg  hover:shadow-md transition-shadow cursor-pointer"
+        class="relative bg-white px-4 py-2 border-2 border-gray-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer"
         @click="handleTripClick(trip)">
+
+        <div v-if="trip.confirmation_depart"
+          class="absolute inset-0 bg-opacity-75 flex items-start justify-center z-10">
+          <div class="border border-red-500 text-red-500 px-2 font-medium text-[13px] shadow-lg mt-2">
+            ĐÃ XUẤT BẾN
+          </div>
+        </div>
+
+
+
         <div class="flex justify-between items-start mb-2">
           <div class="font-semibold text-gray-700 text-base">
             {{ trip.departure_time?.substring(0, 5) }}
@@ -22,9 +32,9 @@
             {{ trip.tickets_booked }}/{{ trip.total_ticket }}
           </div>
         </div>
+
         <div class="fill-indicator mb-1" :class="getCapacityClass(trip.tickets_booked, trip.total_ticket)"
           :style="{ width: getCapacityPercentage(trip.tickets_booked, trip.total_ticket) + '%' }" />
-
 
         <div class="mt-1 flex justify-between items-center">
           <span v-if="trip.tickets_booked >= trip.total_ticket"
@@ -46,15 +56,16 @@
 
         <div class="mt-1 flex justify-between items-center">
           <div class="font-semibold text-gray-800 text-sm">
-            {{ Array.isArray(trip.driver) ? trip.driver.map(d => `${d.name}`).join(', ') : '' }}
+            {{Array.isArray(trip.driver) ? trip.driver.map(d => `${d.name}`).join(', ') : ''}}
           </div>
           <div class="text-xs text-gray-500">
             {{ trip.seat_chart_name || '' }}
           </div>
         </div>
+
         <div class="mt-1 flex justify-between items-center">
           <div class="font-semibold text-gray-800 text-sm">
-            {{ Array.isArray(trip.assistant) ? trip.assistant.map(a => `${a.name}`).join(', ') : '' }}
+            {{Array.isArray(trip.assistant) ? trip.assistant.map(a => `${a.name}`).join(', ') : ''}}
           </div>
           <div class="text-xs text-gray-500">
             {{ trip.license_plate || '' }}
@@ -75,22 +86,21 @@ interface Props {
 
 const props = defineProps<Props>()
 const emit = defineEmits<{
-  tripSelected: [trip: TripType]
+  tripSelected: [ trip: TripType ]
 }>()
 
-// Computed property to sort trips by departure time
+
 const sortedTrips = computed(() => {
   if (!props.trips) return []
 
-  return [...props.trips].sort((a, b) => {
-    // Convert time strings to comparable format
+  return [ ...props.trips ].sort((a, b) => {
     const timeA = a.departure_time || '00:00'
     const timeB = b.departure_time || '00:00'
     return timeA.localeCompare(timeB)
   })
 })
 
-// Handle trip click
+
 const handleTripClick = (trip: TripType) => {
   emit('tripSelected', trip)
 }

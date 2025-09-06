@@ -55,24 +55,10 @@ export const useTicketManagement = () => {
           console.log("Danh sách vé:", ticketList.value);
         }
       } else {
-        ElNotification({
-          message: h(
-            "p",
-            { style: "color: red" },
-            response.message || "Không thể tải danh sách vé!"
-          ),
-          type: "error",
-        });
+        notifyError("Không thể tải danh sách vé!");
       }
     } catch (error) {
-      ElNotification({
-        message: h(
-          "p",
-          { style: "color: red" },
-          "Đã xảy ra lỗi khi tải danh sách vé!"
-        ),
-        type: "error",
-      });
+      notifyError("Đã xảy ra lỗi khi tải danh sách vé!");
       console.error("Error fetching tickets:", error);
     } finally {
       loadingListTicket.value = false;

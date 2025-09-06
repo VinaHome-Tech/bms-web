@@ -1,29 +1,31 @@
 <script setup lang="ts">
 import Calendar from '~/components/widgets/Calendar.vue';
 import {
-  ArrowUpBold, ArrowRightBold, CloseBold, Delete, Rank, Edit, Printer, Plus, RefreshLeft, CopyDocument, Finished, Timer, RefreshRight, Setting, DocumentCopy
+  ArrowUpBold, ArrowRightBold, CloseBold, Delete, Rank, Edit, Printer, Plus, More, CopyDocument, Finished, Timer, RefreshRight, Setting, DocumentCopy
 } from '@element-plus/icons-vue'
 import type { CollapseModelValue, TabsPaneContext } from 'element-plus'
 import TicketItem from '~/components/widgets/TicketItem.vue';
 import InputNote from '~/components/inputs/inputNote.vue'
 import TripList from '~/components/widgets/TripList.vue'
+import TripInformation from '~/components/widgets/TripInformation.vue'
 import { format } from 'date-fns';
 import type { TripType } from '~/types/tripType';
 import { useFirebase } from '~/composables/useFirebase';
 import { get, update } from 'firebase/database';
 import EditTicketDialog from '~/components/dialog/EditTicketDialog.vue';
 import EditTripInformationDialog from '~/components/dialog/EditTripInformationDialog.vue';
-import { formatCurrencyWithoutSymbol } from '~/lib/formatCurrency';
 import { useTripManagement } from '~/composables/useTripManagement';
 import { useTicketManagement, queryRouteID, queryDate, queryTripID, queryTicketID } from '~/composables/useTicketManagement';
 import { userStore } from '~/stores/useUserStore';
 import { useOfficeStore } from '~/stores/officeStore';
 import { useCompanyStore } from '~/stores/companyStore';
+import { useTripOperations } from '~/composables/useTripOperations';
 import CustomerTable from '~/components/table/CustomerTable.vue';
 import TransitUpTable from '~/components/table/TransitUpTable.vue';
 import TransitDownTable from '~/components/table/TransitDownTable.vue';
 import CargoTable from '~/components/table/CargoTable.vue';
 import CargoDialog from '~/components/dialog/CargoDialog.vue';
+import ChangeTimeTrip from '~/components/dialog/ChangeTimeTrip.vue';
 definePageMeta({
   layout: 'default',
 })
@@ -53,6 +55,17 @@ const {
   loadingCargoSubmit,
 } = useCargoManagement();
 
+const {
+  dialogChangeTimeTrip,
+  loadingFormChangeTimeTrip,
+  handleUpdateTimeTrip,
+  handleOpenChangeTimeDialog,
+  openMessageBoxDeleteTrip,
+  openMessageBoxConfirmationDepart,
+  printTicketListOfTheTrip,
+  handleUpdateNote,
+} = useTripOperations();
+
 
 const { db, ref: dbRef, off } = useFirebase()
 
@@ -71,9 +84,9 @@ function handleDateChange(date: Date) {
 }
 
 
-const activeNames = ref(['1'])
+const activeNames = ref([ '1' ])
 const activeTab = ref('1');
-
+const elTabTicketPending = ref(false);
 
 const handleChange = (val: CollapseModelValue) => {
   console.log(val)
@@ -88,6 +101,7 @@ const handleTripSelected = async (trip: TripType) => {
   selectedTrip.value = trip;
   activeTab.value = '';
   selectedTickets.value = [];
+  elTabTicketPending.value = false;
 }
 
 
@@ -103,6 +117,7 @@ const handleClickTabs = async (tab: TabsPaneContext, event: Event) => {
   if (tab.props.name === '1') {
     console.log('Sơ đồ ghế tab được chọn');
     console.log('Chuyến hiện tại:', selectedTrip.value);
+    elTabTicketPending.value = true;
     if (selectedTrip.value?.trip_id) {
       // 1. Gọi API lấy danh sách vé
       await fetchListTicketByTrip(selectedTrip.value.trip_id);
@@ -115,10 +130,10 @@ const handleClickTabs = async (tab: TabsPaneContext, event: Event) => {
       const selectedTicketsSnapshot = await get(dbRef(db, `selectedTickets/${tripId}`));
       if (selectedTicketsSnapshot.exists()) {
         const selectedUpdates: Record<string, null> = {};
-        Object.entries(selectedTicketsSnapshot.val()).forEach(([ticketId, userName]) => {
+        Object.entries(selectedTicketsSnapshot.val()).forEach(([ ticketId, userName ]) => {
           // Chỉ xóa vé của user hiện tại
           if (userName === currentUser) {
-            selectedUpdates[`selectedTickets/${tripId}/${ticketId}`] = null;
+            selectedUpdates[ `selectedTickets/${tripId}/${ticketId}` ] = null;
           }
         });
 
@@ -132,14 +147,18 @@ const handleClickTabs = async (tab: TabsPaneContext, event: Event) => {
     }
   } else if (tab.props.name === '2') {
     console.log('Hành khách tab được chọn');
+    elTabTicketPending.value = false;
     await fetchListCustomerByTrip();
   } else if (tab.props.name === '3') {
     console.log('Trung chuyển tab được chọn');
+    elTabTicketPending.value = false;
     fetchListTransitUpByTrip();
     fetchListTransitDownByTrip();
   } else if (tab.props.name === '4') {
+    elTabTicketPending.value = false;
     console.log('Hàng hóa tab được chọn');
   } else if (tab.props.name === '5') {
+    elTabTicketPending.value = false;
     console.log('Thu chi chuyến tab được chọn');
   }
 }
@@ -166,9 +185,9 @@ const cleanupTripData = async (tripId: number) => {
     const selectedTicketsSnapshot = await get(dbRef(db, `selectedTickets/${tripId}`));
     if (selectedTicketsSnapshot.exists()) {
       const selectedUpdates: Record<string, null> = {};
-      Object.entries(selectedTicketsSnapshot.val()).forEach(([ticketId, userName]) => {
+      Object.entries(selectedTicketsSnapshot.val()).forEach(([ ticketId, userName ]) => {
         if (userName === useUserStore.full_name) {
-          selectedUpdates[`selectedTickets/${tripId}/${ticketId}`] = null;
+          selectedUpdates[ `selectedTickets/${tripId}/${ticketId}` ] = null;
         }
       });
 
@@ -181,10 +200,10 @@ const cleanupTripData = async (tripId: number) => {
     const ticketsSnapshot = await get(dbRef(db, `tickets/${tripId}`));
     if (ticketsSnapshot.exists()) {
       const ticketUpdates: Record<string, null> = {};
-      Object.entries(ticketsSnapshot.val()).forEach(([ticketId, ticketData]) => {
+      Object.entries(ticketsSnapshot.val()).forEach(([ ticketId, ticketData ]) => {
         const data = ticketData as { updatedBy?: string };
         if (data.updatedBy === useUserStore.full_name) {
-          ticketUpdates[`tickets/${tripId}/${ticketId}`] = null;
+          ticketUpdates[ `tickets/${tripId}/${ticketId}` ] = null;
         }
       });
 
@@ -259,7 +278,7 @@ const {
   handleTicketClick,
   getTicketSelector,
 
-  tripList,
+  // tripList,
   mySelectedTickets,
   dialogFormEditTicket,
   updatingTicketIds,
@@ -288,7 +307,7 @@ const {
 
 
 
-watch([valueSelectedDate, valueSelectedRoute], ([newDate, newRoute], [oldDate, oldRoute]) => {
+watch([ valueSelectedDate, valueSelectedRoute ], ([ newDate, newRoute ], [ oldDate, oldRoute ]) => {
   console.log('Ngày:', oldDate, '=>', newDate);
   console.log('Tuyến:', oldRoute, '=>', newRoute);
 
@@ -323,9 +342,9 @@ watch(tripList, async (newTripList) => {
         const targetTicket = ticketList.value.find(ticket => ticket.id === queryTicketID.value);
         if (targetTicket) {
           console.log('✅ Đã tìm thấy vé cần chọn:', targetTicket);
-          
+
           await handleTicketClick(targetTicket);
-          
+
           console.log('✅ Đã tự động chọn vé:', targetTicket.id);
         } else {
           console.warn('⚠️ Không tìm thấy vé với ID:', queryTicketID.value);
@@ -350,13 +369,13 @@ watch(queryTripID, async (newValue, oldValue) => {
       console.log('✅ Đã tìm thấy chuyến từ query (tripList có sẵn):', foundTrip);
       selectedTrip.value = foundTrip;
       activeTab.value = '1';
-      
+
       // ✅ Clear vé đang chọn trước khi fetch tickets mới
       clearAllSelectedTickets();
-      
+
       // ✅ Fetch tickets cho chuyến mới
       await fetchListTicketByTrip(foundTrip.trip_id);
-      
+
       // ✅ Nếu có queryTicketID, tự động chọn vé
       if (queryTicketID.value) {
         const targetTicket = ticketList.value.find(ticket => ticket.id === queryTicketID.value);
@@ -371,21 +390,21 @@ watch(queryTripID, async (newValue, oldValue) => {
     } else {
       console.warn('⚠️ Không tìm thấy chuyến với ID:', newValue);
     }
-  } 
+  }
   // ✅ Trường hợp 2: Cùng chuyến hiện tại, chỉ cần tìm vé
   else if (newValue && selectedTrip.value && selectedTrip.value.trip_id === newValue) {
     console.log('🔍 Cùng chuyến hiện tại, chỉ cần xử lý vé:', newValue);
-    
+
     // ✅ QUAN TRỌNG: Luôn clear vé đang chọn trước
     clearAllSelectedTickets();
-    
+
     // ✅ Nếu có queryTicketID, tự động chọn vé mới
     if (queryTicketID.value) {
       // Đảm bảo ticketList đã có dữ liệu
       if (ticketList.value.length === 0) {
         await fetchListTicketByTrip(selectedTrip.value.trip_id);
       }
-      
+
       const targetTicket = ticketList.value.find(ticket => ticket.id === queryTicketID.value);
       if (targetTicket) {
         console.log('✅ Đã tìm thấy vé trong chuyến hiện tại:', targetTicket);
@@ -408,19 +427,19 @@ watch(queryTicketID, async (newValue, oldValue) => {
   console.log('🔍 queryTicketID changed:', oldValue, '=>', newValue);
   console.log('🔍 selectedTrip current:', selectedTrip.value);
   console.log('🔍 queryTripID current:', queryTripID.value);
-  
+
   // ✅ Chỉ xử lý khi có chuyến đã chọn và queryTripID không thay đổi
   if (selectedTrip.value && queryTripID.value === selectedTrip.value.trip_id && newValue !== oldValue) {
-    
+
     // ✅ QUAN TRỌNG: Luôn clear vé đang chọn trước
     clearAllSelectedTickets();
-    
+
     if (newValue) {
       // Đảm bảo ticketList đã có dữ liệu
       if (ticketList.value.length === 0) {
         await fetchListTicketByTrip(selectedTrip.value.trip_id);
       }
-      
+
       const targetTicket = ticketList.value.find(ticket => ticket.id === newValue);
       if (targetTicket) {
         console.log('✅ Tìm vé mới trong chuyến hiện tại:', targetTicket);
@@ -472,6 +491,7 @@ watch(routeNames, (newRouteNames) => {
     }
   }
 });
+
 
 
 onMounted(() => {
@@ -532,67 +552,7 @@ onMounted(() => {
                   </template>
 
 
-                  <el-row>
-                    <el-col :span="8">
-                      <div>
-                        <span class="font-medium text-black text-[14px]">Biển số: </span>
-                        <span class="font-medium text-[#0072bc] text-[14px]">{{ selectedTrip.license_plate || ''
-                        }}</span>
-                      </div>
-                      <div>
-                        <span class="font-medium text-black text-[14px]">Số điện thoại xe: </span>
-                        <span class="font-medium text-[#0072bc] text-[14px]">{{ selectedTrip.vehicle_phone || ''
-                        }}</span>
-                      </div>
-                      <div>
-                        <span class="font-medium text-black text-[14px]">Sơ đồ ghế: </span>
-                        <span class="font-medium text-[#0072bc] text-[14px]">{{ selectedTrip.seat_chart_name }}</span>
-                      </div>
-                      <div>
-                        <span class="font-medium text-black text-[14px]">Khởi hành: </span>
-                        <span class="font-medium text-[#0072bc] text-[14px]">{{
-                          selectedTrip.departure_time?.substring(0,
-                            5) }} - {{
-                            format(new Date(selectedTrip.departure_date as Date), 'dd/MM/yyyy') }}</span>
-                      </div>
-                    </el-col>
-                    <el-col :span="8">
-                      <div>
-                        <span class="font-medium text-black text-[14px]">Tài xế: </span>
-                        <span class="font-medium text-[#0072bc] text-[14px]">
-                          {{selectedTrip.driver?.map(d => `${d.name} (${d.phone})`).join(', ')}}
-                        </span>
-
-                      </div>
-                      <div>
-                        <span class="font-medium text-black text-[14px]">Phụ xe: </span>
-                        <span class="font-medium text-[#0072bc] text-[14px]">
-                          {{selectedTrip.assistant?.map(a => `${a.name} (${a.phone})`).join(', ')}}
-                        </span>
-                      </div>
-                    </el-col>
-                    <el-col :span="8">
-                      <div>
-                        <span class="font-medium text-black text-[14px]">Tổng vé: </span>
-                        <span class="font-medium text-[#0072bc] text-[14px]">{{ selectedTrip.tickets_booked }}/{{
-                          selectedTrip.total_ticket }}</span>
-                      </div>
-                      <div>
-                        <span class="font-medium text-black text-[14px]">Tiền vé: </span>
-                        <span class="font-medium text-[#0072bc] text-[14px]">0/{{
-                          formatCurrencyWithoutSymbol(selectedTrip.total_fare ??
-                            0) }}</span>
-                      </div>
-                      <div>
-                        <span class="font-medium text-black text-[14px]">Số hàng: </span>
-                        <span class="font-medium text-[#0072bc] text-[14px]">13</span>
-                      </div>
-                      <div>
-                        <span class="font-medium text-black text-[14px]">Tiền hàng: </span>
-                        <span class="font-medium text-[#0072bc] text-[14px]">7.000.000</span>
-                      </div>
-                    </el-col>
-                  </el-row>
+                  <TripInformation :trip="selectedTrip" />
                   <div>
                     <span class="font-medium text-black text-[14px]">Đặt chỗ: </span>
                     <!-- <span class="font-medium text-[#0072bc] text-[14px]">VP An Sương(4), VP Tân Bình(5), Bến xe miền
@@ -605,12 +565,22 @@ onMounted(() => {
               <div class="py-2">
                 <div class="flex justify-between items-center">
                   <div class="mb-2">
-                    <el-button :icon="Printer">In phơi</el-button>
-                    <el-button :icon="RefreshLeft">Lịch sử</el-button>
-                    <el-button :icon="Finished">Xuất bến</el-button>
-                    <el-button :icon="Delete" type="danger" plain>Huỷ chuyến</el-button>
-                    <el-button :icon="Timer">Đổi giờ</el-button>
+                    <el-button :icon="Printer" @click="printTicketListOfTheTrip">In phơi</el-button>
+                    <el-button :icon="Finished" @click="openMessageBoxConfirmationDepart">Xuất bến</el-button>
+                    <el-button :icon="Delete" type="danger" plain @click="openMessageBoxDeleteTrip">Huỷ
+                      chuyến</el-button>
+                    <el-button :icon="Timer" @click="handleOpenChangeTimeDialog">Đổi giờ</el-button>
                     <el-button :icon="Plus" type="warning" plain>Thêm hàng</el-button>
+                    <el-dropdown style="margin-left: 12px;">
+                      <el-button>
+                        <el-icon><More /></el-icon>
+                      </el-button>
+                      <template #dropdown>
+                        <el-dropdown-menu>
+                          <el-dropdown-item>Lịch sử</el-dropdown-item>
+                        </el-dropdown-menu>
+                      </template>
+                    </el-dropdown>
 
 
                   </div>
@@ -619,7 +589,7 @@ onMounted(() => {
                     <el-button :icon="Setting" type="info" @click="handleOpenFormEditTripInformation" />
                   </div>
                 </div>
-                <InputNote />
+                <InputNote :note="selectedTrip?.note" @update="handleUpdateNote" />
               </div>
             </div>
 
@@ -721,7 +691,6 @@ onMounted(() => {
                                 <span class="text-[15px]">{{ ticket.seat_name }}</span>
                               </el-tag>
                             </div>
-
                             <div
                               class="bg-purple-50 px-4 py-2 rounded-r-xl flex gap-2 items-center justify-center flex-shrink-0">
                               <div v-if="isCopyTicket">
@@ -730,26 +699,22 @@ onMounted(() => {
                                   <el-button type="success" :icon="DocumentCopy" circle @click="handlePasteTickets" />
                                 </el-tooltip>
                               </div>
-
                               <div>
                                 <el-tooltip content="Cập nhật thông tin vé" placement="top">
                                   <el-button type="warning" :icon="Edit" circle @click="handleOpenFormEditTicket" />
                                 </el-tooltip>
                               </div>
-
                               <div
                                 v-if="mySelectedTickets.filter(t => t.booked_status === true).length > 0 && !hasDifferentPhoneNumbers">
                                 <el-tooltip content="Sao chép vé" placement="top">
                                   <el-button color="#626aef" :icon="CopyDocument" circle @click="handleCopyTickets" />
                                 </el-tooltip>
                               </div>
-
                               <div v-if="mySelectedTickets.filter(t => t.booked_status === true).length > 0">
                                 <el-tooltip content="Di chuyển vé" placement="top">
                                   <el-button type="primary" :icon="Rank" circle @click="handleMoveTickets" />
                                 </el-tooltip>
                               </div>
-
                               <div v-if="mySelectedTickets.filter(t => t.booked_status === true).length > 0">
                                 <el-tooltip content="Hủy vé" placement="top">
                                   <el-button type="danger" :icon="Delete" circle
@@ -761,11 +726,6 @@ onMounted(() => {
                         </div>
                       </div>
                     </div>
-
-
-
-
-
                   </div>
                 </el-tab-pane>
                 <el-tab-pane label="Hành khách" name="2">
@@ -790,7 +750,7 @@ onMounted(() => {
                 <el-tab-pane label="Thu chi chuyến" name="5">Thu chi chuyến</el-tab-pane>
               </el-tabs>
             </div>
-            <div class="bg-white px-2 rounded-lg mt-1">
+            <div class="bg-white px-2 rounded-lg mt-1" v-if="elTabTicketPending">
               <el-tabs>
                 <el-tab-pane label="Chờ xử lý" name="1">
 
@@ -811,6 +771,9 @@ onMounted(() => {
     <EditTripInformationDialog v-model="dialogFormEditTripInformation" :trip="selectedTrip"
       :is-updating="loadingFormEditTripInformation" @updated="handleUpdateTripInformation"
       @closed="handleClosedDialogdialogFormEditTripInformation" />
+
+    <ChangeTimeTrip v-model="dialogChangeTimeTrip" :trip="selectedTrip" :is-updating="loadingFormChangeTimeTrip"
+      @updated="handleUpdateTimeTrip" />
   </section>
 
 </template>

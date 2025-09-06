@@ -1,4 +1,4 @@
-import type { DTO_RQ_UpdateTrip, TripType } from "~/types/tripType";
+import type { DTO_RQ_ChangeTimeTrip, DTO_RQ_UpdateTrip, TripType } from "~/types/tripType";
 import type { ApiResponse } from "./APIResponse";
 import type { UserActionType } from "~/types/userType";
 
@@ -58,3 +58,98 @@ export const updateTripInformation = async (
     throw error;
   }
 };
+
+export const changeTimeTrip = async (
+  data_update: DTO_RQ_ChangeTimeTrip
+): Promise<ApiResponse<TripType>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie("access_token");
+  try {
+    return await $fetch<ApiResponse<TripType>>(
+      `${apiGateWay}/v2/trip/change-time-trip/${data_update.trip_id}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${cookie.value}`,
+        },
+        body: {
+          data_update,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};
+
+export const deleteTrip = async (
+  tripId: number
+): Promise<ApiResponse<void>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie("access_token");
+  try {
+    return await $fetch<ApiResponse<void>>(
+      `${apiGateWay}/v2/trip/delete-trip/${tripId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${cookie.value}`,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+};
+
+export const confirmationDepart = async (
+  tripId: number
+): Promise<ApiResponse<void>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie("access_token");
+  try {
+    return await $fetch<ApiResponse<void>>(
+      `${apiGateWay}/v2/trip/confirmation-depart/${tripId}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${cookie.value}`,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+}
+
+export const updateNote = async (
+  tripId: number,
+  note: string | null
+): Promise<ApiResponse<string>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie("access_token");
+  try {
+    return await $fetch<ApiResponse<string>>(
+      `${apiGateWay}/v2/trip/update-note/${tripId}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${cookie.value}`,
+        },
+        body: {
+          note,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+}

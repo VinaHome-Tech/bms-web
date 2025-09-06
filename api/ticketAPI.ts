@@ -5,6 +5,7 @@ import type {
   DTO_RP_ListTransitDownByTrip,
   DTO_RP_ListTransitUpByTrip,
   DTO_RP_SearchTicket,
+  DTO_RP_TicketsToPrint,
   DTO_RQ_UpdateTicket,
   TicketType,
 } from "~/types/ticketType";
@@ -263,3 +264,25 @@ export const querySearchTickets = async (
     throw error;
   }
 };
+
+export const getTicketsByTripToPrint = async (
+  tripId: number
+): Promise<ApiResponse<DTO_RP_TicketsToPrint[]>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie("access_token");
+  try {
+    return await $fetch<ApiResponse<DTO_RP_TicketsToPrint[]>>(
+      `${apiGateWay}/v2/ticket/get-tickets-by-trip-to-print/${tripId}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${cookie.value}`,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+}

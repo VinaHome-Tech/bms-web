@@ -13,7 +13,8 @@ import {
   Ticket,
   HomeFilled,
   Finished,
-  Lock
+  Lock,
+  DataAnalysis,
 } from '@element-plus/icons-vue'
 
 import type { Component } from 'vue'
@@ -37,6 +38,7 @@ const Icons: Record<string, Component> = {
   HomeFilled,
   Finished,
   Lock,
+  DataAnalysis,
 };
 const { handleQueryTicket } = useTicketManagement();
 
@@ -125,6 +127,18 @@ const menuItems = [
       { label: 'Lịch chạy', index: '13-7', to: '/declare/schedule' },
       { label: 'Mã giảm giá', index: '13-8', to: '/declare/discount' },
       { label: 'Sơ đồ ghế', index: '13-9', to: '/declare/seat' },
+
+    ],
+  },
+  {
+    type: 'submenu',
+    label: 'Báo cáo',
+    index: '14',
+    icon: 'DataAnalysis',
+    children: [
+      { label: 'Báo cáo vé', index: '14-1', to: '/report/ticket' },
+      { label: 'Báo cáo hàng', index: '14-2', to: '/report/cargo' },
+
 
     ],
   },

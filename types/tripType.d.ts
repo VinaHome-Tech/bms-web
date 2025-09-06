@@ -19,6 +19,7 @@ export interface TripType {
   vehicle_phone?: string | null;
   driver?: DriverType[];
   assistant?: AssistantType[];
+  confirmation_depart?: boolean;
 }
 
 export interface DTO_RQ_UpdateTrip {
@@ -30,6 +31,16 @@ export interface DTO_RQ_UpdateTrip {
   driver: DriverType[];
   assistant: AssistantType[];
   trip_type: number;
+}
+
+export interface DTO_RP_ListTripItem {
+  id: number;
+  trip_time: string;
+}
+
+export interface DTO_RQ_ChangeTimeTrip {
+  trip_id: number;
+  departure_time: string;
 }
 
 

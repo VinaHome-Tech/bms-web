@@ -1,4 +1,5 @@
-import { changePasswordApi } from "~/api/authAPI";
+
+import { changePasswordApi } from "~/api/employeeAPI";
 import type { ChangePasswordType } from "~/types/accountType";
 
 export const useAccountManagement = () => {

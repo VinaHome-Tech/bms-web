@@ -37,5 +37,5 @@ export interface AccountSettingType {
   name: string;
   address: string;
   date_of_birth: Date | null;
-  gender: string | null;
+  gender: string;
 }

@@ -7,11 +7,10 @@ import type { DTO_RQ_Employee, EmployeeType } from '~/types/employeeType';
 import InputText from '~/components/inputs/inputText.vue';
 import InputDate from '~/components/inputs/inputDate.vue';
 import Select from '~/components/inputs/select.vue';
-import { createEmployee, deleteEmployee, getListEmployeeByCompany, updateEmployee } from '~/api/employeeAPI';
+import { changePasswordStaff, createEmployee, deleteEmployee, getListEmployeeByCompany, updateEmployee } from '~/api/employeeAPI';
 import { format } from 'date-fns'
 import type { UserActionType } from '~/types/userType';
 import type { ChangePasswordStaffType } from '~/types/accountType';
-import { changePasswordStaff } from '~/api/authAPI';
 definePageMeta({
     layout: 'default',
 })

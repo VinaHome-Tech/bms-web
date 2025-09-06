@@ -3,8 +3,9 @@ export interface SeatChartType {
     seat_chart_name: string | null;
     seat_chart_type: number;
     total_floor: number;  
-    total_row: number    
-    total_column: number; 
+    total_row: number;
+    total_column: number;
+    total_seat: number;
     seats: SeatType[] | null;
     company_id: number;
 }
