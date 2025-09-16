@@ -11,6 +11,11 @@ export default defineNuxtConfig({
       tailwindcss(),
     ]
   },
+  nitro: {
+    routeRules: {
+      '/.well-known/**': { prerender: false }
+    }
+  },
   app: {
     head: {
       title: 'Phần mềm nhà xe - VinaHome',

@@ -95,7 +95,7 @@ watch(visible, (val) => {
 </script>
 <template>
     <el-dialog v-model="visible" width="350" @close="handleClose" style="padding: 0px;">
-        <template #title>
+        <template #header>
             <div class="pt-[10px] pl-2">
                 <span class="text-[16px] font-semibold text-white">
                     Thay đổi mật khẩu

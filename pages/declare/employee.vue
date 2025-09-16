@@ -241,6 +241,7 @@ const submitForm = async (formEl: FormInstance | undefined) => {
                             username: useUserStore.username,
                             full_name: useUserStore.full_name,
                             company_id: useUserStore.company_id,
+                            company_code: useUserStore.company_code,
                         } as UserActionType,
                         ruleForm.value as DTO_RQ_Employee
                     );

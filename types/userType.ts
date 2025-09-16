@@ -1,14 +1,19 @@
+// ~/types/userType.ts
 export interface UserBMSType {
-  id: string | null;
-  username: string | null;
-  full_name: string | null;
-  company_id: string | null;
-  company_name: string | null;
-  role: string | null;
-  access_token: string | null;
-  refresh_token: string | null;
-  expires_in: number | null;
+  id: number | null
+  username: string | null
+  full_name: string | null
+  company_name: string | null
+  company_id: string | null
+  company_code: string | null
+  role: string | null
+
+  access_token?: string | null
+  refresh_token?: string | null
+  expires_in: number | null
+  expires_at?: number | null
 }
+
 
 export interface UserActionType {
   id: string;
@@ -16,4 +21,5 @@ export interface UserActionType {
   username: string;
   company_id: string;
   office_id?: number | null ;
+  company_code?: string | null ;
 }

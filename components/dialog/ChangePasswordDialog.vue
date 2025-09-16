@@ -1,3 +1,4 @@
+<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
 import { Checked } from '@element-plus/icons-vue'
 
@@ -31,7 +32,7 @@ watch(visible, (val) => {
 })
 const ruleFormRef = ref<FormInstance>()
 const ruleForm = reactive<ChangePasswordType>({
-    user_id: useUserStore.id || '',
+    user_id: String(useUserStore.id ?? ''),
     old_password: null,
     new_password: null,
     confirm_password: null
@@ -94,7 +95,7 @@ onMounted(async () => {
 </script>
 <template>
     <el-dialog v-model="visible" width="350" @close="handleClose" style="padding: 0px;">
-        <template #title>
+        <template #header>
             <div class="pt-[10px] pl-2">
                 <span class="text-[16px] font-semibold text-white">
                     Thay đổi mật khẩu

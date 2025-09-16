@@ -18,7 +18,6 @@ import { useTripManagement } from '~/composables/useTripManagement';
 import { useTicketManagement, queryRouteID, queryDate, queryTripID, queryTicketID } from '~/composables/useTicketManagement';
 import { userStore } from '~/stores/useUserStore';
 import { useOfficeStore } from '~/stores/officeStore';
-import { useCompanyStore } from '~/stores/companyStore';
 import { useTripOperations } from '~/composables/useTripOperations';
 import CustomerTable from '~/components/table/CustomerTable.vue';
 import TransitUpTable from '~/components/table/TransitUpTable.vue';
@@ -69,7 +68,6 @@ const {
 
 const { db, ref: dbRef, off } = useFirebase()
 
-const companyStore = useCompanyStore();
 const useUserStore = userStore();
 const officeStore = useOfficeStore();
 
@@ -87,9 +85,15 @@ function handleDateChange(date: Date) {
 const activeNames = ref([ '1' ])
 const activeTab = ref('1');
 const elTabTicketPending = ref(false);
+const showRouteInfo = ref(false);
 
 const handleChange = (val: CollapseModelValue) => {
   console.log(val)
+}
+
+const handleViewRoute = () => {
+  console.log('Xem lộ trình được click');
+  showRouteInfo.value = !showRouteInfo.value;
 }
 
 
@@ -494,11 +498,10 @@ watch(routeNames, (newRouteNames) => {
 
 
 
-onMounted(() => {
-  useUserStore.loadUserInfo();
-  companyStore.loadCompanyStore();
-  officeStore.loadOfficeStore();
-  fetchListRouteName(useUserStore.company_id ?? '');
+onMounted(async () => {
+  await useUserStore.loadUserInfo();
+  await officeStore.loadOfficeStore();
+  fetchListRouteName(String(useUserStore.company_id ?? ''));
 
 });
 
@@ -530,6 +533,7 @@ onMounted(() => {
       <el-container>
         <el-header>
           <section v-if="selectedTrip">
+            <!-- Trip Information Section -->
             <div class="bg-white px-2 rounded-lg shadow-md">
               <el-collapse v-model="activeNames" @change="handleChange">
                 <el-collapse-item name="1">
@@ -541,7 +545,13 @@ onMounted(() => {
                     </span>
                   </template>
                   <template #icon="{ isActive }">
-                    <span class="flex items-center justify-center">
+                    <span class="flex items-center justify-center gap-4">
+                      <span class="flex items-center gap-1 text-[#0072bc] cursor-pointer hover:text-[#005a9a]" @click.stop="handleViewRoute">
+                        {{ showRouteInfo ? 'Ẩn lộ trình' : 'Xem lộ trình' }}
+                        <el-icon>
+                          <component :is="showRouteInfo ? ArrowUpBold : ArrowRightBold" />
+                        </el-icon>
+                      </span>
                       <span class="flex items-center gap-1 text-[#0072bc]">
                         {{ isActive ? 'Thu gọn' : 'Xem thông tin chuyến' }}
                         <el-icon>
@@ -550,7 +560,6 @@ onMounted(() => {
                       </span>
                     </span>
                   </template>
-
 
                   <TripInformation :trip="selectedTrip" />
                   <div>
@@ -590,6 +599,21 @@ onMounted(() => {
                   </div>
                 </div>
                 <InputNote :note="selectedTrip?.note" @update="handleUpdateNote" />
+              </div>
+            </div>
+
+            <!-- Route Information Section - Hiển thị lộ trình ở dưới -->
+            <div v-if="showRouteInfo" class="bg-white px-2 rounded-lg shadow-md mt-2">
+              <div class="py-3">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="text-[16px] font-semibold">Lộ trình</h3>
+                  <el-button size="small" type="primary" plain @click="showRouteInfo = false">
+                    <el-icon><CloseBold /></el-icon>
+                    Đóng
+                  </el-button>
+                </div>
+                
+            
               </div>
             </div>
 

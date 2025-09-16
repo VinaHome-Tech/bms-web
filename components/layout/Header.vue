@@ -1,6 +1,6 @@
+<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
 import { ref } from 'vue'
-// Import các icon từ @element-plus/icons-vue
 import {
   Menu,
   Search,
@@ -15,16 +15,24 @@ import {
   Finished,
   Lock,
   DataAnalysis,
+  Postcard,
+  Service,
+  Message,
+  Phone,
+  Edit,
 } from '@element-plus/icons-vue'
-
+import IconZalo from '~/assets/icon/static/icon-zalo.png'
+import IconPhone from '~/assets/icon/static/icon-phone.png'
+import IconDesk from '~/assets/icon/static/icon-desk.png'
+import IconSend from '~/assets/icon/static/icon-send.png'
 import type { Component } from 'vue'
-import { useLogout } from "@/composables/useLogout";
 import { querySearchTickets } from '~/api/ticketAPI';
 import type { DTO_RP_SearchTicket } from '~/types/ticketType';
 import { formatDate } from '~/lib/formatDate';
 import { formatCurrency } from '~/lib/formatCurrency';
 import ChangePasswordDialog from '../dialog/ChangePasswordDialog.vue';
-const { handleLogout } = useLogout();
+import SendCommentDialog from '../dialog/SendCommentDialog.vue';
+
 const Icons: Record<string, Component> = {
   Menu,
   Search,
@@ -41,7 +49,8 @@ const Icons: Record<string, Component> = {
   DataAnalysis,
 };
 const { handleQueryTicket } = useTicketManagement();
-
+// const { handleLogout } = useLogout();
+const { handleManualLogout } = useAuth();
 
 const useUserStore = userStore();
 const officeStore = useOfficeStore();
@@ -55,31 +64,25 @@ const notifications = ref([
 
 
 const openSettings = () => {
-  // Logic mở settings
   console.log('Open settings')
 }
 
 const handleNotificationCommand = (command: number) => {
-  // Xử lý click notification
   console.log('Notification clicked:', command)
 }
 
 const handleUserCommand = (command: string) => {
   switch (command) {
     case 'profile':
-      // Navigate to profile
       console.log('Go to profile')
       break
     case 'settings':
-      // Navigate to settings
       console.log('Go to settings')
       break
     case 'system':
-      // Navigate to system management
       console.log('Go to system management')
       break
     case 'logout':
-      // Logout logic
       console.log('Logout')
       break
   }
@@ -161,7 +164,7 @@ const groupTicketsByPhoneAndTrip = (tickets: DTO_RP_SearchTicket[]) => {
       if (existingTicket.seat_name && ticket.seat_name) {
         const existingSeats = existingTicket.seat_name.split(', ')
         const newSeats = ticket.seat_name.split(', ')
-        const allSeats = [...new Set([...existingSeats, ...newSeats])]
+        const allSeats = [ ...new Set([ ...existingSeats, ...newSeats ]) ]
         existingTicket.seat_name = allSeats.join(', ')
       } else if (ticket.seat_name) {
         existingTicket.seat_name = ticket.seat_name
@@ -186,7 +189,7 @@ const formatSeatDisplay = (seatName: string) => {
   const seats = seatName.split(', ')
 
   if (seats.length === 1) {
-    return `Ghế ${seats[0]}`
+    return `Ghế ${seats[ 0 ]}`
   } else if (seats.length <= 3) {
     return `Ghế ${seats.join(', ')}`
   } else {
@@ -195,7 +198,6 @@ const formatSeatDisplay = (seatName: string) => {
 }
 
 const querySearch = (queryString: string, callback: (results: DTO_RP_SearchTicket[]) => void) => {
-  // Clear previous timeout
   if (debounceTimeout) {
     clearTimeout(debounceTimeout)
   }
@@ -214,7 +216,7 @@ const querySearch = (queryString: string, callback: (results: DTO_RP_SearchTicke
     try {
       console.log('Searching for:', queryString)
 
-      const response = await querySearchTickets(queryString, useUserStore.company_id ?? '')
+      const response = await querySearchTickets(queryString, String(useUserStore.company_id ?? ''))
       console.log('Search results:', response)
 
       // ✅ THÊM: Gộp các vé có cùng phone và trip_id
@@ -230,12 +232,12 @@ const querySearch = (queryString: string, callback: (results: DTO_RP_SearchTicke
   }, 800)
 }
 
-const cleanup = () => {
-  if (debounceTimeout) {
-    clearTimeout(debounceTimeout)
-    debounceTimeout = null
-  }
-}
+// const cleanup = () => {
+//   if (debounceTimeout) {
+//     clearTimeout(debounceTimeout)
+//     debounceTimeout = null
+//   }
+// }
 
 const handleSelectTicket = (item: Record<string, any>): void => {
   const ticket = item as DTO_RP_SearchTicket;
@@ -248,7 +250,7 @@ const {
   handleClosedChangePasswordDialog,
   handleSaveChangePasswordDialog
 } = useAccountManagement();
-
+const dialogFormSendComment = ref(false)
 onMounted(async () => {
   await useUserStore.loadUserInfo();
   await officeStore.loadOfficeStore();
@@ -260,32 +262,35 @@ onMounted(async () => {
     <div class="flex items-center space-x-4">
 
 
-      <el-dropdown @command="handleUserCommand" trigger="click">
+      <el-dropdown trigger="click">
         <div class="flex items-center space-x-3 rounded-lg transition-colors cursor-pointer">
-          <el-button :icon="Menu" circle />
+          <el-button :icon="Icons.Menu" circle />
         </div>
+
         <template #dropdown>
-          <el-menu default-active="2" class="el-menu-vertical-demo">
+          <el-menu :default-active="$route.path" router class="el-menu-vertical-demo">
             <template v-for="item in menuItems" :key="item.index">
-              <NuxtLink v-if="item.type === 'item'" :to="item.to" exact>
-                <el-menu-item :index="item.index">
+              <!-- item thường -->
+              <NuxtLink v-if="item.type === 'item'" :to="item.to">
+                <el-menu-item :index="item.to">
                   <el-icon>
-                    <component :is="Icons[item.icon as string]" />
+                    <component :is="Icons[ item.icon as string ]" />
                   </el-icon>
                   <span class="text-base">{{ item.label }}</span>
                 </el-menu-item>
               </NuxtLink>
 
+              <!-- submenu -->
               <el-sub-menu v-else-if="item.type === 'submenu'" :index="item.index">
                 <template #title>
                   <el-icon>
-                    <component :is="Icons[item.icon as string]" />
+                    <component :is="Icons[ item.icon as string ]" />
                   </el-icon>
                   <span class="text-base">{{ item.label }}</span>
                 </template>
 
-                <NuxtLink v-for="child in item.children" :key="child.index" :to="child.to" exact>
-                  <el-menu-item :index="child.index">
+                <NuxtLink v-for="child in item.children" :key="child.index" :to="child.to">
+                  <el-menu-item :index="child.to">
                     <span class="text-base">{{ child.label }}</span>
                   </el-menu-item>
                 </NuxtLink>
@@ -297,14 +302,20 @@ onMounted(async () => {
 
 
       <div class="flex items-center space-x-3">
-        <div class="flex flex-col">
-          <span class="text-lg font-semibold text-black">{{ useUserStore.company_name }}</span>
-          <span class="w-fit text-xs text-black bg-green-300 px-2 py-0.5 rounded">
-            {{ officeStore.name }}
-          </span>
-
-        </div>
-
+        <ClientOnly>
+          <div class="flex flex-col">
+            <span class="text-lg font-semibold text-black">{{ useUserStore.company_name || '' }}</span>
+            <span class="w-fit text-xs text-black bg-green-300 px-2 py-0.5 rounded">
+              {{ officeStore.name || '' }}
+            </span>
+          </div>
+          <template #fallback>
+            <div class="flex flex-col">
+              <span class="text-lg font-semibold text-black" />
+              <span class="w-fit text-xs text-black bg-green-300 px-2 py-0.5 rounded" />
+            </div>
+          </template>
+        </ClientOnly>
       </div>
 
 
@@ -403,29 +414,15 @@ onMounted(async () => {
 
     <!-- Right Section -->
     <div class="flex items-center space-x-3">
-      <!-- Quick Stats -->
-      <div class="hidden lg:flex items-center space-x-4 text-sm">
-        <div class="flex items-center space-x-1 text-gray-600">
-          <el-icon>
-            <User />
-          </el-icon>
-          <span>1,234</span>
-        </div>
-        <div class="flex items-center space-x-1 text-gray-600">
-          <el-icon>
-            <TrendCharts />
-          </el-icon>
-          <span>89%</span>
-        </div>
-      </div>
+
 
       <!-- Notifications -->
       <el-dropdown @command="handleNotificationCommand" trigger="click">
-        <el-button type="text" class="p-2 relative">
+        <el-button link class="p-2 relative">
           <el-icon>
             <Bell />
           </el-icon>
-          <el-badge :value="notifications.length" class="absolute -top-1 -right-1">
+          <el-badge :value="notifications.length" class="absolute -top-1">
           </el-badge>
         </el-button>
         <template #dropdown>
@@ -446,7 +443,7 @@ onMounted(async () => {
               </el-dropdown-item>
             </div>
             <div class="p-3 border-t border-gray-200">
-              <el-button type="text" class="text-indigo-600 hover:text-indigo-700">
+              <el-button link class="text-indigo-600 hover:text-indigo-700">
                 Xem tất cả thông báo
               </el-button>
             </div>
@@ -454,12 +451,50 @@ onMounted(async () => {
         </template>
       </el-dropdown>
 
-      <!-- Settings -->
-      <el-button type="text" class="p-2" @click="openSettings">
-        <el-icon>
-          <Setting />
-        </el-icon>
-      </el-button>
+
+
+
+      <div class="group relative inline-block">
+        <span
+          class="flex items-center justify-center w-10 h-10 cursor-pointer bg-gray-100 rounded-lg transition-colors duration-200">
+          <el-icon class="text-gray-600 hover:text-gray-800">
+            <Service />
+          </el-icon>
+        </span>
+
+        <div class="absolute left-0 top-full w-full h-2 invisible group-hover:visible"></div>
+
+        <div
+          class="absolute left-0 top-full mt-2 hidden group-hover:block bg-white shadow-lg rounded-lg border border-gray-200 py-1 min-w-[190px] z-10">
+          <div class="flex flex-col">
+            <div class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors duration-150">
+              <img :src="IconZalo" alt="Zalo" class="w-6 h-6 mr-1" />
+              <span class="text-sm text-gray-700">Hỗ trợ qua Zalo</span>
+            </div>
+            <a href="tel:0877717575"
+              class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors duration-150">
+              <img :src="IconPhone" alt="Phone" class="w-6 h-6 mr-1" />
+              <span class="text-sm text-gray-700">
+                Hotline hỗ trợ kỹ thuật: <br />0877 71 7575
+              </span>
+            </a>
+
+            <a href="https://remotedesktop.google.com/support" target="_blank"
+              class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors duration-150">
+              <img :src="IconDesk" alt="Desk" class="w-6 h-6 mr-1" />
+              <span class="text-sm text-gray-700">Điều khiển từ xa</span>
+            </a>
+
+            <div class="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors duration-150" @click="dialogFormSendComment = true">
+              <img :src="IconSend" alt="Send" class="w-6 h-6 mr-1" />
+              <span class="text-sm text-gray-700">Gửi ý kiến đóng góp</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
 
       <!-- User Menu -->
       <el-dropdown @command="handleUserCommand" trigger="click">
@@ -471,8 +506,14 @@ onMounted(async () => {
             </el-icon>
           </el-avatar>
           <div class="hidden md:block text-left">
-            <div class="text-sm font-medium text-black">{{ useUserStore.full_name }}</div>
-            <div class="text-xs text-gray-900">{{ useUserStore.username }}</div>
+            <ClientOnly>
+              <div class="text-sm font-medium text-black">{{ useUserStore.full_name || '' }}</div>
+              <div class="text-xs text-gray-900">{{ useUserStore.username || '' }}</div>
+              <template #fallback>
+                <div class="text-sm font-medium text-black" />
+                <div class="text-xs text-gray-900" />
+              </template>
+            </ClientOnly>
           </div>
         </div>
         <template #dropdown>
@@ -485,8 +526,14 @@ onMounted(async () => {
                   </el-icon>
                 </el-avatar>
                 <div>
-                  <div class="text-sm font-medium text-gray-900">{{ useUserStore.full_name }}</div>
-                  <div class="text-xs text-gray-500">{{ useUserStore.role }}</div>
+                  <ClientOnly>
+                    <div class="text-sm font-medium text-gray-900">{{ useUserStore.full_name || '' }}</div>
+                    <div class="text-xs text-gray-500">{{ useUserStore.role || '' }}</div>
+                    <template #fallback>
+                      <div class="text-sm font-medium text-gray-900" />
+                      <div class="text-xs text-gray-500" />
+                    </template>
+                  </ClientOnly>
                 </div>
               </div>
             </div>
@@ -498,6 +545,13 @@ onMounted(async () => {
               <span class="ml-2">Cài đặt tài khoản</span>
             </el-dropdown-item>
 
+            <el-dropdown-item command="settings" @click="navigateTo('/account-setting')">
+              <el-icon>
+                <Postcard />
+              </el-icon>
+              <span class="ml-2">Cài đặt hiển thị</span>
+            </el-dropdown-item>
+
             <el-dropdown-item command="system" @click="handleOpenChangePasswordDialog">
               <el-icon>
                 <Lock />
@@ -505,7 +559,7 @@ onMounted(async () => {
               <span class="ml-2">Đổi mật khẩu</span>
             </el-dropdown-item>
 
-            <el-dropdown-item divided command="logout" class="text-red-600" @click="handleLogout">
+            <el-dropdown-item divided command="logout" class="text-red-600" @click="handleManualLogout">
               <el-icon>
                 <SwitchButton />
               </el-icon>
@@ -516,7 +570,9 @@ onMounted(async () => {
       </el-dropdown>
     </div>
     <ChangePasswordDialog v-model="dialogFormChangePassword" :loading="loadingChangePassword"
-      @closed="handleClosedChangePasswordDialog" @save="handleSaveChangePasswordDialog"/>
+      @closed="handleClosedChangePasswordDialog" @save="handleSaveChangePasswordDialog" />
+
+    <SendCommentDialog v-model="dialogFormSendComment" />
   </header>
 </template>
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { defineStore } from "pinia";
 import type { UserBMSType } from "~/types/userType";
 
@@ -10,10 +11,12 @@ export const userStore = defineStore("user_bms", {
     full_name: null,
     company_name: null,
     company_id: null,
+    company_code: null,
     role: null,
     access_token: null,
     refresh_token: null,
     expires_in: null,
+    expires_at: null,
   }),
 
   actions: {
@@ -23,13 +26,29 @@ export const userStore = defineStore("user_bms", {
       this.full_name = user.full_name;
       this.company_name = user.company_name;
       this.company_id = user.company_id;
+      this.company_code = user.company_code;
       this.role = user.role;
-      this.access_token = user.access_token;
-      this.refresh_token = user.refresh_token;
-      this.expires_in = user.expires_in;
 
+      this.expires_in = user.expires_in;
+      this.expires_at = Date.now() + (user.expires_in ?? 0) * 1000;
+
+      // ✅ chỉ lưu token vào cookie
+      const cookie_access_token = useCookie("access_token");
+      const cookie_refresh_token = useCookie("refresh_token");
+      if ((user as any).access_token) {
+        cookie_access_token.value = (user as any).access_token;
+      }
+      if ((user as any).refresh_token) {
+        cookie_refresh_token.value = (user as any).refresh_token;
+      }
+
+      // ✅ lưu user info (không chứa token) vào localStorage
       if (import.meta.client) {
-        localStorage.setItem(LOCAL_KEY, JSON.stringify(user));
+        const { access_token, refresh_token, ...safeUser } = user;
+        localStorage.setItem(LOCAL_KEY, JSON.stringify({
+          ...safeUser,
+          expires_at: this.expires_at,
+        }));
       }
     },
 
@@ -38,27 +57,35 @@ export const userStore = defineStore("user_bms", {
         const saved = localStorage.getItem(LOCAL_KEY);
         if (saved) {
           const user = JSON.parse(saved);
-          this.setUserInfo(user);
+          this.$patch(user);
         } else {
-          navigateTo("/");
           this.resetUserInfo();
+          navigateTo("/");
         }
       }
     },
+    updateTokens(accessToken: string, refreshToken: string, expiresIn: number) {
+      this.expires_in = expiresIn;
+      this.expires_at = Date.now() + expiresIn * 1000;
+
+      // ✅ cập nhật lại cookie
+      const cookie_access_token = useCookie("access_token");
+      const cookie_refresh_token = useCookie("refresh_token");
+      cookie_access_token.value = accessToken;
+      cookie_refresh_token.value = refreshToken;
+    },
+
+
 
     resetUserInfo() {
-      this.id = null;
-      this.username = null;
-      this.full_name = null;
-      this.company_name = null;
-      this.company_id = null;
-      this.role = null;
-      this.access_token = null;
-      this.refresh_token = null;
-      this.expires_in = null;
+      this.$reset();
 
       if (import.meta.client) {
         localStorage.removeItem(LOCAL_KEY);
+        const cookie_access_token = useCookie("access_token");
+        const cookie_refresh_token = useCookie("refresh_token");
+        cookie_access_token.value = null;
+        cookie_refresh_token.value = null;
       }
     },
   },

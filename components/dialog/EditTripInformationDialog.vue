@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DTO_RQ_UpdateTrip, TripType } from '~/types/tripType';
-import { Checked } from '@element-plus/icons-vue';
+import { Checked, Loading } from '@element-plus/icons-vue';
 import type { LicensePlateType } from '~/types/vehicleType';
 import { getLicensePlateByCompany } from '~/api/vehicleAPI';
 import type { AssistantType, DriverType } from '~/types/employeeType';
@@ -12,20 +12,107 @@ const props = defineProps<{
     trip?: TripType | null
     isUpdating?: boolean
 }>()
-
+const emit = defineEmits<{
+    (e: 'update:modelValue', value: boolean): void
+    (e: 'closed'): void
+    (e: 'updated', trip: DTO_RQ_UpdateTrip): void
+}>()
 const useUserStore = userStore();
-
+const visible = computed({
+    get: () => props.modelValue,
+    set: (val: boolean) => emit('update:modelValue', val),
+})
 const tripModel = ref<DTO_RQ_UpdateTrip>({
     trip_id: props.trip?.trip_id || 0,
     departure_time: props.trip?.departure_time || '',
     seat_chart_id: props.trip?.seat_chart_id || 0,
-
     vehicle_id: props.trip?.vehicle_id || undefined,
     driver: Array.isArray(props.trip?.driver) ? props.trip.driver : [],
     assistant: Array.isArray(props.trip?.assistant) ? props.trip.assistant : [],
     note: props.trip?.note || '',
     trip_type: props.trip?.trip_type || 0,
-});
+})
+watch(
+    () => props.trip,
+    (newTrip) => {
+        if (!newTrip) return
+        tripModel.value = {
+            trip_id: newTrip.trip_id || 0,
+            departure_time: newTrip.departure_time || '',
+            seat_chart_id: newTrip.seat_chart_id || 0,
+            vehicle_id: typeof newTrip.vehicle_id === 'number' ? newTrip.vehicle_id : undefined,
+            driver: Array.isArray(newTrip.driver) ? newTrip.driver : [],
+            assistant: Array.isArray(newTrip.assistant) ? newTrip.assistant : [],
+            note: newTrip.note ?? '',
+            trip_type: newTrip.trip_type || 0,
+        }
+    },
+    { immediate: true },
+)
+const licensePlate = ref<LicensePlateType[]>([]);
+const assistantList = ref<AssistantType[]>([]);
+const driverList = ref<DriverType[]>([]);
+
+// Loading states for better UX
+const isDataLoaded = ref(false);
+const isLoadingData = ref(false);
+
+// AbortController để cancel requests khi component unmount hoặc dialog đóng
+let abortController: AbortController | null = null;
+
+watch(visible, async (val) => {
+    if (val) {
+        // Nếu data đã được load và user store đã có thông tin, không cần load lại
+        if (isDataLoaded.value && useUserStore.company_id) {
+            return;
+        }
+
+        // Cancel previous requests nếu có
+        if (abortController) {
+            abortController.abort();
+        }
+        
+        abortController = new AbortController();
+        isLoadingData.value = true;
+        
+        try {
+            await useUserStore.loadUserInfo();
+            
+            // Check lại nếu dialog đã đóng trong lúc load user info
+            if (!visible.value) return;
+            
+            // Load các danh sách song song để tăng hiệu suất
+            await Promise.all([
+                fetchListVehicle(),
+                fetchListDriver(),
+                fetchListAssistant()
+            ]);
+            
+            isDataLoaded.value = true;
+        } catch (err) {
+            if (err instanceof Error && err.name !== 'AbortError') {
+                console.error('Error loading dialog data:', err);
+                notifyError('Có lỗi xảy ra khi tải dữ liệu');
+            }
+        } finally {
+            isLoadingData.value = false;
+        }
+    } else {
+        // Cancel requests khi dialog đóng
+        if (abortController) {
+            abortController.abort();
+            abortController = null;
+        }
+    }
+})
+
+// Cleanup khi component unmount
+onBeforeUnmount(() => {
+    if (abortController) {
+        abortController.abort();
+    }
+})
+
 
 const handleUpdateTrip = () => {
     if (props.isUpdating) return;
@@ -34,44 +121,8 @@ const handleUpdateTrip = () => {
 }
 
 
-watch(
-    () => props.trip,
-    (newTrip) => {
-        if (newTrip) {
-            tripModel.value.trip_id = newTrip.trip_id || 0;
-            tripModel.value.departure_time = newTrip.departure_time || '';
-            tripModel.value.seat_chart_id = newTrip.seat_chart_id || 0;
-            tripModel.value.vehicle_id = typeof newTrip.vehicle_id === 'number' ? newTrip.vehicle_id : undefined;
-            tripModel.value.driver = Array.isArray(newTrip.driver) ? newTrip.driver : [];
-            tripModel.value.assistant = Array.isArray(newTrip.assistant) ? newTrip.assistant : [];
-            tripModel.value.note = newTrip.note ?? '';
-            tripModel.value.trip_type = newTrip.trip_type || 0;
-        }
-    },
-    { immediate: true }
-);
 
 
-
-const emit = defineEmits<{
-    (e: 'update:modelValue', value: boolean): void
-    (e: 'closed'): void
-    (e: 'updated', trip: DTO_RQ_UpdateTrip): void
-}>()
-
-const visible = ref(props.modelValue)
-watch(
-    () => props.modelValue,
-    (newValue) => {
-        visible.value = newValue;
-        
-    }
-)
-
-watch(visible, (newValue) => {
-    emit('update:modelValue', newValue)
-
-})
 
 function handleClose() {
     visible.value = false
@@ -79,77 +130,86 @@ function handleClose() {
 }
 
 
-const licensePlate = ref<LicensePlateType[]>([]);
+
 const loadingVehicle = ref(false);
 const fetchListVehicle = async () => {
+    if (loadingVehicle.value) return; // Prevent multiple calls
+    
     loadingVehicle.value = true;
     try {
         const response = await getLicensePlateByCompany(useUserStore.company_id ?? '');
+        
+        // Check if dialog is still open
+        if (!visible.value) return;
+        
         if (response.success) {
-            licensePlate.value = response.result ?? [];
+            licensePlate.value = (response.result ?? []).map(v => ({
+                id: Number(v.id),
+                license_plate: v.license_plate
+            }))
             console.log('Danh sách biển số xe:', licensePlate.value);
         } else {
-            ElNotification({
-                message: h('p', { style: 'color: red' }, response.message || 'Lỗi khi lấy danh sách xe'),
-                type: 'error',
-            });
+            notifyError(response.message || 'Lỗi khi lấy danh sách xe');
         }
     } catch (error) {
-        ElNotification({
-            message: h('p', { style: 'color: red' }, 'Lỗi khi lấy danh sách xe'),
-            type: 'error',
-        });
-        console.error('Error fetching vehicle list:', error);
+        if (error instanceof Error && error.name !== 'AbortError') {
+            notifyError('Lỗi khi lấy danh sách xe');
+            console.error('Error fetching vehicle list:', error);
+        }
     } finally {
         loadingVehicle.value = false;
     }
 };
 const loadingDriver = ref(false);
-const driverList = ref<DriverType[]>([]);
+
 const fetchListDriver = async () => {
+    if (loadingDriver.value) return; // Prevent multiple calls
+    
     loadingDriver.value = true;
     try {
         const response = await getListDriverByCompany(useUserStore.company_id ?? '');
+        
+        // Check if dialog is still open
+        if (!visible.value) return;
+        
         if (response.success) {
             driverList.value = response.result ?? [];
             console.log('Danh sách tài xế:', driverList.value);
         } else {
-            ElNotification({
-                message: h('p', { style: 'color: red' }, response.message || 'Lỗi khi lấy danh sách tài xế'),
-                type: 'error',
-            });
+            notifyError(response.message || 'Lỗi khi lấy danh sách tài xế');
         }
     } catch (error) {
-        ElNotification({
-            message: h('p', { style: 'color: red' }, 'Lỗi khi lấy danh sách tài xế'),
-            type: 'error',
-        });
-        console.error('Error fetching driver list:', error);
+        if (error instanceof Error && error.name !== 'AbortError') {
+            notifyError('Lỗi khi lấy danh sách tài xế');
+            console.error('Error fetching driver list:', error);
+        }
     } finally {
         loadingDriver.value = false;
     }
 };
 const loadingAssistant = ref(false);
-const assistantList = ref<AssistantType[]>([]);
+
 const fetchListAssistant = async () => {
+    if (loadingAssistant.value) return; // Prevent multiple calls
+    
     loadingAssistant.value = true;
     try {
         const response = await getListAssistantByCompany(useUserStore.company_id ?? '');
+        
+        // Check if dialog is still open
+        if (!visible.value) return;
+        
         if (response.success) {
             assistantList.value = response.result ?? [];
             console.log('Danh sách phụ xe:', assistantList.value);
         } else {
-            ElNotification({
-                message: h('p', { style: 'color: red' }, response.message || 'Lỗi khi lấy danh sách phụ xe'),
-                type: 'error',
-            });
+            notifyError(response.message || 'Lỗi khi lấy danh sách phụ xe');
         }
     } catch (error) {
-        ElNotification({
-            message: h('p', { style: 'color: red' }, 'Lỗi khi lấy danh sách phụ xe'),
-            type: 'error',
-        });
-        console.error('Error fetching assistant list:', error);
+        if (error instanceof Error && error.name !== 'AbortError') {
+            notifyError('Lỗi khi lấy danh sách phụ xe');
+            console.error('Error fetching assistant list:', error);
+        }
     } finally {
         loadingAssistant.value = false;
     }
@@ -173,22 +233,28 @@ const onAssistantChange = (selectedAssistants: AssistantType[]) => {
     }));
 };
 
-onMounted(async () => {
-    await useUserStore.loadUserInfo();
-    fetchListVehicle();
-    fetchListDriver();
-    fetchListAssistant();
-});
+// onMounted(async () => {
+//     // await useUserStore.loadUserInfo();
+//     // fetchListVehicle();
+//     // fetchListDriver();
+//     // fetchListAssistant();
+// });
 </script>
 <template>
     <el-dialog v-model="visible" width="600" @close="handleClose" style="padding: 0px;">
-        <template #title>
+        <template #header>
             <div class="pt-[10px] pl-2">
                 <span class="text-[16px] font-semibold text-white">Cập nhật thông tin chuyến</span>
             </div>
         </template>
         <div class="px-2 pt-2">
-            <el-form :model="tripModel">
+            <!-- Loading indicator -->
+            <div v-if="isLoadingData" class="flex items-center justify-center py-8">
+                <el-icon class="is-loading mr-2"><Loading /></el-icon>
+                <span>Đang tải dữ liệu...</span>
+            </div>
+            
+            <el-form v-else :model="tripModel">
 
 
                 <!-- {{ trip }} -->
@@ -199,7 +265,7 @@ onMounted(async () => {
                                 <label class="text-sm font-medium text-gray-700">Giờ khởi hành</label>
                             </template>
                             <el-time-select v-model="tripModel.departure_time" style="width: 240px" start="00:05"
-                                step="00:05" end="23:55" placeholder="Chọn thời gian" format="hh:mm"/>
+                                step="00:05" end="23:55" placeholder="Chọn thời gian" format="hh:mm" />
                         </el-form-item>
                     </el-col>
                     <el-col :span="12">

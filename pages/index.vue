@@ -4,34 +4,36 @@ import LoginForm from '~/components/form/LoginForm.vue';
 import type { LoginFormType } from '~/types/authType';
 import { ecosystemModules } from '~/mock/ecosystemModules';
 import { loginBMS } from '~/api/authAPI';
-import type { UserBMSType } from '~/types/userType';
+import { scheduleTokenRefresh } from '~/lib/auth';
 definePageMeta({
-    middleware: ['guest'],
+    middleware: [ 'guest' ],
     layout: false,
 })
-const cookie_access_token = useCookie('access_token');
-const useUserStore = userStore();
 const submitLoading = ref(false);
 const handleLogin = async (payload: LoginFormType) => {
+    const store = userStore()
     submitLoading.value = true;
     try {
         const response = await loginBMS(payload)
         if (response.success && response.result) {
             notifySuccess('Đăng nhập thành công!')
-            cookie_access_token.value = response.result.access_token;
-            const user: UserBMSType = {
-                id: response.result.id,
-                username: response.result.username,
-                full_name: response.result.full_name,
-                company_name: response.result.company_name,
-                company_id: response.result.company_id,
-                role: response.result.role,
-                access_token: response.result.access_token,
-                refresh_token: response.result.refresh_token,
-                expires_in: response.result.expires_in,
-            }
-            useUserStore.setUserInfo(user)
-            // console.log('Login successful:', response.result)
+            const {
+                id, username, full_name, company_name, company_id, company_code, role,
+                access_token, refresh_token, expires_in
+            } = response.result
+            store.setUserInfo({
+                id,
+                username,
+                full_name,
+                company_name,
+                company_id,
+                company_code,
+                role,
+                access_token,
+                refresh_token,
+                expires_in,
+            })
+            scheduleTokenRefresh(expires_in ?? 0)
             navigateTo('/room-work')
         } else {
             notifyError(response.message || 'Đăng nhập thất bại!')

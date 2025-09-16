@@ -92,7 +92,7 @@ watch(
 </script>
 <template>
     <el-dialog v-model="visible" width="1000" @close="handleClose" style="padding: 0px;">
-        <template #title>
+        <template #header>
             <div class="pt-[10px] pl-2">
                 <span class="text-[16px] font-semibold text-white">
                     {{ isEdit ? 'Chỉnh sửa đơn hàng' : 'Thêm đơn hàng' }}

@@ -3,12 +3,11 @@ import { ref, computed } from 'vue'
 import { SwitchButton } from '@element-plus/icons-vue'
 import type {  OfficeType } from '~/types/officeType'
 import { getListOfficeRoomWorkByCompany } from '~/api/officeAPI'
-import { useLogout } from "@/composables/useLogout";
-const { handleLogout } = useLogout();
 definePageMeta({
   middleware: ['auth'],
   layout: false,
 })
+const { handleManualLogout } = useAuth();
 const useUserStore = userStore();
 const officeStore = useOfficeStore();
 
@@ -43,7 +42,7 @@ const confirmSelection = () => {
         id: office.id,
         name: office.name,
       });
-      console.log('Văn phòng đã chọn:', office);
+      // console.log('Văn phòng đã chọn:', office);
 
       notifySuccess('Bắt đầu làm việc tại: ' + office.name)
       navigateTo('/dashboard');
@@ -58,9 +57,9 @@ const confirmSelection = () => {
 const fetchOfficeList = async () => {
   isLoading.value = true;
   try {
-    const res = await getListOfficeRoomWorkByCompany(useUserStore.company_id ?? '');
+    const res = await getListOfficeRoomWorkByCompany(String(useUserStore.company_id ?? ''));
     offices.value = res.result ?? [];
-    console.log('Danh sách văn phòng:', offices.value);
+    // console.log('Danh sách văn phòng:', offices.value);
   } catch (err) {
     console.error('Lỗi khi lấy danh sách văn phòng:', err);
   } finally {
@@ -89,11 +88,19 @@ onMounted(async () => {
             </p>
           </div>
           <div class="flex flex-col sm:flex-row sm:items-center gap-3 lg:text-right">
-            <div class="flex-1 sm:flex-none">
-              <p class="text-base md:text-lg font-semibold text-blue-600">Nhân viên: {{ useUserStore.full_name }}</p>
-              <p class="text-sm text-gray-500">{{ useUserStore.username }}</p>
-            </div>
-            <el-button class="w-full sm:w-auto" type="danger" :icon="SwitchButton" @click="handleLogout">
+            <ClientOnly>
+              <div class="flex-1 sm:flex-none">
+                <p class="text-base md:text-lg font-semibold text-blue-600">Nhân viên: {{ useUserStore.full_name || '' }}</p>
+                <p class="text-sm text-gray-500">{{ useUserStore.username || '' }}</p>
+              </div>
+              <template #fallback>
+                <div class="flex-1 sm:flex-none">
+                  <p class="text-base md:text-lg font-semibold text-blue-600">Nhân viên: </p>
+                  <p class="text-sm text-gray-500" />
+                </div>
+              </template>
+            </ClientOnly>
+            <el-button class="w-full sm:w-auto" type="danger" :icon="SwitchButton" @click="handleManualLogout">
               Đăng xuất
             </el-button>
           </div>

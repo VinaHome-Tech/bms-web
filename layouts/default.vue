@@ -2,11 +2,9 @@
 import Header from '~/components/layout/Header.vue';
 const useUserStore = userStore();
 const officeStore = useOfficeStore();
-const companyStore = useCompanyStore();
 onMounted(async () => {
     await useUserStore.loadUserInfo();
     await officeStore.loadOfficeStore();
-    await companyStore.loadCompanyStore();
 });
 </script>
 <template>
