@@ -3,6 +3,7 @@ import type { CancelTicketType, DTO_RQ_UpdateTicket, TicketType } from '~/types/
 import { Checked, Printer, Delete } from '@element-plus/icons-vue'
 import type { AgentNameType } from '~/types/agentType';
 import { getAgencyListByCompany } from '~/api/agentAPI';
+import { formatCurrencyWithoutSymbol } from '~/lib/formatCurrency';
 
 const props = defineProps<{
     modelValue: boolean
@@ -13,6 +14,27 @@ const useUserStore = userStore();
 
 const localTickets = ref<TicketType[]>([])
 
+// Giá trị hiển thị cho input
+const priceDisplayValue = ref('')
+
+// Xử lý khi input thay đổi - format ngay lập tức
+const handlePriceInput = (value: string) => {
+    // Chỉ giữ lại số
+    const numericValue = value.replace(/\D/g, '');
+    
+    if (localTickets.value.length > 0) {
+        // Lưu giá trị số thuần
+        localTickets.value[0].ticket_display_price = Number(numericValue) || 0;
+        
+        // Format và hiển thị
+        if (numericValue) {
+            priceDisplayValue.value = formatCurrencyWithoutSymbol(Number(numericValue));
+        } else {
+            priceDisplayValue.value = '';
+        }
+    }
+}
+
 watch(
     () => props.selectedTickets,
     (val) => {
@@ -20,6 +42,12 @@ watch(
         localTickets.value.forEach(ticket => {
             ticket.payment_method = ticket.payment_method || 'TTTX';
         });
+        // Cập nhật giá trị hiển thị
+        if (localTickets.value.length > 0 && localTickets.value[0].ticket_display_price) {
+            priceDisplayValue.value = formatCurrencyWithoutSymbol(Number(localTickets.value[0].ticket_display_price));
+        } else {
+            priceDisplayValue.value = '';
+        }
     },
     { immediate: true, deep: true }
 )
@@ -66,8 +94,6 @@ function handleUpdateDataTicket() {
         ticket_note: base.ticket_note,
         ticket_display_price: Number(base.ticket_display_price),
         payment_method: base.payment_method,
-        office_id: useOffice.id,
-        agent_id: base.agent_id,
         transit_up: base.transit_up || false,
         transit_down: base.transit_down || false,
     }
@@ -157,7 +183,11 @@ onMounted(async () => {
                                         <template #label>
                                             <span class="text-sm font-semibold">Giá vé</span>
                                         </template>
-                                        <el-input v-model="localTickets[0].ticket_display_price" type="number" />
+                                        <el-input 
+                                            v-model="priceDisplayValue" 
+                                            placeholder="Nhập giá vé"
+                                            @input="handlePriceInput"
+                                        />
                                     </el-form-item>
                                     <el-form-item label-position="top">
                                         <template #label>

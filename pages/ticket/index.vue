@@ -646,6 +646,7 @@ onMounted(async () => {
                             <div v-for="row in getFloorSeats(floor)" :key="`floor${floor}-row${row.rowNumber}`"
                               class="grid gap-1 w-full"
                               :style="{ gridTemplateColumns: `repeat(${row.seats.length}, 1fr)` }">
+                           
                               <TicketItem v-for="seat in row.seats" :key="seat.id" :ticket="seat"
                                 :onClick="() => handleTicketClick(seat)" :isSelected="isTicketSelected(seat)"
                                 :selectedBy="getTicketSelector(seat)" :isLoading="isTicketUpdating(seat.id)"

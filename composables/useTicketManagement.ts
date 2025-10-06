@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { remove, update } from "firebase/database";
 import { getListRouteNameActionByCompany } from "~/api/routeAPI";
 import {
@@ -20,6 +21,7 @@ import type {
   DTO_RP_ListTransitUpByTrip,
   DTO_RP_SearchTicket,
   DTO_RQ_UpdateTicket,
+  MoveTicketType,
   TicketType,
 } from "~/types/ticketType";
 import type { UserActionType } from "~/types/userType";
@@ -52,7 +54,6 @@ export const useTicketManagement = () => {
       if (response.success) {
         if (response.result) {
           ticketList.value = response.result;
-          console.log("Danh sách vé:", ticketList.value);
         }
       } else {
         notifyError("Không thể tải danh sách vé!");
@@ -81,8 +82,8 @@ export const useTicketManagement = () => {
 
     // Sort rows by row number and seats by column
     const sortedRows = Array.from(rows.entries())
-      .sort((a, b) => a[0] - b[0])
-      .map(([rowNumber, seats]) => ({
+      .sort((a, b) => a[ 0 ] - b[ 0 ])
+      .map(([ rowNumber, seats ]) => ({
         rowNumber,
         seats: seats.sort(
           (a: TicketType, b: TicketType) => a.seat_column - b.seat_column
@@ -106,7 +107,7 @@ export const useTicketManagement = () => {
       const selected: TicketType[] = [];
 
       if (data && ticketList.value.length > 0) {
-        for (const [ticketIdStr, userName] of Object.entries(data)) {
+        for (const [ ticketIdStr, userName ] of Object.entries(data)) {
           const ticket = ticketList.value.find(
             (t) => t.id === Number(ticketIdStr)
           );
@@ -127,7 +128,7 @@ export const useTicketManagement = () => {
       if (!updatedTickets) return;
 
       ticketList.value = ticketList.value.map((originalTicket) => {
-        const updatedData = updatedTickets[originalTicket.id];
+        const updatedData = updatedTickets[ originalTicket.id ];
         if (updatedData) {
           return {
             ...originalTicket, // Giữ nguyên thông tin gốc
@@ -213,10 +214,10 @@ export const useTicketManagement = () => {
 
       // Loại bỏ các giá trị undefined
       const sanitizedFields = Object.fromEntries(
-        Object.entries(updatedFields).filter(([key, value]) => {
+        Object.entries(updatedFields).filter(([ key, value ]) => {
           // Chỉ đồng bộ field được phép và có giá trị
           return (
-            FIREBASE_SYNC_FIELDS[key as keyof typeof FIREBASE_SYNC_FIELDS] &&
+            FIREBASE_SYNC_FIELDS[ key as keyof typeof FIREBASE_SYNC_FIELDS ] &&
             value !== undefined &&
             value !== null
           );
@@ -238,7 +239,7 @@ export const useTicketManagement = () => {
       }
 
       ticketIds.forEach((ticketId) => {
-        updates[`tickets/${tripId}/${ticketId}`] = { ...sanitizedFields };
+        updates[ `tickets/${tripId}/${ticketId}` ] = { ...sanitizedFields };
       });
 
       if (logSync) {
@@ -248,7 +249,7 @@ export const useTicketManagement = () => {
           ticketIds,
           syncedFields: Object.keys(sanitizedFields),
           preservedFields: preserveCreatedFields
-            ? ["user_created", "office_created", "office_id", "contact_status"]
+            ? [ "user_created", "office_created", "office_id", "contact_status" ]
             : [],
           data: sanitizedFields,
         });
@@ -286,88 +287,72 @@ export const useTicketManagement = () => {
 
     } catch (error) {
       console.error("Lỗi khi bỏ chọn vé khỏi Firebase:", error);
-      ElNotification({
-        message: h(
-          "p",
-          { style: "color: red" },
-          "Đã xảy ra lỗi khi bỏ chọn vé!"
-        ),
-        type: "error",
-      });
+      notifyError("Lỗi bỏ chọn vé!");
     }
   };
   const destinationTickets = ref<TicketType[]>([]);
   const handleTicketClick = async (ticket: TicketType) => {
-    if (isMoveTicket.value) {
-      if (ticket.booked_status) {
-        ElNotification({
-          message: h("p", { style: "color: red" }, "Ghế này đã được đặt!"),
-          type: "warning",
-        });
-        return;
-      }
-
-      if (destinationTickets.value.some((t) => t.id === ticket.id)) {
-        ElNotification({
-          message: h(
-            "p",
-            { style: "color: orange" },
-            "Bạn đã chọn ghế này rồi."
-          ),
-          type: "info",
-        });
-        return;
-      }
-
-      destinationTickets.value.push(ticket);
-      console.log("Ghế đích đã chọn:", destinationTickets.value);
-
-      if (
-        destinationTickets.value.length ===
-        moveTicketStore.mySelectedTickets.length
-      ) {
-        // Gọi hàm xử lý dán vé
-        await handlePasteMovedTickets(destinationTickets.value);
-
-        // Reset trạng thái
-        isMoveTicket.value = false;
-        destinationTickets.value = [];
-        moveTicketStore.removeTicket();
-      }
-
-      // Không làm gì khác nữa nếu đang di chuyển vé
-      return;
-    }
-    console.log("Vé được chọn:", ticket);
-    console.log("Chuyến", selectedTrip.value);
-    if (!selectedTrip.value?.trip_id || !useUserStore.full_name) return;
-
-    const tripId = selectedTrip.value.trip_id;
-    const ticketPath = `selectedTickets/${tripId}/${ticket.id}`;
-    const currentUser = useUserStore.full_name;
-
-    // Lấy danh sách vé ĐÃ CHỌN bởi user hiện tại
-    const userSelectedTickets = selectedTickets.value.filter(
-      (t) => t.selectedBy === currentUser
-    );
-    const index = userSelectedTickets.findIndex((t) => t.id === ticket.id);
-
     try {
+      // ===============================
+      // 🔹 0. Trường hợp di chuyển vé
+      // ===============================
+      if (isMoveTicket.value) {
+        if (ticket.booked_status) {
+          notifyWarning("Vé đã được đặt, không thể chọn!");
+          return;
+        }
+
+        if (destinationTickets.value.some((t) => t.id === ticket.id)) {
+          notifyInfo("Bạn đã chọn ghế này rồi.");
+          return;
+        }
+
+        destinationTickets.value.push(ticket);
+
+        if (
+          destinationTickets.value.length ===
+          moveTicketStore.mySelectedTickets.length
+        ) {
+          // Gọi hàm xử lý dán vé
+          await handlePasteMovedTickets(destinationTickets.value);
+
+          // Reset trạng thái
+          isMoveTicket.value = false;
+          destinationTickets.value = [];
+          moveTicketStore.removeTicket();
+        }
+        return;
+      }
+
+      // ===============================
+      // 🔹 1. Thông tin chung
+      // ===============================
+      if (!selectedTrip.value?.trip_id || !useUserStore.full_name) return;
+
+      const tripId = selectedTrip.value.trip_id;
+      const ticketPath = `selectedTickets/${tripId}/${ticket.id}`;
+      const currentUser = useUserStore.full_name;
+
+      // Danh sách vé user hiện tại đang chọn
+      const userSelectedTickets = selectedTickets.value.filter(
+        (t) => t.selectedBy === currentUser
+      );
+      const index = userSelectedTickets.findIndex((t) => t.id === ticket.id);
+
+      // ===============================
+      // 🔹 2. Nếu CHỌN vé mới
+      // ===============================
       if (index === -1) {
-        // 🔹 1. Nếu vé đang chọn là vé KHÔNG CÓ SỐ ĐIỆN THOẠI (hoặc chưa đặt)
+        // Vé chưa có số điện thoại (hoặc chưa đặt)
         if (!ticket.booked_status || !ticket.ticket_phone?.trim()) {
-          // Kiểm tra xem user có đang chọn vé CÓ SỐ ĐIỆN THOẠI không
           const hasBookedTicketWithPhone = userSelectedTickets.some(
             (t) => t.booked_status && t.ticket_phone?.trim()
           );
 
-          // Nếu có => BỎ CHỌN TẤT CẢ VÉ CÓ SỐ ĐIỆN THOẠI trước khi chọn vé mới
+          // Nếu đang có vé có số điện thoại → bỏ hết chúng đi
           if (hasBookedTicketWithPhone) {
             for (const selectedTicket of userSelectedTickets) {
-              if (
-                selectedTicket.booked_status &&
-                selectedTicket.ticket_phone?.trim()
-              ) {
+              if (selectedTicket.booked_status && selectedTicket.ticket_phone) {
                 await remove(
                   dbRef(db, `selectedTickets/${tripId}/${selectedTicket.id}`)
                 );
@@ -375,18 +360,23 @@ export const useTicketManagement = () => {
             }
           }
 
-          // Cho phép chọn vé KHÔNG CÓ SỐ ĐIỆN THOẠI (không giới hạn số lượng)
+          // Chọn vé hiện tại (không giới hạn số lượng)
           await set(dbRef(db, ticketPath), currentUser);
         }
-        // 🔹 2. Nếu vé đang chọn là vé CÓ SỐ ĐIỆN THOẠI (đã đặt)
+        // Vé đã có số điện thoại
         else {
-          // Kiểm tra xem user có đang chọn vé KHÔNG CÓ SỐ ĐIỆN THOẠI không
           const hasUnbookedTicket = userSelectedTickets.some(
             (t) => !t.booked_status || !t.ticket_phone?.trim()
           );
+          const hasDifferentPhone = userSelectedTickets.some(
+            (t) =>
+              t.booked_status &&
+              t.ticket_phone?.trim() &&
+              t.ticket_phone !== ticket.ticket_phone
+          );
 
-          // Nếu có => BỎ CHỌN TẤT CẢ VÉ CŨ (cả vé không số ĐT và vé có số ĐT khác)
-          if (hasUnbookedTicket) {
+          // Nếu có vé không số điện thoại hoặc số điện thoại khác → bỏ hết
+          if (hasUnbookedTicket || hasDifferentPhone) {
             for (const selectedTicket of userSelectedTickets) {
               await remove(
                 dbRef(db, `selectedTickets/${tripId}/${selectedTicket.id}`)
@@ -394,16 +384,16 @@ export const useTicketManagement = () => {
             }
           }
 
-          // Chọn vé hiện tại (có số điện thoại)
+          // Chọn vé hiện tại
           await set(dbRef(db, ticketPath), currentUser);
 
-          // Tự động chọn các vé CÙNG SỐ ĐIỆN THOẠI (nếu có)
+          // Tự động chọn các vé cùng số điện thoại
           const ticketsToAutoSelect = ticketList.value.filter(
             (t) =>
               t.ticket_phone === ticket.ticket_phone &&
               t.id !== ticket.id &&
               t.booked_status === true &&
-              !selectedTickets.value.some((selected) => selected.id === t.id)
+              !selectedTickets.value.some((sel) => sel.id === t.id)
           );
 
           for (const relatedTicket of ticketsToAutoSelect) {
@@ -413,8 +403,11 @@ export const useTicketManagement = () => {
             );
           }
         }
-      } else {
-        // 🔹 3. Nếu đang BỎ CHỌN vé (chỉ xóa nếu vé thuộc về user hiện tại)
+      }
+      // ===============================
+      // 🔹 3. Nếu BỎ CHỌN vé
+      // ===============================
+      else {
         const ticketToRemove = selectedTickets.value.find(
           (t) => t.id === ticket.id
         );
@@ -423,9 +416,11 @@ export const useTicketManagement = () => {
         }
       }
     } catch (error) {
-      console.error("Lỗi cập nhật Firebase:", error);
+      console.error("Lỗi khi chọn/bỏ chọn vé:", error);
+      notifyError("Lỗi khi chọn/bỏ chọn vé!");
     }
   };
+
 
   const getTicketSelector = (ticket: TicketType) => {
     const found = selectedTickets.value.find((t) => t.id === ticket.id);
@@ -580,7 +575,8 @@ export const useTicketManagement = () => {
   //   return bookedCount;
   // };
 
-  // [FEAT]: Cancel ticket
+  // [FEAT]: Cancel tickets
+  // DB-6 Cancel Tickets
   const handleCancelTickets = async (tickets: CancelTicketType) => {
     console.log("Hủy vé:", tickets);
     loadingItemTicket.value = true;
@@ -595,7 +591,7 @@ export const useTicketManagement = () => {
         } as UserActionType,
         tickets
       );
-      if (response.result) {
+      if (response.success) {
         ticketList.value = ticketList.value.map((ticket) => {
           if (tickets.id.includes(ticket.id)) {
             return {
@@ -623,7 +619,7 @@ export const useTicketManagement = () => {
             ticket_point_up: "",
             ticket_point_down: "",
             ticket_note: "",
-            ticket_display_price: ticketsToSync[0]?.ticket_display_price || 0,
+            ticket_display_price: ticketsToSync[ 0 ]?.ticket_display_price || 0,
             booked_status: false,
           });
           const tripId = selectedTrip.value.trip_id;
@@ -633,33 +629,23 @@ export const useTicketManagement = () => {
           }
         }
         updateTicketsBookedInTrip();
-        ElNotification({
-          message: h("p", { style: "color: green" }, "Hủy vé thành công!"),
-          type: "success",
-        });
+        notifySuccess("Hủy vé thành công!");
       } else {
-        ElNotification({
-          message: h("p", { style: "color: red" }, "Hủy vé thất bại!"),
-          type: "error",
-        });
+        notifyError(response.message || "Hủy vé thất bại!");
       }
     } catch (error) {
       console.error("Lỗi khi hủy vé:", error);
-      ElNotification({
-        message: h("p", { style: "color: red" }, "Đã xảy ra lỗi khi hủy vé!"),
-        type: "error",
-      });
+      notifyError("Đã xảy ra lỗi khi hủy vé!");
     } finally {
       loadingItemTicket.value = false;
       updatingTicketIds.value.clear();
     }
   };
 
+  // DB-4 Update Tickets
   const handleUpdateTickets = async (tickets: DTO_RQ_UpdateTicket) => {
-    console.log("Cập nhật vé:", tickets);
     loadingItemTicket.value = true;
     tickets.id.forEach((id: number) => updatingTicketIds.value.add(id));
-
     try {
       const response = await updateTickets(
         {
@@ -667,8 +653,10 @@ export const useTicketManagement = () => {
           username: useUserStore.username,
           full_name: useUserStore.full_name,
           company_id: useUserStore.company_id,
+          office_id: useOffice.id,
+          office_name: useOffice.name,
         } as UserActionType,
-        tickets
+        tickets as DTO_RQ_UpdateTicket
       );
 
       if (response.success) {
@@ -679,7 +667,7 @@ export const useTicketManagement = () => {
           queryTripID.value = null;
           queryTicketID.value = null;
           const updatedTicketsMap = new Map(
-            response.result.map((ticket: TicketType) => [ticket.id, ticket])
+            response.result.map((ticket: TicketType) => [ ticket.id, ticket ])
           );
 
           ticketList.value = ticketList.value.map((ticket) => {
@@ -702,7 +690,7 @@ export const useTicketManagement = () => {
             for (const ticket of updatedTickets) {
               await syncTicketsToFirebase(
                 selectedTrip.value.trip_id,
-                [ticket.id],
+                [ ticket.id ],
                 {
                   ticket_phone: ticket.ticket_phone,
                   ticket_email: ticket.ticket_email,
@@ -737,7 +725,6 @@ export const useTicketManagement = () => {
                 booked_status: true,
                 user_created: ticket.user_created,
                 office_created: ticket.office_created,
-                office_id: ticket.office_id,
                 agent_id: ticket.agent_id,
               };
             }
@@ -763,67 +750,39 @@ export const useTicketManagement = () => {
         }
 
         updateTicketsBookedInTrip();
-        
-        ElNotification({
-          message: h("p", { style: "color: green" }, "Cập nhật vé thành công!"),
-          type: "success",
-        });
+
+        notifySuccess("Cập nhật vé thành công!");
       } else {
-        ElNotification({
-          message: h(
-            "p",
-            { style: "color: red" },
-            response.message || "Cập nhật vé thất bại!"
-          ),
-          type: "error",
-        });
+        notifyError(response.message || "Cập nhật vé thất bại!");
       }
     } catch (error) {
       console.error("Lỗi khi cập nhật vé:", error);
-      ElNotification({
-        message: h(
-          "p",
-          { style: "color: red" },
-          "Đã xảy ra lỗi khi cập nhật vé!"
-        ),
-        type: "error",
-      });
+      notifyError("Đã xảy ra lỗi khi cập nhật vé!");
     } finally {
       loadingItemTicket.value = false;
       updatingTicketIds.value.clear();
     }
   };
 
+  // DB-7 Copy Tickets
   const handleCopyTickets = async () => {
     console.log("Sao chép vé:", mySelectedTickets.value);
-    ElNotification({
-      message: h(
-        "p",
-        { style: "color: green" },
-        `Đã sao chép ${mySelectedTickets.value.length} vé!`
-      ),
-      type: "success",
-    });
+    notifySuccess(`Đã sao chép ${mySelectedTickets.value.length} vé!`);
     await copyTicketStore.setTickets(mySelectedTickets.value);
     console.log("Pinia sao chép:", copyTicketStore.mySelectedTickets);
     await clearAllSelectedTickets();
     isCopyTicket.value = true;
   };
 
+  // DB-7 Copy Tickets
   const handlePasteTickets = async () => {
     if (!isCopyTicket.value) {
-      ElNotification({
-        message: h("p", { style: "color: red" }, "Chưa sao chép vé nào!"),
-        type: "warning",
-      });
+      notifyWarning("Chưa sao chép vé nào!");
       return;
     }
     const copiedTickets = copyTicketStore.mySelectedTickets;
     if (copiedTickets.length === 0) {
-      ElNotification({
-        message: h("p", { style: "color: red" }, "Không có vé nào để dán!"),
-        type: "warning",
-      });
+      notifyWarning("Không có vé nào để dán!");
       return;
     }
     loadingItemTicket.value = true;
@@ -835,6 +794,7 @@ export const useTicketManagement = () => {
           full_name: useUserStore.full_name,
           company_id: useUserStore.company_id,
           office_id: useOffice.id,
+          office_name: useOffice.name,
         } as UserActionType,
         copiedTickets.map((ticket) => ({
           id: ticket.id,
@@ -884,7 +844,7 @@ export const useTicketManagement = () => {
             for (const ticket of ticketsToSync) {
               await syncTicketsToFirebase(
                 selectedTrip.value.trip_id,
-                [ticket.id],
+                [ ticket.id ],
                 {
                   ticket_phone: ticket.ticket_phone || "",
                   ticket_email: ticket.ticket_email || "",
@@ -906,78 +866,52 @@ export const useTicketManagement = () => {
           // Bỏ chọn tất cả vé sau khi dán
           await clearAllSelectedTickets();
 
-          ElNotification({
-            message: h(
-              "p",
-              { style: "color: green" },
-              `Dán thành công ${response.result.length} vé!`
-            ),
-            type: "success",
-          });
+          notifySuccess(`Dán thành công ${response.result.length} vé!`);
         } else {
-          ElNotification({
-            message: h(
-              "p",
-              { style: "color: green" },
-              "Sao chép vé thành công!"
-            ),
-            type: "success",
-          });
+          notifyError("Dán vé thất bại!");
         }
       } else {
-        ElNotification({
-          message: h("p", { style: "color: red" }, "Sao chép vé thất bại!"),
-          type: "error",
-        });
+        notifyError("Sao chép vé thất bại!");
       }
     } catch (error) {
       console.error("Lỗi khi sao chép vé:", error);
-      ElNotification({
-        message: h(
-          "p",
-          { style: "color: red" },
-          "Đã xảy ra lỗi khi sao chép vé!"
-        ),
-        type: "error",
-      });
+      notifyError("Đã xảy ra lỗi khi sao chép vé!");
     } finally {
       isCopyTicket.value = false;
     }
   };
 
+  // DB-8 Move Tickets
   const handleMoveTickets = async () => {
     console.log("Di chuyển vé:", mySelectedTickets.value);
-    ElNotification({
-      message: h(
-        "p",
-        { style: "color: green" },
-        `Đã chọn ${mySelectedTickets.value.length} vé!`
-      ),
-      type: "success",
-    });
+    notifySuccess(`Đã chọn ${mySelectedTickets.value.length} vé!`);
     await moveTicketStore.setTickets(
       mySelectedTickets.value.map((ticket) => ({
         id: ticket.id,
         booked_status: ticket.booked_status,
-        ticket_phone: ticket.ticket_phone,
-        ticket_email: ticket.ticket_email,
-        ticket_customer_name: ticket.ticket_customer_name,
-        ticket_point_up: ticket.ticket_point_up,
-        ticket_point_down: ticket.ticket_point_down,
-        ticket_note: ticket.ticket_note,
-        ticket_display_price: ticket.ticket_display_price,
-        payment_method: ticket.payment_method,
-        user_created: ticket.user_created,
-        user_id_created: ticket.user_id_created,
-        office_id: ticket.office_id ?? 0,
-      }))
+        ticket_phone: ticket.ticket_phone ?? "",
+        ticket_email: ticket.ticket_email ?? "",
+        ticket_customer_name: ticket.ticket_customer_name ?? "",
+        ticket_point_up: ticket.ticket_point_up ?? "",
+        ticket_point_down: ticket.ticket_point_down ?? "",
+        ticket_note: ticket.ticket_note ?? "",
+        ticket_display_price: ticket.ticket_display_price ?? 0,
+        payment_method: ticket.payment_method ?? "",
+        user_created: ticket.user_created ?? "",
+        user_id_created: ticket.user_id_created ?? 0,
+        office_id_created: ticket.office_id_created ?? 0,
+        office_created: ticket.office_created ?? "",
+        contact_status: ticket.contact_status ?? 0,
+        transit_up: ticket.transit_up ?? false,
+        transit_down: ticket.transit_down ?? false,
+      })) as MoveTicketType[]
     );
+
     console.log("Pinia di chuyển:", moveTicketStore.mySelectedTickets);
     isMoveTicket.value = true;
   };
 
-  // ...existing code...
-
+  // DB-8 Move Tickets
   const handlePasteMovedTickets = async (destinationSeats: TicketType[]) => {
     const sourceTickets = moveTicketStore.mySelectedTickets;
     console.log("Dán vé di chuyển:", sourceTickets, destinationSeats);
@@ -1005,7 +939,7 @@ export const useTicketManagement = () => {
       if (response.success) {
         if (response.result && Array.isArray(response.result)) {
           const updatedTicketsMap = new Map(
-            response.result.map((ticket: TicketType) => [ticket.id, ticket])
+            response.result.map((ticket: TicketType) => [ ticket.id, ticket ])
           );
 
           // 🔹 CẬP NHẬT: Xử lý cả vé đích và vé nguồn
@@ -1057,7 +991,7 @@ export const useTicketManagement = () => {
             for (const ticket of destinationTicketsToSync) {
               await syncTicketsToFirebase(
                 tripId,
-                [ticket.id],
+                [ ticket.id ],
                 {
                   ticket_phone: ticket.ticket_phone || "",
                   ticket_email: ticket.ticket_email || "",
@@ -1084,7 +1018,7 @@ export const useTicketManagement = () => {
             for (const sourceTicketId of sourceTicketIds) {
               await syncTicketsToFirebase(
                 tripId,
-                [sourceTicketId],
+                [ sourceTicketId ],
                 {
                   ticket_phone: "",
                   ticket_email: "",
@@ -1205,7 +1139,7 @@ export const useTicketManagement = () => {
             for (const ticket of ticketsToSync) {
               await syncTicketsToFirebase(
                 selectedTrip.value.trip_id,
-                [ticket.id],
+                [ ticket.id ],
                 {
                   ticket_phone: ticket.ticket_phone || "",
                   ticket_email: ticket.ticket_email || "",
@@ -1217,10 +1151,10 @@ export const useTicketManagement = () => {
                   payment_method: ticket.payment_method || "",
                   booked_status: true,
                   contact_status: status,
-                  office_id: mySelectedTickets.value[0].office_id || 0,
-                  user_created: mySelectedTickets.value[0].user_created || "",
+                  office_id: mySelectedTickets.value[ 0 ].office_id || 0,
+                  user_created: mySelectedTickets.value[ 0 ].user_created || "",
                   office_created:
-                    mySelectedTickets.value[0].office_created || "",
+                    mySelectedTickets.value[ 0 ].office_created || "",
                 }
               );
             }
@@ -1259,10 +1193,6 @@ export const useTicketManagement = () => {
   const listCustomer = ref<DTO_RP_ListCustomerByTrip[]>([]);
   const fetchListCustomerByTrip = async () => {
     loadingTabCustomer.value = true;
-    console.log(
-      "Lấy danh sách khách hàng cho chuyến:",
-      selectedTrip.value?.trip_id
-    );
     try {
       const response = await getListCustomerByTrip(
         selectedTrip.value?.trip_id || 0
@@ -1270,25 +1200,11 @@ export const useTicketManagement = () => {
       if (response.success) {
         listCustomer.value = response.result || [];
       } else {
-        ElNotification({
-          message: h(
-            "p",
-            { style: "color: red" },
-            response.message || "Lấy danh sách khách hàng thất bại!"
-          ),
-          type: "error",
-        });
+        notifyError(response.message || "Lấy danh sách khách hàng thất bại!");
       }
     } catch (error) {
       console.error("Lỗi khi lấy danh sách khách hàng:", error);
-      ElNotification({
-        message: h(
-          "p",
-          { style: "color: red" },
-          "Đã xảy ra lỗi khi lấy danh sách khách hàng!"
-        ),
-        type: "error",
-      });
+      notifyError("Đã xảy ra lỗi khi lấy danh sách khách hàng!");
     } finally {
       loadingTabCustomer.value = false;
     }
@@ -1359,9 +1275,8 @@ export const useTicketManagement = () => {
       page-break-after: always;
     ">
       <div class="ticket-header" style="text-align: center; margin-bottom: 20px;">
-        <h2 style="margin: 0; font-size: 18px; text-transform: uppercase;">${
-          ticket.ticket_customer_name
-        }</h2>
+        <h2 style="margin: 0; font-size: 18px; text-transform: uppercase;">${ticket.ticket_customer_name
+      }</h2>
         <div style="height: 2px; background: white; margin: 10px 0;"></div>
       </div>
       
@@ -1376,14 +1291,14 @@ export const useTicketManagement = () => {
         
         <div class="info-row" style="margin-bottom: 12px;">
           <strong>Giá vé:</strong> ${ticket.ticket_display_price.toLocaleString(
-            "vi-VN"
-          )} VNĐ
+        "vi-VN"
+      )} VNĐ
         </div>
         
         <div class="info-row" style="margin-bottom: 12px;">
           <strong>Ngày:</strong> ${new Date(
-            ticket.ticket_customer_name
-          ).toLocaleDateString("vi-VN")}
+        ticket.ticket_customer_name
+      ).toLocaleDateString("vi-VN")}
         </div>
         
         <div class="info-row" style="margin-bottom: 12px;">
@@ -1394,15 +1309,14 @@ export const useTicketManagement = () => {
           <strong>Địa điểm:</strong> ${ticket.ticket_customer_name}
         </div>
         
-        ${
-          ticket.ticket_customer_name
-            ? `
+        ${ticket.ticket_customer_name
+        ? `
         <div class="info-row" style="margin-bottom: 12px;">
           <strong>Chỗ ngồi:</strong> ${ticket.ticket_customer_name}
         </div>
         `
-            : ""
-        }
+        : ""
+      }
         
         <div class="ticket-footer" style="margin-top: 20px; text-align: center;">
           <div style="font-size: 12px; opacity: 0.8;">
@@ -1410,20 +1324,19 @@ export const useTicketManagement = () => {
           </div>
           <div style="font-size: 10px; opacity: 0.6; margin-top: 5px;">
             Ngày mua: ${new Date(
-              ticket.ticket_display_price
-            ).toLocaleDateString("vi-VN")}
+        ticket.ticket_display_price
+      ).toLocaleDateString("vi-VN")}
           </div>
-          ${
-            ticket.ticket_customer_name
-              ? `
+          ${ticket.ticket_customer_name
+        ? `
           <div style="margin-top: 10px;">
             <div style="width: 60px; height: 60px; background: white; margin: 0 auto; display: flex; align-items: center; justify-content: center; color: black; font-size: 8px;">
               QR CODE
             </div>
           </div>
           `
-              : ""
-          }
+        : ""
+      }
         </div>
       </div>
     </div>
@@ -1498,7 +1411,7 @@ export const useTicketManagement = () => {
   `;
 
     // 🔹 SỬA: Tạo blob URL và mở tab mới
-    const blob = new Blob([htmlContent], { type: "text/html" });
+    const blob = new Blob([ htmlContent ], { type: "text/html" });
     const url = URL.createObjectURL(blob);
 
     // Mở tab mới
@@ -1573,23 +1486,23 @@ export const useTicketManagement = () => {
     console.log("Selected item:", item);
     try {
       console.log("Truy vấn vé với route_id:", item.route_id);
-      
+
       // Set flag trước khi thao tác
       isSettingProgrammatically.value = true;
-      
+
       if (routeNames.value.length === 0) {
         console.log("Danh sách route chưa load, đang tải...");
         await fetchListRouteName(useUserStore.company_id ?? '');
       }
-      
+
       const selectedRoute = routeNames.value.find(
         (r) => r.id === item.route_id
       );
-      
+
       if (selectedRoute) {
         // Đợi một tick để đảm bảo routeNames đã được cập nhật
         await nextTick();
-        
+
         queryRouteID.value = item.route_id;
         queryDate.value = item.departure_date;
         queryTripID.value = item.trip_id;

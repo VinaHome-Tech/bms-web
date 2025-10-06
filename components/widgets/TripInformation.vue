@@ -43,7 +43,7 @@
       <div>
         <span class="font-medium text-black text-[14px]">Tiền vé: </span>
         <span class="font-medium text-[#0072bc] text-[14px]">0/{{
-          formatCurrencyWithoutSymbol(trip.total_fare ?? 0) }}</span>
+          formatCurrencyWithoutSymbol(trip.total_tickets_price ?? 0) }}</span>
       </div>
       <div>
         <span class="font-medium text-black text-[14px]">Số hàng: </span>

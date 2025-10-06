@@ -17,15 +17,15 @@ export interface TicketType {
   ticket_note: string;
   ticket_display_price: number;
   payment_method: string;
-  user_created: string; 
-  user_id_created: string;
-  office_created: string;
-  office_id?: number | null;
+  user_created?: string;
+  user_id_created?: string;
+  office_created?: string;
+  office_id_created?: number;
   transit_up?: boolean;
   transit_down?: boolean;
+  contact_status: number;
 
   selectedBy?: string;
-  contact_status: number;
   agent_id?: string;
 }
 
@@ -71,8 +71,6 @@ export interface DTO_RQ_UpdateTicket {
   ticket_note: string;
   ticket_display_price: number;
   payment_method: string;
-  office_id: number | null;
-  agent_id?: string;
   transit_up: boolean;
   transit_down: boolean;
   
@@ -106,9 +104,13 @@ export interface MoveTicketType {
   ticket_note: string;
   ticket_display_price: number;
   payment_method: string;
-  office_id: number;
+  office_id_created: number;
+  office_created: string;
   user_id_created: string;
   user_created: string;
+  contact_status: number;
+  transit_up: boolean;
+  transit_down: boolean;
 }
 
 export interface DTO_RP_ListCustomerByTrip {

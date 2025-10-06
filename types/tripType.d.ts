@@ -11,6 +11,7 @@ export interface TripType {
   trip_type: number;
   tickets_booked: number;
   total_ticket: number;
+  total_tickets_price: number;
 
   note?: string | null;
   vehicle_id?: number | undefined;

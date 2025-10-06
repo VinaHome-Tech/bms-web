@@ -20,7 +20,7 @@ export const getListTicketsByTrip = async (
   const cookie = useCookie("access_token");
   try {
     return await $fetch<ApiResponse<TicketType[]>>(
-      `${apiGateWay}/v2/ticket/get-list-tickets-by-trip/${id}`,
+      `${apiGateWay}/v4/bus-ticket/get-list-tickets-by-trip/${id}`,
       {
         method: "GET",
         headers: {
@@ -43,7 +43,7 @@ export const updateTickets = async (
   const cookie = useCookie("access_token");
   try {
     return await $fetch<ApiResponse<TicketType[]>>(
-      `${apiGateWay}/v2/ticket/update-tickets`,
+      `${apiGateWay}/v4/bus-ticket/update-tickets`,
       {
         method: "POST",
         headers: {
@@ -70,7 +70,7 @@ export const cancelTickets = async (
   const cookie = useCookie("access_token");
   try {
     return await $fetch<ApiResponse<TicketType[]>>(
-      `${apiGateWay}/v2/ticket/cancel-tickets`,
+      `${apiGateWay}/v4/bus-ticket/cancel-tickets`,
       {
         method: "POST",
         headers: {
@@ -91,14 +91,14 @@ export const cancelTickets = async (
 export const copyTickets = async (
   user: UserActionType,
   data_copy: CopyTicketType[],
-  data_pastes: number[]
+  data_paste: number[]
 ): Promise<ApiResponse<TicketType[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie("access_token");
   try {
     return await $fetch<ApiResponse<TicketType[]>>(
-      `${apiGateWay}/v2/ticket/copy-tickets`,
+      `${apiGateWay}/v4/bus-ticket/copy-tickets`,
       {
         method: "POST",
         headers: {
@@ -107,7 +107,7 @@ export const copyTickets = async (
         body: {
           user,
           data_copy,
-          data_pastes,
+          data_paste,
         },
       }
     );
@@ -127,7 +127,7 @@ export const moveTickets = async (
   const cookie = useCookie("access_token");
   try {
     return await $fetch<ApiResponse<TicketType[]>>(
-      `${apiGateWay}/v2/ticket/move-tickets`,
+      `${apiGateWay}/v4/bus-ticket/move-tickets`,
       {
         method: "POST",
         headers: {
@@ -135,8 +135,8 @@ export const moveTickets = async (
         },
         body: {
           user,
-          sourceTickets,
-          destinationTicketIds,
+          data_cut: sourceTickets,
+          data_paste: destinationTicketIds,
         },
       }
     );
@@ -156,7 +156,7 @@ export const updateContactStatus = async (
   const cookie = useCookie("access_token");
   try {
     return await $fetch<ApiResponse<TicketType[]>>(
-      `${apiGateWay}/v2/ticket/update-contact-status`,
+      `${apiGateWay}/v4/bus-ticket/update-contact-status`,
       {
         method: "POST",
         headers: {
@@ -164,7 +164,7 @@ export const updateContactStatus = async (
         },
         body: {
           user,
-          ticketIds,
+          data_update: ticketIds,
           status,
         },
       }
@@ -183,7 +183,7 @@ export const getListCustomerByTrip = async (
   const cookie = useCookie("access_token");
   try {
     return await $fetch<ApiResponse<DTO_RP_ListCustomerByTrip[]>>(
-      `${apiGateWay}/v2/ticket/get-list-customer-by-trip/${tripId}`,
+      `${apiGateWay}/v4/bus-ticket/get-list-customer-by-trip/${tripId}`,
       {
         method: "GET",
         headers: {
@@ -205,7 +205,7 @@ export const getListTransitUpByTrip = async (
   const cookie = useCookie("access_token");
   try {
     return await $fetch<ApiResponse<DTO_RP_ListTransitUpByTrip[]>>(
-      `${apiGateWay}/v2/ticket/get-list-transit-up-by-trip/${tripId}`,
+      `${apiGateWay}/v4/bus-ticket/get-list-transit-up-by-trip/${tripId}`,
       {
         method: "GET",
         headers: {
@@ -227,7 +227,7 @@ export const getListTransitDownByTrip = async (
   const cookie = useCookie("access_token");
   try {
     return await $fetch<ApiResponse<DTO_RP_ListTransitDownByTrip[]>>(
-      `${apiGateWay}/v2/ticket/get-list-transit-down-by-trip/${tripId}`,
+      `${apiGateWay}/v4/bus-ticket/get-list-transit-down-by-trip/${tripId}`,
       {
         method: "GET",
         headers: {

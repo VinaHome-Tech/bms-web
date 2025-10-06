@@ -1,6 +1,6 @@
 // ~/types/userType.ts
 export interface UserBMSType {
-  id: number | null
+  id: string | null
   username: string | null
   full_name: string | null
   company_name: string | null
@@ -20,6 +20,6 @@ export interface UserActionType {
   full_name: string;
   username: string;
   company_id: string;
-  office_id?: number | null ;
-  company_code?: string | null ;
+  office_id?: number;
+  company_code?: string;
 }
