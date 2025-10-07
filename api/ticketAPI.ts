@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type {
   CancelTicketType,
   CopyTicketType,
@@ -249,7 +250,7 @@ export const querySearchTickets = async (
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie("access_token");
   try {
-    return await $fetch<ApiResponse<DTO_RP_SearchTicket[]>>(`${apiGateWay}/v2/ticket/search-tickets`, {
+    return await $fetch<ApiResponse<DTO_RP_SearchTicket[]>>(`${apiGateWay}/v4/bus-ticket/search-tickets`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${cookie.value}`,

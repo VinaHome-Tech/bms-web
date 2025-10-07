@@ -21,6 +21,7 @@ export interface TripType {
   driver?: DriverType[];
   assistant?: AssistantType[];
   confirmation_depart?: boolean;
+  ticket_price: number;
 }
 
 export interface DTO_RQ_UpdateTrip {

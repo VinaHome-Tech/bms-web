@@ -49,9 +49,6 @@ const {
   dialogFormCargo,
   isEditCargo,
   handleSaveCargo,
-  cargoData,
-  loadingCargoTable,
-  loadingCargoSubmit,
 } = useCargoManagement();
 
 const {
@@ -71,11 +68,12 @@ const { db, ref: dbRef, off } = useFirebase()
 const useUserStore = userStore();
 const officeStore = useOfficeStore();
 
+
 const valueSelectedDate = ref<string | Date | undefined>(undefined);
 function handleDateChange(date: Date) {
-  console.log('Ngày được chọn:', date)
+  // console.log('Ngày được chọn:', date)
   valueSelectedDate.value = date;
-  console.log('Ngày chọn:', valueSelectedDate.value);
+  // console.log('Ngày chọn:', valueSelectedDate.value);
   if (queryDate.value !== date) {
     queryDate.value = date;
   }
@@ -92,7 +90,7 @@ const handleChange = (val: CollapseModelValue) => {
 }
 
 const handleViewRoute = () => {
-  console.log('Xem lộ trình được click');
+  // console.log('Xem lộ trình được click');
   showRouteInfo.value = !showRouteInfo.value;
 }
 
@@ -101,7 +99,7 @@ const handleViewRoute = () => {
 
 
 const handleTripSelected = async (trip: TripType) => {
-  console.log('Trip được chọn:', trip);
+  // console.log('Trip được chọn:', trip);
   selectedTrip.value = trip;
   activeTab.value = '';
   selectedTickets.value = [];
@@ -116,11 +114,11 @@ const handleTripSelected = async (trip: TripType) => {
 
 
 const handleClickTabs = async (tab: TabsPaneContext, event: Event) => {
-  console.log(tab, event)
-  console.log('Tab được click:', tab.props.name);
+  // console.log(tab, event)
+  // console.log('Tab được click:', tab.props.name);
   if (tab.props.name === '1') {
-    console.log('Sơ đồ ghế tab được chọn');
-    console.log('Chuyến hiện tại:', selectedTrip.value);
+    // console.log('Sơ đồ ghế tab được chọn');
+    // console.log('Chuyến hiện tại:', selectedTrip.value);
     elTabTicketPending.value = true;
     if (selectedTrip.value?.trip_id) {
       // 1. Gọi API lấy danh sách vé
@@ -150,14 +148,14 @@ const handleClickTabs = async (tab: TabsPaneContext, event: Event) => {
       setupRealtimeListener(selectedTrip.value.trip_id);
     }
   } else if (tab.props.name === '2') {
-    console.log('Hành khách tab được chọn');
+    // console.log('Hành khách tab được chọn');
     elTabTicketPending.value = false;
     await fetchListCustomerByTrip();
   } else if (tab.props.name === '3') {
-    console.log('Trung chuyển tab được chọn');
+    // console.log('Trung chuyển tab được chọn');
     elTabTicketPending.value = false;
-    fetchListTransitUpByTrip();
-    fetchListTransitDownByTrip();
+    await fetchListTransitUpByTrip();
+    await fetchListTransitDownByTrip();
   } else if (tab.props.name === '4') {
     elTabTicketPending.value = false;
     console.log('Hàng hóa tab được chọn');
@@ -218,10 +216,10 @@ const cleanupTripData = async (tripId: number) => {
 
     await Promise.all(cleanupPromises);
 
-    console.log(`✅ Đã dọn dẹp toàn bộ dữ liệu cho chuyến ${tripId}`);
+    // console.log(`✅ Đã dọn dẹp toàn bộ dữ liệu cho chuyến ${tripId}`);
   } catch (error) {
     console.error(`❌ Lỗi khi dọn dẹp chuyến ${tripId}:`, error);
-    throw error;
+    notifyError("Lỗi khi dọn dẹp dữ liệu chuyến cũ!");
   }
 };
 
@@ -312,8 +310,8 @@ const {
 
 
 watch([ valueSelectedDate, valueSelectedRoute ], ([ newDate, newRoute ], [ oldDate, oldRoute ]) => {
-  console.log('Ngày:', oldDate, '=>', newDate);
-  console.log('Tuyến:', oldRoute, '=>', newRoute);
+  // console.log('Ngày:', oldDate, '=>', newDate);
+  // console.log('Tuyến:', oldRoute, '=>', newRoute);
 
   if (newDate && newRoute) {
     fetchListTripByRouteAndDate(newDate, newRoute as number, useUserStore.company_id ?? '');
@@ -360,109 +358,76 @@ watch(tripList, async (newTripList) => {
   }
 });
 
-// ✅ SỬA: Watcher duy nhất cho queryTripID
-watch(queryTripID, async (newValue, oldValue) => {
-  console.log('🔍 queryTripID changed:', oldValue, '=>', newValue);
-  console.log('🔍 tripList current:', tripList.value);
-  console.log('🔍 selectedTrip current:', selectedTrip.value);
+// ✅ THÊM: Watcher kết hợp để xử lý trường hợp tìm lại cùng vé
+watch(
+  [ queryTripID, queryTicketID ],
+  async ([ newTripID, newTicketID ], [ oldTripID, oldTicketID ]) => {
+    if (!newTripID || !newTicketID) return;
 
-  // ✅ Trường hợp 1: Chuyển chuyến mới
-  if (newValue && newValue !== oldValue && tripList.value.length > 0) {
-    const foundTrip = tripList.value.find(trip => trip.trip_id === newValue);
-    if (foundTrip) {
-      console.log('✅ Đã tìm thấy chuyến từ query (tripList có sẵn):', foundTrip);
-      selectedTrip.value = foundTrip;
-      activeTab.value = '1';
-
-      // ✅ Clear vé đang chọn trước khi fetch tickets mới
+    // --- Trường hợp cùng chuyến ---
+    if (selectedTrip.value && selectedTrip.value.trip_id === newTripID) {
+      // Clear tất cả vé đang chọn để chọn lại
       clearAllSelectedTickets();
 
-      // ✅ Fetch tickets cho chuyến mới
-      await fetchListTicketByTrip(foundTrip.trip_id);
+      if (ticketList.value.length === 0) {
+        await fetchListTicketByTrip(selectedTrip.value.trip_id);
+      }
 
-      // ✅ Nếu có queryTicketID, tự động chọn vé
-      if (queryTicketID.value) {
-        const targetTicket = ticketList.value.find(ticket => ticket.id === queryTicketID.value);
-        if (targetTicket) {
-          console.log('✅ Đã tìm thấy vé cần chọn:', targetTicket);
-          await handleTicketClick(targetTicket);
-          console.log('✅ Đã tự động chọn vé:', targetTicket.id);
-        } else {
-          console.warn('⚠️ Không tìm thấy vé với ID:', queryTicketID.value);
+      const targetTicket = ticketList.value.find(t => t.id === newTicketID);
+      if (targetTicket) {
+        console.log('✅ Chọn vé trong cùng chuyến:', targetTicket);
+        await handleTicketClick(targetTicket);
+      } else {
+        console.warn('⚠️ Không tìm thấy vé trong cùng chuyến:', newTicketID);
+      }
+      return;
+    }
+
+    // --- Trường hợp chuyển sang chuyến khác ---
+    if (tripList.value.length > 0) {
+      const targetTrip = tripList.value.find(trip => trip.trip_id === newTripID);
+      if (targetTrip) {
+        console.log('🔍 Chuyển sang chuyến mới:', targetTrip);
+
+        selectedTrip.value = targetTrip;
+        activeTab.value = '1';
+
+        // Clear vé đang chọn
+        clearAllSelectedTickets();
+
+        // Fetch vé cho chuyến mới nếu chưa có
+        if (ticketList.value.length === 0) {
+          await fetchListTicketByTrip(targetTrip.trip_id);
         }
-      }
-    } else {
-      console.warn('⚠️ Không tìm thấy chuyến với ID:', newValue);
-    }
-  }
-  // ✅ Trường hợp 2: Cùng chuyến hiện tại, chỉ cần tìm vé
-  else if (newValue && selectedTrip.value && selectedTrip.value.trip_id === newValue) {
-    console.log('🔍 Cùng chuyến hiện tại, chỉ cần xử lý vé:', newValue);
 
-    // ✅ QUAN TRỌNG: Luôn clear vé đang chọn trước
-    clearAllSelectedTickets();
-
-    // ✅ Nếu có queryTicketID, tự động chọn vé mới
-    if (queryTicketID.value) {
-      // Đảm bảo ticketList đã có dữ liệu
-      if (ticketList.value.length === 0) {
-        await fetchListTicketByTrip(selectedTrip.value.trip_id);
-      }
-
-      const targetTicket = ticketList.value.find(ticket => ticket.id === queryTicketID.value);
-      if (targetTicket) {
-        console.log('✅ Đã tìm thấy vé trong chuyến hiện tại:', targetTicket);
-        await handleTicketClick(targetTicket);
-        console.log('✅ Đã chọn vé mới trong cùng chuyến:', targetTicket.id);
+        const targetTicket = ticketList.value.find(t => t.id === newTicketID);
+        if (targetTicket) {
+          console.log('✅ Đã chọn vé sau khi chuyển chuyến:', targetTicket);
+          await handleTicketClick(targetTicket);
+        } else {
+          console.warn('⚠️ Không tìm thấy vé sau khi chuyển chuyến:', newTicketID);
+        }
       } else {
-        console.warn('⚠️ Không tìm thấy vé với ID trong chuyến hiện tại:', queryTicketID.value);
+        console.warn(
+          '⚠️ Không tìm thấy chuyến với ID trong danh sách hiện tại:',
+          newTripID
+        );
+        console.log(
+          '🔍 Danh sách chuyến hiện tại:',
+          tripList.value.map(t => ({ id: t.trip_id, time: t.departure_time }))
+        );
       }
-    } else {
-      console.log('✅ Đã clear selection trong cùng chuyến');
+      return;
     }
-  }
-  else if (newValue && tripList.value.length === 0) {
-    console.log('⏳ queryTripID đã set, đang chờ tripList được load...');
-  }
-});
 
-// ✅ SỬA: Watcher riêng cho queryTicketID để xử lý khi chỉ thay đổi vé
-watch(queryTicketID, async (newValue, oldValue) => {
-  console.log('🔍 queryTicketID changed:', oldValue, '=>', newValue);
-  console.log('🔍 selectedTrip current:', selectedTrip.value);
-  console.log('🔍 queryTripID current:', queryTripID.value);
+    // --- Trường hợp chưa có danh sách chuyến, chờ load ---
+    console.log('⏳ Chưa có danh sách chuyến, chờ load...');
+  },
+  { immediate: false, flush: 'post' }
+);
 
-  // ✅ Chỉ xử lý khi có chuyến đã chọn và queryTripID không thay đổi
-  if (selectedTrip.value && queryTripID.value === selectedTrip.value.trip_id && newValue !== oldValue) {
-
-    // ✅ QUAN TRỌNG: Luôn clear vé đang chọn trước
-    clearAllSelectedTickets();
-
-    if (newValue) {
-      // Đảm bảo ticketList đã có dữ liệu
-      if (ticketList.value.length === 0) {
-        await fetchListTicketByTrip(selectedTrip.value.trip_id);
-      }
-
-      const targetTicket = ticketList.value.find(ticket => ticket.id === newValue);
-      if (targetTicket) {
-        console.log('✅ Tìm vé mới trong chuyến hiện tại:', targetTicket);
-        await handleTicketClick(targetTicket);
-        console.log('✅ Đã chọn vé mới:', targetTicket.id);
-      } else {
-        console.warn('⚠️ Không tìm thấy vé với ID:', newValue);
-      }
-    } else {
-      console.log('✅ Đã clear selection do queryTicketID bị xóa');
-    }
-  }
-});
 
 watch(queryRouteID, (newValue) => {
-  console.log('🔍 queryRouteID changed:', newValue);
-  console.log('🔍 valueSelectedRoute current:', valueSelectedRoute.value);
-  console.log('🔍 routeNames available:', routeNames.value.map(r => ({ id: r.id, name: r.route_name })));
-
   if (newValue) {
     const routeExists = routeNames.value.some(r => r.id === newValue);
     if (routeExists) {
@@ -546,7 +511,8 @@ onMounted(async () => {
                   </template>
                   <template #icon="{ isActive }">
                     <span class="flex items-center justify-center gap-4">
-                      <span class="flex items-center gap-1 text-[#0072bc] cursor-pointer hover:text-[#005a9a]" @click.stop="handleViewRoute">
+                      <span class="flex items-center gap-1 text-[#0072bc] cursor-pointer hover:text-[#005a9a]"
+                        @click.stop="handleViewRoute">
                         {{ showRouteInfo ? 'Ẩn lộ trình' : 'Xem lộ trình' }}
                         <el-icon>
                           <component :is="showRouteInfo ? ArrowUpBold : ArrowRightBold" />
@@ -582,7 +548,9 @@ onMounted(async () => {
                     <el-button :icon="Plus" type="warning" plain>Thêm hàng</el-button>
                     <el-dropdown style="margin-left: 12px;">
                       <el-button>
-                        <el-icon><More /></el-icon>
+                        <el-icon>
+                          <More />
+                        </el-icon>
                       </el-button>
                       <template #dropdown>
                         <el-dropdown-menu>
@@ -608,12 +576,14 @@ onMounted(async () => {
                 <div class="flex items-center justify-between mb-3">
                   <h3 class="text-[16px] font-semibold">Lộ trình</h3>
                   <el-button size="small" type="primary" plain @click="showRouteInfo = false">
-                    <el-icon><CloseBold /></el-icon>
+                    <el-icon>
+                      <CloseBold />
+                    </el-icon>
                     Đóng
                   </el-button>
                 </div>
-                
-            
+
+
               </div>
             </div>
 
@@ -646,7 +616,7 @@ onMounted(async () => {
                             <div v-for="row in getFloorSeats(floor)" :key="`floor${floor}-row${row.rowNumber}`"
                               class="grid gap-1 w-full"
                               :style="{ gridTemplateColumns: `repeat(${row.seats.length}, 1fr)` }">
-                           
+
                               <TicketItem v-for="seat in row.seats" :key="seat.id" :ticket="seat"
                                 :onClick="() => handleTicketClick(seat)" :isSelected="isTicketSelected(seat)"
                                 :selectedBy="getTicketSelector(seat)" :isLoading="isTicketUpdating(seat.id)"

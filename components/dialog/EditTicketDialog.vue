@@ -9,7 +9,6 @@ const props = defineProps<{
     modelValue: boolean
     selectedTickets?: TicketType[]
 }>()
-const useOffice = useOfficeStore()
 const useUserStore = userStore();
 
 const localTickets = ref<TicketType[]>([])
@@ -64,8 +63,12 @@ const visible = ref(props.modelValue)
 
 watch(
     () => props.modelValue,
-    (val) => {
+    async (val) => {
         visible.value = val
+        if (val) {
+            await useUserStore.loadUserInfo();
+            await fetchListAgency();  
+        }
     }
 )
 
@@ -116,29 +119,22 @@ const fetchListAgency = async () => {
             agencyList.value = response.result ?? [];
             console.log('Danh sách đại lý:', agencyList.value);
         } else {
-            ElNotification({
-                message: h('p', { style: 'color: red' }, response.message || 'Lỗi khi lấy danh sách đại lý'),
-                type: 'error',
-            });
+            notifyError(response.message || 'Lấy danh sách đại lý thất bại!');
         }
     } catch (error) {
         console.error('Lỗi khi lấy danh sách đại lý:', error);
-        ElNotification({
-            message: h('p', { style: 'color: red' }, 'Lỗi khi lấy danh sách đại lý'),
-            type: 'error',
-        });
+        notifyError('Đã xảy ra lỗi khi lấy danh sách đại lý!');
     } finally {
         loadingAgency.value = false;
     }
 };
 onMounted(async () => {
-    await useUserStore.loadUserInfo();
-    fetchListAgency();
+    
 });
 </script>
 <template>
     <el-dialog v-model="visible" width="700" @close="handleClose" style="padding: 0px;">
-        <template #title>
+        <template #header>
             <div class="pt-[10px] pl-2">
                 <span class="text-[16px] font-semibold text-white">Cập nhật thông tin vé</span>
             </div>

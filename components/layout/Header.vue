@@ -208,7 +208,7 @@ const querySearch = (queryString: string, callback: (results: DTO_RP_SearchTicke
       return
     }
 
-    if (queryString.trim().length < 4) {
+    if (queryString.trim().length < 3) {
       callback([])
       return
     }

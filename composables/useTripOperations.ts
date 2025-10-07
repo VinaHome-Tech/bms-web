@@ -5,6 +5,7 @@ import { ElMessageBox } from 'element-plus'
 import { selectedTrip, tripList } from './useTripManagement';
 import { getTicketsByTripToPrint } from "~/api/ticketAPI";
 import type { DTO_RP_TicketsToPrint } from "~/types/ticketType";
+
 export const useTripOperations = () => {
   const dialogChangeTimeTrip = ref(false);
   const loadingFormChangeTimeTrip = ref(false);
