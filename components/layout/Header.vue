@@ -17,7 +17,7 @@ import {
   DataAnalysis,
   Postcard,
   Service,
-  Message,
+  Operation,
   Phone,
   Edit,
 } from '@element-plus/icons-vue'
@@ -47,6 +47,7 @@ const Icons: Record<string, Component> = {
   Finished,
   Lock,
   DataAnalysis,
+  Operation,
 };
 const { handleQueryTicket } = useTicketManagement();
 // const { handleLogout } = useLogout();
@@ -104,31 +105,30 @@ const menuItems = [
   {
     type: 'item',
     label: 'Tổng quan',
-    index: '11',
+    index: '1',
     icon: 'HomeFilled',
     to: '/dashboard',
   },
   {
     type: 'item',
     label: 'Đặt vé',
-    index: '12',
+    index: '2',
     icon: 'Ticket',
     to: '/ticket',
   },
   {
     type: 'submenu',
     label: 'Khai báo',
-    index: '13',
+    index: '3',
     icon: 'Finished',
     children: [
-      { label: 'Văn phòng', index: '13-1', to: '/declare/office' },
-      { label: 'Phương tiện', index: '13-2', to: '/declare/vehicle' },
-      { label: 'Tuyến', index: '13-3', to: '/declare/route' },
-      { label: 'Điểm dừng', index: '13-4', to: '/declare/point' },
-      { label: 'Nhân viên', index: '13-5', to: '/declare/employee' },
-      { label: 'Đại lý', index: '13-6', to: '/declare/agent' },
-      { label: 'Lịch chạy', index: '13-7', to: '/declare/schedule' },
-      { label: 'Mã giảm giá', index: '13-8', to: '/declare/discount' },
+      { label: 'Văn phòng', index: '3-1', to: '/declare/office' },
+      { label: 'Phương tiện', index: '3-2', to: '/declare/vehicle' },
+      { label: 'Tuyến', index: '3-3', to: '/declare/route' },
+      { label: 'Nhân viên', index: '3-5', to: '/declare/employee' },
+      { label: 'Đại lý', index: '3-6', to: '/declare/agent' },
+      { label: 'Lịch chạy', index: '3-7', to: '/declare/schedule' },
+      { label: 'Mã giảm giá', index: '3-8', to: '/declare/discount' },
       { label: 'Sơ đồ ghế', index: '13-9', to: '/declare/seat' },
 
     ],
@@ -136,7 +136,7 @@ const menuItems = [
   {
     type: 'submenu',
     label: 'Báo cáo',
-    index: '14',
+    index: '4',
     icon: 'DataAnalysis',
     children: [
       { label: 'Báo cáo vé', index: '14-1', to: '/report/ticket' },
@@ -145,6 +145,18 @@ const menuItems = [
 
     ],
   },
+  {
+    type: 'submenu',
+    label: 'Cấu hình',
+    index: '5',
+    icon: 'Operation',
+    children: [
+      { label: 'Giá vé', index: '14-1', to: '/config/fare' },
+
+
+    ],
+  },
+
 ];
 
 const searchQuery = ref('')

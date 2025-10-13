@@ -27,3 +27,9 @@ export interface DTO_RP_ListRouteName {
   id: number;
   route_name: string;
 }
+
+export interface DTO_RP_ListRouteNameToConfig {
+  id: number;
+  route_name: string;
+  display_price: number;
+}

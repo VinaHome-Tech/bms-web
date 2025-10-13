@@ -1,4 +1,4 @@
-import type { DTO_RP_ListRouteName, DTO_RQ_Route, RouteType } from "~/types/routeType";
+import type { DTO_RP_ListRouteName, DTO_RP_ListRouteNameToConfig, DTO_RQ_Route, RouteType } from "~/types/routeType";
 import type { ApiResponse } from "./APIResponse";
 import type { UserActionType } from "~/types/userType";
 
@@ -105,6 +105,23 @@ export const getListRouteNameByCompany = async (id: string): Promise<ApiResponse
   const cookie = useCookie('access_token');
   try {
     return await $fetch<ApiResponse<DTO_RP_ListRouteName[]>>(`${apiGateWay}/v2/route/get-list-route-name-by-company/${id}`, {
+      method: "GET",
+      headers: {
+        'Authorization': `Bearer ${cookie.value}`
+      }
+    });
+  } catch (error) {
+    console.error("API error:", error);
+    throw error;
+  }
+}
+
+export const API_GetListRouteNameToConfigByCompany = async (id: string): Promise<ApiResponse<DTO_RP_ListRouteNameToConfig[]>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie('access_token');
+  try {
+    return await $fetch<ApiResponse<DTO_RP_ListRouteNameToConfig[]>>(`${apiGateWay}/v2/route/get-list-route-name-to-config-by-company/${id}`, {
       method: "GET",
       headers: {
         'Authorization': `Bearer ${cookie.value}`

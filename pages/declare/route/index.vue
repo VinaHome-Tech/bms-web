@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {
-    Plus, Delete, Edit, ArrowUp, ArrowDown
+    Plus, Delete, Edit, ArrowUp, ArrowDown, Guide
 } from '@element-plus/icons-vue'
 import type { DrawerProps, FormInstance, FormRules } from 'element-plus'
 import { createRoute, deleteRoute, getListRouteByCompany, updateRoute, updateRouteOrder } from '~/api/routeAPI';
@@ -248,16 +248,10 @@ const handleMoveUp = async (item: RouteType, index: number) => {
         ]);
 
         routes.value.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-        ElNotification({
-            message: h('p', { style: 'color: teal' }, 'Di chuyển tuyến lên thành công!'),
-            type: 'success',
-        })
+        notifySuccess('Di chuyển tuyến lên thành công!');
     } catch (error) {
         console.error('Lỗi khi di chuyển lên:', error);
-        ElNotification({
-            message: h('p', { style: 'color: teal' }, 'Di chuyển không thành công!'),
-            type: 'error',
-        })
+        notifyError('Di chuyển không thành công!');
     } finally {
         loading.value = false;
     }
@@ -287,21 +281,21 @@ const handleMoveDown = async (item: RouteType, index: number) => {
 
         routes.value.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
 
-        ElNotification({
-            message: h('p', { style: 'color: teal' }, 'Di chuyển tuyến xuống thành công!'),
-            type: 'success',
-        })
+        notifySuccess('Di chuyển tuyến xuống thành công!');
     } catch (error) {
         console.error('Lỗi khi di chuyển xuống:', error);
-        ElNotification({
-            message: h('p', { style: 'color: teal' }, 'Di chuyển không thành công!'),
-            type: 'error',
-        })
+        notifyError('Di chuyển không thành công!');
     } finally {
         loading.value = false;
     }
 };
-
+const handleToConfigPointInRoute = (index: number, row: RouteType) => {
+    if (!row.id) {
+        notifyError('Tuyến không hợp lệ');
+        return;
+    }
+    navigateTo(`/declare/route/config?route_id=${row.id}&route_name=${encodeURIComponent(row.route_name || '')}`);
+};
 onMounted(() => {
     useUserStore.loadUserInfo();
     fetchListRoute();
@@ -347,7 +341,7 @@ onMounted(() => {
                 <template #default="scope">
                     <el-button type="primary" :icon="Edit" circle @click="handleEdit(scope.$index, scope.row)" />
                     <el-button circle type="danger" :icon="Delete" @click="handleDelete(scope.$index, scope.row)" />
-
+                    <el-button circle type="warning" :icon="Guide" @click="handleToConfigPointInRoute(scope.$index, scope.row)" />
                 </template>
             </el-table-column>
         </el-table>
