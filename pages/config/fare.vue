@@ -1,14 +1,15 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
 import { Plus } from '@element-plus/icons-vue';
-import type { FormInstance } from 'element-plus'
+import type { FormInstance, CheckboxValueType } from 'element-plus'
+import { API_CreateFareConfig } from '~/api/configFareAPI';
 import { API_GetListPointNameByRoute } from '~/api/pointAPI';
 import { API_GetListRouteNameToConfigByCompany } from '~/api/routeAPI';
 import { getSeatChartNameByCompany } from '~/api/seatAPI';
-import type { ConfigPointInRoute, DTO_RP_GroupPointName } from '~/types/pointType';
+import type { ConfigPointInRoute } from '~/types/configFareType';
+import type { DTO_RP_GroupPointName } from '~/types/pointType';
 import type { DTO_RP_ListRouteNameToConfig } from '~/types/routeType';
 import type { SeatChartNameType } from '~/types/seatType';
-
 const ruleFormRef = ref<FormInstance>()
 const useUserStore = userStore()
 const dialogVisible = ref(false)
@@ -21,6 +22,18 @@ const handleClose = () => {
     ruleFormRef.value?.resetFields()
     clearFareConfigs()
     dialogVisible.value = false
+    ruleForm.value = {
+        id: undefined,
+        route_id: undefined,
+        config_name: undefined,
+        trip_type: 1,
+        seat_chart_id: [],
+        priority: false,
+        double_room: false,
+        same_price: false,
+        date_range: undefined as [Date, Date] | undefined,
+        fare_configs: []
+    }
 }
 
 const ruleForm = ref<ConfigPointInRoute>({
@@ -32,7 +45,7 @@ const ruleForm = ref<ConfigPointInRoute>({
     priority: false,
     double_room: false,
     same_price: false,
-    date_range: undefined as [ Date, Date ] | undefined,
+    date_range: undefined as [Date, Date] | undefined,
     fare_configs: []
 })
 
@@ -40,22 +53,77 @@ const addFareConfigRow = () => {
     if (!ruleForm.value.fare_configs) {
         ruleForm.value.fare_configs = []
     }
-    ruleForm.value.fare_configs.push({
-        id: Date.now(), // temporary ID
-        departure_point_id: undefined,
-        arrival_point_id: undefined,
+
+    const newRow = {
+        id: undefined,
+        departure_point_id: [],
+        arrival_point_id: [],
         single_room_price: 0,
         double_room_price: 0,
+        singleRoomPriceDisplay: '',
+        doubleRoomPriceDisplay: ''
+    }
 
-    })
+    // 🔹 Nếu đang áp dụng đồng giá, tự động gán giá của tuyến
+    if (currentRoute.value && currentRoute.value.display_price) {
+        const displayPrice = currentRoute.value.display_price
+
+        newRow.single_room_price = displayPrice
+        newRow.singleRoomPriceDisplay = formatCurrency(displayPrice)
+
+        if (ruleForm.value.double_room) {
+            newRow.double_room_price = displayPrice
+            newRow.doubleRoomPriceDisplay = formatCurrency(displayPrice)
+        }
+    }
+
+    ruleForm.value.fare_configs.push(newRow)
 }
+
 
 const removeFareConfigRow = (index: number) => {
     if (ruleForm.value.fare_configs) {
         ruleForm.value.fare_configs.splice(index, 1)
     }
 }
+const currentRoute = computed(() => {
+    return listRoute.value.find(r => r.id === ruleForm.value.route_id)
+})
 
+// Hàm áp dụng giá đồng giá cho tất cả các dòng
+const applyUniformPrice = () => {
+    if (!currentRoute.value) return
+
+    const displayPrice = currentRoute.value.display_price
+
+    ruleForm.value.fare_configs?.forEach(config => {
+        config.single_room_price = displayPrice
+        config.singleRoomPriceDisplay = formatCurrency(displayPrice)
+
+        if (ruleForm.value.double_room) {
+            config.double_room_price = displayPrice
+            config.doubleRoomPriceDisplay = formatCurrency(displayPrice)
+        }
+    })
+}
+
+// Hàm xử lý khi thay đổi checkbox "Đồng giá trong 1 sơ đồ"
+const onSamePriceChange = (val: CheckboxValueType) => {
+    if (val) {
+        applyUniformPrice()
+    }
+}
+
+// Hàm xử lý khi thay đổi checkbox "Bán phòng đôi"
+const onDoubleRoomChange = (val: CheckboxValueType) => {
+    if (!val) {
+        // Khi bỏ chọn "Bán phòng đôi", reset tất cả double_room_price về 0
+        ruleForm.value.fare_configs?.forEach(config => {
+            config.double_room_price = 0
+            config.doubleRoomPriceDisplay = ''
+        })
+    }
+}
 const clearFareConfigs = () => {
     ruleForm.value.fare_configs = []
 }
@@ -80,12 +148,16 @@ const fetchListPoint = async () => {
 }
 watch(
     () => ruleForm.value.route_id,
-    async (newRouteId) => {
+    async (newRouteId, oldRouteId) => {
+        // Clear fare configs khi thay đổi tuyến (kể cả khi chọn tuyến mới)
+        if (oldRouteId !== undefined) {
+            clearFareConfigs()
+        }
+
         if (newRouteId) {
             await fetchListPoint()
         } else {
             listPoint.value = [] // reset nếu chưa chọn tuyến
-            clearFareConfigs() // clear fare configs when route changes
         }
     }
 )
@@ -131,8 +203,32 @@ const fetchListSeatChart = async () => {
     }
 }
 
-const handleSubmit = () => {
-    console.log('Form Data:', ruleForm.value)
+const handleSubmit = async () => {
+    // Chuẩn bị dữ liệu để gửi
+    const submitData = {
+        ...ruleForm.value,
+        company_id: useUserStore.company_id,
+        fare_configs: ruleForm.value.fare_configs?.map(config => ({
+            departure_point_id: (config.departure_point_id || [])
+                .map((p: any) => typeof p === 'object' ? p.id : p),
+            arrival_point_id: (config.arrival_point_id || [])
+                .map((p: any) => typeof p === 'object' ? p.id : p),
+            single_room_price: config.single_room_price || 0,
+            double_room_price: config.double_room_price || 0
+        })) || []
+    }
+    console.log('Data to submit:', JSON.stringify(submitData, null, 2))
+    try {
+        const response = await API_CreateFareConfig(submitData)
+        if (response.success) {
+            notifySuccess('Lưu cấu hình thành công')
+        } else {
+            notifyError(response.message || 'Lưu cấu hình thất bại')
+        }
+    } catch (error) {
+        console.log('Submit error:', error)
+        notifyError('Lưu cấu hình thất bại')
+    }
 }
 const formatCurrency = (value: number): string => {
     return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
@@ -155,33 +251,7 @@ const onDoubleRoomPriceInput = (val: string, row: any) => {
     row.double_room_price = numericValue
     row.doubleRoomPriceDisplay = formatCurrency(numericValue)
 }
-const currentRoute = computed(() => {
-    return listRoute.value.find(r => r.id === ruleForm.value.route_id)
-})
 
-// Hàm áp dụng giá đồng giá cho tất cả các dòng
-const applyUniformPrice = () => {
-    if (!currentRoute.value) return
-    
-    const displayPrice = currentRoute.value.display_price
-    
-    ruleForm.value.fare_configs?.forEach(config => {
-        config.single_room_price = displayPrice
-        config.singleRoomPriceDisplay = formatCurrency(displayPrice)
-        
-        if (ruleForm.value.double_room) {
-            config.double_room_price = displayPrice
-            config.doubleRoomPriceDisplay = formatCurrency(displayPrice)
-        }
-    })
-}
-
-// Hàm xử lý khi thay đổi checkbox "Đồng giá trong 1 sơ đồ"
-const onSamePriceChange = (value: boolean) => {
-    if (value) {
-        applyUniformPrice()
-    }
-}
 onMounted(async () => {
     await useUserStore.loadUserInfo()
 
@@ -281,7 +351,7 @@ onMounted(async () => {
                         <el-checkbox v-model="ruleForm.same_price" name="type" @change="onSamePriceChange">
                             Đồng giá trong 1 sơ đồ
                         </el-checkbox>
-                        <el-checkbox v-model="ruleForm.double_room" name="type">
+                        <el-checkbox v-model="ruleForm.double_room" name="type" @change="onDoubleRoomChange">
                             Bán phòng đôi
                         </el-checkbox>
                     </el-form-item>
