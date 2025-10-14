@@ -2,11 +2,13 @@
 <script setup lang="ts">
 import { Plus } from '@element-plus/icons-vue';
 import type { FormInstance, CheckboxValueType } from 'element-plus'
-import { API_CreateFareConfig } from '~/api/configFareAPI';
+import { API_CreateFareConfig, API_GetListConfigFareByCompany } from '~/api/configFareAPI';
 import { API_GetListPointNameByRoute } from '~/api/pointAPI';
 import { API_GetListRouteNameToConfigByCompany } from '~/api/routeAPI';
 import { getSeatChartNameByCompany } from '~/api/seatAPI';
-import type { ConfigPointInRoute } from '~/types/configFareType';
+import { formatCurrencyWithoutSymbol } from '~/lib/formatCurrency';
+import { formatDate, formatDate2 } from '~/lib/formatDate';
+import type { ConfigPointInRoute, DTO_RP_ConfigFare, DTO_RP_ConfigFare_2, DTO_RP_ConfigFare_3 } from '~/types/configFareType';
 import type { DTO_RP_GroupPointName } from '~/types/pointType';
 import type { DTO_RP_ListRouteNameToConfig } from '~/types/routeType';
 import type { SeatChartNameType } from '~/types/seatType';
@@ -202,9 +204,26 @@ const fetchListSeatChart = async () => {
         loadingListSeatChart.value = false
     }
 }
+const listConfigFare = ref<DTO_RP_ConfigFare_3[]>([])
+const loadingListConfigFare = ref(false)
+const fetchListConfigFare = async () => {
+    loadingListConfigFare.value = true
+    try {
+        const res = await API_GetListConfigFareByCompany(useUserStore.company_id || '')
+        if (res.success && res.result) {
+            listConfigFare.value = res.result
+        } else {
+            notifyError(res.message || 'Lấy danh sách cấu hình giá vé thất bại')
+        }
+    } catch (error) {
+        console.log(error)
+        notifyError('Lấy danh sách cấu hình giá vé thất bại')
+    } finally {
+        loadingListConfigFare.value = false
+    }
+}
 
 const handleSubmit = async () => {
-    // Chuẩn bị dữ liệu để gửi
     const submitData = {
         ...ruleForm.value,
         company_id: useUserStore.company_id,
@@ -254,7 +273,7 @@ const onDoubleRoomPriceInput = (val: string, row: any) => {
 
 onMounted(async () => {
     await useUserStore.loadUserInfo()
-
+    await fetchListConfigFare()
 })
 </script>
 <template>
@@ -267,28 +286,154 @@ onMounted(async () => {
             {{ listRoute }}
             {{ listSeatChart }}
             {{ listPoint }}
-            <el-table style="width: 100%">
-                <el-table-column>
-                    <template #header>
-                        <span>Tên cấu hình</span>
-                    </template>
-                </el-table-column>
-                <el-table-column>
-                    <template #header>
-                        <span>Thời gian</span>
-                    </template>
-                </el-table-column>
-                <el-table-column>
-                    <template #header>
-                        <span>Sơ đồ ghế</span>
-                    </template>
-                </el-table-column>
-                <el-table-column>
-                    <template #header>
-                        <span>Thông tin</span>
-                    </template>
-                </el-table-column>
-            </el-table>
+            {{ listConfigFare }}
+                <div class="mx-auto">
+                    <div class="space-y-6">
+                        <div v-for="route in listConfigFare" :key="route.route_id"
+                            class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+                            <!-- Header tuyến đường -->
+                            <div class="bg-[#0072bc] p-2">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-4">
+                                        <div>
+                                            <h2 class="text-xl font-bold text-white">
+                                                {{ route.route_name }}
+                                            </h2>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white bg-opacity-20 px-4 rounded-full">
+                                        <span class="text-black font-semibold">
+                                            {{ route.config_fares.length }} cấu hình
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bảng cấu hình -->
+                            <div class="overflow-x-auto">
+                                <table class="w-full">
+                                    <thead>
+                                        <tr class="bg-gray-100 border-b border-gray-200">
+                                            <th
+                                                class="pl-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                ID
+                                            </th>
+                                            <th
+                                                class=" py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                Tên cấu hình
+                                            </th>
+                                            <th
+                                                class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                Thời gian áp dụng
+                                            </th>
+                                            <th
+                                                class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                Sơ đồ ghế
+                                            </th>
+                                            <th
+                                                class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                                Thuộc tính
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr v-for="(config, index) in route.config_fares" :key="config.id"
+                                            class="hover:bg-blue-50 transition-colors duration-200">
+                                            <!-- STT -->
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span
+                                                    class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-semibold text-sm">
+                                                    {{ config.id }}
+                                                </span>
+                                            </td>
+
+                                            <!-- Tên cấu hình -->
+                                            <td class=" py-4">
+                                                <div class="flex flex-col">
+                                                    <span class="text-sm font-semibold text-gray-900">{{
+                                                        config.config_name }}</span>
+                                                </div>
+                                            </td>
+
+                                            <!-- Thời gian áp dụng -->
+                                            <td class="px-6 py-4">
+                                                <div class="flex items-center gap-2">
+                                                    <svg class="text-indigo-500 flex-shrink-0" width="16" height="16"
+                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                        stroke-width="2">
+                                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                                    </svg>
+                                                    <div class="flex flex-col">
+                                                        <span class="text-xs text-gray-700">{{
+                                                            formatDate2(config.date_range[0]) }}</span>
+                                                        <span class="text-xs text-gray-500">-</span>
+                                                        <span class="text-xs text-gray-700">{{
+                                                            formatDate2(config.date_range[1]) }}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <!-- Sơ đồ ghế -->
+                                            <td class="px-6 py-4">
+                                                <div class="flex gap-1.5 flex-wrap">
+                                                    <el-tag v-for="seat in config.seat_chart" :key="seat.seat_chart_id"
+                                                        class="inline-flex items-center bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-medium">
+                                                        {{ seat.seat_chart_name }}
+                                                    </el-tag>
+                                                </div>
+                                            </td>
+
+
+                                            <!-- Thuộc tính -->
+                                            <td class="px-6 py-4">
+                                                <div class="flex gap-1.5 flex-wrap">
+                                                    <span v-if="config.double_room"
+                                                        class="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-xs font-medium">
+                                                        Phòng đôi
+                                                    </span>
+                                                    <span v-if="config.same_price"
+                                                        class="bg-amber-100 text-amber-700 px-2 py-1 rounded-full text-xs font-medium">
+                                                        Giá đồng nhất
+                                                    </span>
+                                                    <span v-if="config.priority"
+                                                        class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-medium">
+                                                        Ưu tiên
+                                                    </span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <!-- Empty state nếu không có cấu hình -->
+                                <div v-if="route.config_fares.length === 0" class="text-center py-12 bg-gray-50">
+                                    <svg class="mx-auto text-gray-400 mb-4" width="64" height="64" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                    </svg>
+                                    <p class="text-gray-500 text-sm">Chưa có cấu hình giá vé cho tuyến này</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Empty state nếu không có tuyến -->
+                    <div v-if="listConfigFare.length === 0" class="bg-white rounded-2xl shadow-xl p-12 text-center">
+                        <svg class="mx-auto text-gray-400 mb-4" width="80" height="80" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1.5">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-2">Chưa có tuyến nào</h3>
+                        <p class="text-gray-500">Thêm tuyến đường để bắt đầu cấu hình giá vé</p>
+                    </div>
+                </div>
+
         </div>
 
         <el-dialog v-model="dialogVisible" width="800" :before-close="handleClose" style="padding: 0px;">
@@ -298,6 +443,7 @@ onMounted(async () => {
                         Cấu hình
                     </span>
                 </div>
+
             </template>
             <div class="p-2 pb-4">
                 <el-form ref="ruleFormRef" style="max-width: 1000px" :model="ruleForm" status-icon label-width="auto"
