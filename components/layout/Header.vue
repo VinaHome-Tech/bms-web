@@ -18,8 +18,6 @@ import {
   Postcard,
   Service,
   Operation,
-  Phone,
-  Edit,
 } from '@element-plus/icons-vue'
 import IconZalo from '~/assets/icon/static/icon-zalo.png'
 import IconPhone from '~/assets/icon/static/icon-phone.png'
@@ -63,10 +61,6 @@ const notifications = ref([
   { id: 3, text: "Backup hoàn thành", time: "10 phút trước", type: "success" }
 ])
 
-
-const openSettings = () => {
-  console.log('Open settings')
-}
 
 const handleNotificationCommand = (command: number) => {
   console.log('Notification clicked:', command)
@@ -152,7 +146,7 @@ const menuItems = [
     icon: 'Operation',
     children: [
       { label: 'Giá vé', index: '14-1', to: '/config/fare' },
-
+      { label: 'Thời gian', index: '14-2', to: '/config/point-time' },
 
     ],
   },
