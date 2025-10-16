@@ -117,8 +117,6 @@ const handleSave = async () => {
                 notifySuccess('Lưu cấu hình thành công')
                 // handleClose()
             }
-            console.log('Saved data:', listPointConfigTime.value)
-            notifySuccess('Lưu cấu hình thành công')
         } else {
             notifyError('Không xác định được tuyến đường để lưu cấu hình')
         }
