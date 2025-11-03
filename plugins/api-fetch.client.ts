@@ -49,7 +49,7 @@ export default defineNuxtPlugin(() => {
                 } else {
                     const store = userStore()
                     store.resetUserInfo()
-                    navigateTo("/login")
+                    navigateTo("/")
                 }
             }
         },

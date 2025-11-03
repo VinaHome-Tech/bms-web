@@ -1,4 +1,5 @@
-import { logout } from "~/api/authAPI";
+import { logout } from "~/api/identity-service/auth/bms_auth";
+
 
 export const useAuth = () => {
     const useUserStore = userStore();

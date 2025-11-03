@@ -249,6 +249,38 @@ const handleSelectTicket = (item: Record<string, any>): void => {
   const ticket = item as DTO_RP_SearchTicket;
   handleQueryTicket(ticket);
 }
+
+
+// Handle menu navigation với force refresh
+const handleMenuItemClick = async (routePath: string | undefined) => {
+  if (!routePath) return
+  
+  
+  try {
+    const route = useRoute()
+    
+    // Kiểm tra nếu đã ở trang hiện tại
+    if (route.path === routePath) {
+      // Force refresh trang hiện tại
+      await nextTick()
+      window.location.reload()
+      return
+    }
+    
+    // Navigate đến trang mới với force refresh
+    await navigateTo(routePath, { 
+      replace: false,
+      external: false 
+    })
+    
+    // Đảm bảo trang được refresh sau khi navigate
+    await nextTick()
+  } catch (error) {
+    console.error('Navigation error:', error)
+    // Fallback: sử dụng window.location
+    window.location.href = routePath
+  }
+}
 const {
   dialogFormChangePassword,
   loadingChangePassword,
@@ -274,17 +306,15 @@ onMounted(async () => {
         </div>
 
         <template #dropdown>
-          <el-menu :default-active="$route.path" router class="el-menu-vertical-demo">
+          <el-menu :default-active="$route.path" unique-opened class="el-menu-vertical-demo">
             <template v-for="item in menuItems" :key="item.index">
               <!-- item thường -->
-              <NuxtLink v-if="item.type === 'item'" :to="item.to">
-                <el-menu-item :index="item.to">
-                  <el-icon>
-                    <component :is="Icons[ item.icon as string ]" />
-                  </el-icon>
-                  <span class="text-base">{{ item.label }}</span>
-                </el-menu-item>
-              </NuxtLink>
+              <el-menu-item v-if="item.type === 'item'" :index="item.to" @click="handleMenuItemClick(item.to)">
+                <el-icon>
+                  <component :is="Icons[ item.icon as string ]" />
+                </el-icon>
+                <span class="text-base">{{ item.label }}</span>
+              </el-menu-item>
 
               <!-- submenu -->
               <el-sub-menu v-else-if="item.type === 'submenu'" :index="item.index">
@@ -295,11 +325,9 @@ onMounted(async () => {
                   <span class="text-base">{{ item.label }}</span>
                 </template>
 
-                <NuxtLink v-for="child in item.children" :key="child.index" :to="child.to">
-                  <el-menu-item :index="child.to">
-                    <span class="text-base">{{ child.label }}</span>
-                  </el-menu-item>
-                </NuxtLink>
+                <el-menu-item v-for="child in item.children" :key="child.index" :index="child.to" @click="handleMenuItemClick(child.to)">
+                  <span class="text-base">{{ child.label }}</span>
+                </el-menu-item>
               </el-sub-menu>
             </template>
           </el-menu>

@@ -2,13 +2,14 @@
 import { onMounted, ref, watch, computed } from 'vue';
 import Calendar from '~/components/widgets/Calendar.vue';
 import {
-  ArrowUpBold, ArrowRightBold, CloseBold, Delete, Rank, Edit, Printer, Plus, More, CopyDocument, Finished, Timer, RefreshRight, Setting, DocumentCopy
+  ArrowUpBold, ArrowRightBold, CloseBold, Delete, Printer, Plus, More, Finished, Timer, RefreshRight, Setting
 } from '@element-plus/icons-vue'
 import type { CollapseModelValue, TabsPaneContext } from 'element-plus'
 import TicketItem from '~/components/widgets/TicketItem.vue';
 import InputNote from '~/components/inputs/inputNote.vue'
 import TripList from '~/components/widgets/TripList.vue'
 import TripInformation from '~/components/widgets/TripInformation.vue'
+import RouteInfo from '~/components/widgets/RouteInfo.vue'
 import { format } from 'date-fns';
 import type { TripType } from '~/types/tripType';
 import { useFirebase } from '~/composables/useFirebase';
@@ -26,14 +27,18 @@ import TransitDownTable from '~/components/table/TransitDownTable.vue';
 import CargoTable from '~/components/table/CargoTable.vue';
 import CargoDialog from '~/components/dialog/CargoDialog.vue';
 import ChangeTimeTrip from '~/components/dialog/ChangeTimeTrip.vue';
+import TicketActionToolbar from '~/components/widgets/TicketActionToolbar.vue';
+import { API_GetListCancelTicketByTrip } from '~/api/ticketAPI';
+import type { DTO_RP_CancelTicket } from '~/types/ticketType';
+import ItemCancelTicket from '~/components/widgets/ItemCancelTicket.vue';
+import HistoryTicketCanceled from '~/components/dialog/HistoryTicketCanceled.vue';
+import { useTicketHistory } from '~/composables/ticket/useTicketHistory';
 definePageMeta({
   layout: 'default',
 })
 
 
 const {
-  // tripList,
-  // selectedTrip, 
   loadingListTrip,
   fetchListTripByRouteAndDate,
   dialogFormEditTripInformation,
@@ -63,6 +68,60 @@ const {
   handleUpdateNote,
 } = useTripOperations();
 
+const {
+  routeNames,
+  loadingListRouteName,
+  valueSelectedRoute,
+  fetchListRouteName,
+  handleRouteChange,
+  loadingListTicket,
+  // selectedTickets,
+  fetchListTicketByTrip,
+  getFloorSeats,
+  getAvailableFloors,
+  setupRealtimeListener,
+  isTicketSelected,
+  clearAllSelectedTickets,
+  handleTicketClick,
+  getTicketSelector,
+
+  mySelectedTickets,
+  dialogFormEditTicket,
+  updatingTicketIds,
+  handleOpenFormEditTicket,
+  handleCancelTickets,
+  handleUpdateTickets,
+  isCopyTicket,
+  isMoveTicket,
+  handleCopyTickets,
+  handlePasteTickets,
+  handleMoveTickets,
+  cancelMoveTickets,
+  handleUpdateContactStatus,
+  fetchListCustomerByTrip,
+  loadingTabCustomer,
+  listCustomer,
+  loadingTransitUp,
+  loadingTransitDown,
+  listTransitUp,
+  listTransitDown,
+  fetchListTransitUpByTrip,
+  fetchListTransitDownByTrip,
+  handlePrintTickets,
+
+  fetchListCancelTicketByTrip,
+  loadingListCancelTicket,
+
+} = useTicketManagement();
+
+const {
+  handleCopyTicketCanceled,
+  handleShowHistoryTicketCanceled,
+  dialogHistoryCancelTicket,
+  loadingHistoryCancelTicket,
+  dataHistoryTicketCanceled,
+} = useTicketHistory();
+
 
 const { db, ref: dbRef, off } = useFirebase()
 
@@ -85,6 +144,7 @@ const activeNames = ref([ '1' ])
 const activeTab = ref('1');
 const elTabTicketPending = ref(false);
 const showRouteInfo = ref(false);
+const hasLoadedTickets = ref(false); // Flag để theo dõi đã load vé hay chưa
 
 const handleChange = (val: CollapseModelValue) => {
   console.log(val)
@@ -105,6 +165,7 @@ const handleTripSelected = async (trip: TripType) => {
   activeTab.value = '';
   selectedTickets.value = [];
   elTabTicketPending.value = false;
+  hasLoadedTickets.value = false; // Reset flag khi chuyển trip
 }
 
 
@@ -124,6 +185,7 @@ const handleClickTabs = async (tab: TabsPaneContext, event: Event) => {
     if (selectedTrip.value?.trip_id) {
       // 1. Gọi API lấy danh sách vé
       await fetchListTicketByTrip(selectedTrip.value.trip_id);
+      hasLoadedTickets.value = true; // Đặt flag sau khi load vé thành công
 
       // ✅ SỬA: Chỉ xóa vé được chọn bởi user hiện tại
       const tripId = selectedTrip.value.trip_id;
@@ -167,11 +229,14 @@ const handleClickTabs = async (tab: TabsPaneContext, event: Event) => {
 }
 
 watch(selectedTrip, async (newTrip, oldTrip) => {
-  if (oldTrip?.trip_id) {
+  // Chỉ reset khi thực sự chuyển sang trip khác, không phải khi cập nhật thông tin cùng trip
+  if (oldTrip?.trip_id && newTrip?.trip_id !== oldTrip.trip_id) {
+    showRouteInfo.value = false;
     await cleanupTripData(oldTrip.trip_id);
+    hasLoadedTickets.value = false; // Reset flag chỉ khi chuyển trip khác
   }
 
-  if (newTrip?.trip_id) {
+  if (newTrip?.trip_id && (!oldTrip || newTrip.trip_id !== oldTrip.trip_id)) {
     setupRealtimeListener(newTrip.trip_id);
   }
 });
@@ -263,50 +328,34 @@ const hasDifferentPhoneNumbers = computed(() => {
   const uniquePhoneNumbers = new Set(phoneNumbers);
   return uniquePhoneNumbers.size > 1;
 });
-const {
-  routeNames,
-  loadingListRouteName,
-  valueSelectedRoute,
-  fetchListRouteName,
-  handleRouteChange,
-  // ticketList,
-  loadingListTicket,
-  // selectedTickets,
-  fetchListTicketByTrip,
-  getFloorSeats,
-  getAvailableFloors,
-  setupRealtimeListener,
-  isTicketSelected,
-  clearAllSelectedTickets,
-  handleTicketClick,
-  getTicketSelector,
 
-  // tripList,
-  mySelectedTickets,
-  dialogFormEditTicket,
-  updatingTicketIds,
-  handleOpenFormEditTicket,
-  handleCancelTickets,
-  handleUpdateTickets,
-  isCopyTicket,
-  // isMoveTicket,
-  handleCopyTickets,
-  handlePasteTickets,
-  handleMoveTickets,
-  cancelMoveTickets,
-  handleUpdateContactStatus,
-  fetchListCustomerByTrip,
-  loadingTabCustomer,
-  listCustomer,
-  loadingTransitUp,
-  loadingTransitDown,
-  listTransitUp,
-  listTransitDown,
-  fetchListTransitUpByTrip,
-  fetchListTransitDownByTrip,
-  handlePrintTickets,
+// Computed property để thống kê vé theo văn phòng
+const ticketsByOffice = computed(() => {
+  if (!ticketList.value || ticketList.value.length === 0) {
+    return '';
+  }
 
-} = useTicketManagement();
+  // Lọc ra các vé đã đặt (booked_status = true)
+  const bookedTickets = ticketList.value.filter(ticket => ticket.booked_status === true);
+
+  if (bookedTickets.length === 0) {
+    return 'Chưa có vé nào được đặt';
+  }
+
+  // Nhóm vé theo office_created
+  const officeStats = bookedTickets.reduce((acc, ticket) => {
+    const office = ticket.office_created || 'Chưa xác định';
+    acc[ office ] = (acc[ office ] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Chuyển đổi thành chuỗi hiển thị
+  return Object.entries(officeStats)
+    .map(([ office, count ]) => `${office}(${count})`)
+    .join(', ');
+});
+
+
 
 
 
@@ -341,6 +390,7 @@ watch(tripList, async (newTripList) => {
       selectedTrip.value = foundTrip;
       activeTab.value = '1';
       await fetchListTicketByTrip(foundTrip.trip_id);
+      hasLoadedTickets.value = true; // Set flag sau khi auto-load vé
       if (queryTicketID.value) {
         const targetTicket = ticketList.value.find(ticket => ticket.id === queryTicketID.value);
         if (targetTicket) {
@@ -463,12 +513,32 @@ watch(routeNames, (newRouteNames) => {
 });
 
 
+const activeTab_2 = ref('1');
+
+
+const handleClickTabs_2 = async (tab: TabsPaneContext, event: Event) => {
+  console.log(tab, event)
+  console.log('Tab được click:', tab.props.name);
+  if (tab.props.name === '1') {
+    console.log('Chờ xử lý tab được chọn');
+  } else if (tab.props.name === '2') {
+    console.log('Đã huỷ tab được chọn');
+    await fetchListCancelTicketByTrip(selectedTrip.value?.trip_id as number);
+  }
+}
+
 
 onMounted(async () => {
   await useUserStore.loadUserInfo();
   await officeStore.loadOfficeStore();
-  fetchListRouteName(String(useUserStore.company_id ?? ''));
+  await fetchListRouteName(String(useUserStore.company_id ?? ''));
 
+  // Tự động load route từ localStorage nếu có
+  const savedRouteId = localStorage.getItem('selectedRouteId');
+  if (savedRouteId && !queryRouteID.value) {
+    queryRouteID.value = parseInt(savedRouteId);
+    console.log('✅ Đã tự động load route từ localStorage:', savedRouteId);
+  }
 });
 
 </script>
@@ -504,7 +574,7 @@ onMounted(async () => {
               <el-collapse v-model="activeNames" @change="handleChange">
                 <el-collapse-item name="1">
                   <template #title>
-                    <span class="text-[16px] font-semibold">
+                    <span class="text-[16px] font-semibold text-black">
                       {{ selectedTrip.departure_time?.substring(0, 5) }} •
                       {{ format(new Date(valueSelectedDate as Date), 'dd/MM/yyyy') }} •
                       {{routeNames.find(r => r.id === valueSelectedRoute)?.route_name || 'Tuyến chưa xác định'}}
@@ -529,10 +599,9 @@ onMounted(async () => {
                   </template>
 
                   <TripInformation :trip="selectedTrip" />
-                  <div>
+                  <div v-if="ticketsByOffice && hasLoadedTickets">
                     <span class="font-medium text-black text-[14px]">Đặt chỗ: </span>
-                    <!-- <span class="font-medium text-[#0072bc] text-[14px]">VP An Sương(4), VP Tân Bình(5), Bến xe miền
-                      đông(10)</span> -->
+                    <span class="font-medium text-[#0072bc] text-[14px]">{{ ticketsByOffice }}</span>
                   </div>
 
                 </el-collapse-item>
@@ -572,21 +641,9 @@ onMounted(async () => {
             </div>
 
             <!-- Route Information Section - Hiển thị lộ trình ở dưới -->
-            <div v-if="showRouteInfo" class="bg-white px-2 rounded-lg shadow-md mt-2">
-              <div class="py-3">
-                <div class="flex items-center justify-between mb-3">
-                  <h3 class="text-[16px] font-semibold">Lộ trình</h3>
-                  <el-button size="small" type="primary" plain @click="showRouteInfo = false">
-                    <el-icon>
-                      <CloseBold />
-                    </el-icon>
-                    Đóng
-                  </el-button>
-                </div>
+            <RouteInfo :show="showRouteInfo" :route-id="valueSelectedRoute || undefined"
+              :trip-time="selectedTrip.departure_time || ''" @close="showRouteInfo = false" />
 
-
-              </div>
-            </div>
 
 
           </section>
@@ -663,63 +720,11 @@ onMounted(async () => {
                           </div>
                         </div>
 
-                        <!-- Div dưới - Thanh công cụ chính -->
-                        <div
-                          class="bg-white border border-gray-300 shadow-md transition-transform duration-300 rounded-xl">
-                          <div class="flex items-stretch justify-between gap-4 h-full">
-                            <div
-                              class="bg-gray-100 px-4 py-2 rounded-l-xl text-sm font-medium text-gray-700 flex items-center justify-center flex-shrink-0">
-                              <div class="flex items-center gap-x-2">
-                                <el-icon @click="clearAllSelectedTickets(); cancelMoveTickets();"
-                                  class="cursor-pointer hover:text-red-500 transition">
-                                  <CloseBold />
-                                </el-icon>
-                                <span class="text-[16px]">
-                                  Số vé đang chọn:
-                                  <span class="text-[#FF9900]">{{ mySelectedTickets.length }}</span>
-                                </span>
-                              </div>
-                            </div>
-
-                            <div
-                              class="px-4 py-3 text-sm text-blue-800 flex-1 flex flex-wrap gap-2 items-center rounded-none overflow-hidden">
-                              <el-tag v-for="ticket in mySelectedTickets" :key="ticket.id" type="warning" effect="dark">
-                                <span class="text-[15px]">{{ ticket.seat_name }}</span>
-                              </el-tag>
-                            </div>
-                            <div
-                              class="bg-purple-50 px-4 py-2 rounded-r-xl flex gap-2 items-center justify-center flex-shrink-0">
-                              <div v-if="isCopyTicket">
-                                <el-tooltip v-if="mySelectedTickets.filter(t => t.booked_status === false).length > 0"
-                                  content="Dán vé" placement="top">
-                                  <el-button type="success" :icon="DocumentCopy" circle @click="handlePasteTickets" />
-                                </el-tooltip>
-                              </div>
-                              <div>
-                                <el-tooltip content="Cập nhật thông tin vé" placement="top">
-                                  <el-button type="warning" :icon="Edit" circle @click="handleOpenFormEditTicket" />
-                                </el-tooltip>
-                              </div>
-                              <div
-                                v-if="mySelectedTickets.filter(t => t.booked_status === true).length > 0 && !hasDifferentPhoneNumbers">
-                                <el-tooltip content="Sao chép vé" placement="top">
-                                  <el-button color="#626aef" :icon="CopyDocument" circle @click="handleCopyTickets" />
-                                </el-tooltip>
-                              </div>
-                              <div v-if="mySelectedTickets.filter(t => t.booked_status === true).length > 0">
-                                <el-tooltip content="Di chuyển vé" placement="top">
-                                  <el-button type="primary" :icon="Rank" circle @click="handleMoveTickets" />
-                                </el-tooltip>
-                              </div>
-                              <div v-if="mySelectedTickets.filter(t => t.booked_status === true).length > 0">
-                                <el-tooltip content="Hủy vé" placement="top">
-                                  <el-button type="danger" :icon="Delete" circle
-                                    @click="handleCancelTickets({ id: mySelectedTickets.filter(t => t.booked_status === true).map(t => t.id) })" />
-                                </el-tooltip>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                        <TicketActionToolbar :selected-tickets="mySelectedTickets" :is-copy-ticket="isCopyTicket"
+                          :has-different-phone-numbers="hasDifferentPhoneNumbers"
+                          @clear-all="clearAllSelectedTickets(); cancelMoveTickets();" @paste="handlePasteTickets"
+                          @edit="handleOpenFormEditTicket" @copy="handleCopyTickets" @move="handleMoveTickets"
+                          @cancel="handleCancelTickets" />
                       </div>
                     </div>
                   </div>
@@ -747,12 +752,15 @@ onMounted(async () => {
               </el-tabs>
             </div>
             <div class="bg-white px-2 rounded-lg mt-1" v-if="elTabTicketPending">
-              <el-tabs>
+              <el-tabs v-model="activeTab_2" @tab-click="handleClickTabs_2">
                 <el-tab-pane label="Chờ xử lý" name="1">
 
                 </el-tab-pane>
                 <el-tab-pane label="Vé hủy" name="2">
-
+                  <div>
+                    <ItemCancelTicket :tickets="listCancelTicket" :loading="loadingListCancelTicket"
+                      @copy-ticket="handleCopyTicketCanceled" @show-history="handleShowHistoryTicketCanceled" />
+                  </div>
                 </el-tab-pane>
               </el-tabs>
             </div>
@@ -770,6 +778,9 @@ onMounted(async () => {
 
     <ChangeTimeTrip v-model="dialogChangeTimeTrip" :trip="selectedTrip" :is-updating="loadingFormChangeTimeTrip"
       @updated="handleUpdateTimeTrip" />
+
+    <HistoryTicketCanceled v-model="dialogHistoryCancelTicket" :data="dataHistoryTicketCanceled"
+      :loading="loadingHistoryCancelTicket" />
   </section>
 
 </template>

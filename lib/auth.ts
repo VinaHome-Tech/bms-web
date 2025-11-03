@@ -1,4 +1,5 @@
-import { refreshToken } from "~/api/authAPI"
+import { API_RefreshToken } from "~/api/identity-service/auth/bms_auth";
+
 
 
 let refreshTimer: NodeJS.Timeout | null = null
@@ -35,7 +36,7 @@ export async function refreshNow(): Promise<boolean> {
       return false;
     }
 
-    const response = await refreshToken(cookie_refresh_token.value);
+    const response = await API_RefreshToken(cookie_refresh_token.value);
 
     if (response.success && response.result?.access_token) {
       const store = userStore();

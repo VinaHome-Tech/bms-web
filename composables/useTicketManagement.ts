@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { remove, update } from "firebase/database";
+import { API_GetHistoryTicket } from "~/api/historyTicketAPI";
 import { getListRouteNameActionByCompany } from "~/api/routeAPI";
 import {
+  API_GetListCancelTicketByTrip,
   cancelTickets,
   copyTickets,
   getListCustomerByTrip,
@@ -14,9 +16,11 @@ import {
 } from "~/api/ticketAPI";
 import { API_UpdateTicketsBookedInTrip } from "~/api/tripAPI";
 import { userStore } from "~/stores/useUserStore";
+import type { DTO_RP_HistoryTicket } from "~/types/historyTicketType";
 import type { DTO_RP_ListRouteName } from "~/types/routeType";
 import type {
   CancelTicketType,
+  DTO_RP_CancelTicket,
   DTO_RP_ListCustomerByTrip,
   DTO_RP_ListTransitDownByTrip,
   DTO_RP_ListTransitUpByTrip,
@@ -34,6 +38,8 @@ export const queryRouteID = ref<number | null>(null);
 export const queryDate = ref<Date | string>(new Date());
 export const queryTripID = ref<number | null>(null);
 export const queryTicketID = ref<number | null>(null);
+export const listCancelTicket = ref<DTO_RP_CancelTicket[]>([]);
+
 export const useTicketManagement = () => {
   const loadingListTicket = ref(false);
   const useUserStore = userStore();
@@ -41,12 +47,60 @@ export const useTicketManagement = () => {
 
   const dialogFormEditTicket = ref(false);
   const loadingItemTicket = ref(false);
+  const loadingListCancelTicket = ref(false);
 
   const updatingTicketIds = ref<Set<number>>(new Set());
   const useOffice = useOfficeStore();
   const copyTicketStore = useCopyTicketStore();
   const moveTicketStore = useMoveTicketStore();
   const isCopyTicket = ref(false);
+  const dialogHistoryCancelTicket = ref(false);
+  const loadingHistoryCancelTicket = ref(false);
+  const historyCancelTicketData = ref<DTO_RP_HistoryTicket[]>([]);
+
+  const fetchListCancelTicketByTrip = async (trip_id: number) => {
+    loadingListCancelTicket.value = true;
+    try {
+      const response = await API_GetListCancelTicketByTrip(trip_id);
+      if (response.success) {
+        listCancelTicket.value = response.result || [];
+      } else {
+        notifyError(response.message || 'Lỗi khi lấy danh sách vé huỷ!');
+      }
+    } catch (error) {
+      console.error('❌ Lỗi khi gọi API lấy danh sách vé huỷ:', error);
+      notifyError('Lỗi khi lấy danh sách vé huỷ!');
+    } finally {
+      loadingListCancelTicket.value = false;
+    }
+  };
+
+  const handleCopyTicketCanceled = async (ticket: DTO_RP_CancelTicket) => {
+    console.log("Sao chép vé huỷ:", ticket);
+  };
+
+  const handleShowHistoryTicketCanceled = async (ticket: DTO_RP_CancelTicket) => {
+    dialogHistoryCancelTicket.value = true;
+    loadingHistoryCancelTicket.value = true;
+    console.log("Xem lịch sử vé huỷ:", ticket);
+    try {
+      const response = await API_GetHistoryTicket(ticket.ticket_code);
+      if (response.success) {
+        if (response.result) {
+          console.log("Lịch sử vé huỷ:", response.result);
+          historyCancelTicketData.value = response.result;
+        }
+      } else {
+        console.error(response.message || "Không thể tải lịch sử vé huỷ!");
+        notifyError(response.message || "Không thể tải lịch sử vé huỷ!");
+      }
+    } catch (error) {
+      console.error("Lỗi khi tải lịch sử vé huỷ:", error);
+      notifyError("Lỗi khi tải lịch sử vé huỷ!");
+    } finally {
+      loadingHistoryCancelTicket.value = false;
+    }
+  };
 
   const fetchListTicketByTrip = async (id: number) => {
     loadingListTicket.value = true;
@@ -490,6 +544,7 @@ export const useTicketManagement = () => {
           username: useUserStore.username,
           full_name: useUserStore.full_name,
           company_id: useUserStore.company_id,
+          office_name: useOffice.name,
         } as UserActionType,
         tickets
       );
@@ -831,6 +886,7 @@ export const useTicketManagement = () => {
           username: useUserStore.username,
           full_name: useUserStore.full_name,
           company_id: useUserStore.company_id,
+          office_name: useOffice.name,
         } as UserActionType,
         sourceTickets,
         destinationSeats.map((t) => t.id)
@@ -984,6 +1040,7 @@ export const useTicketManagement = () => {
           username: useUserStore.username,
           full_name: useUserStore.full_name,
           company_id: useUserStore.company_id,
+          office_name: useOffice.name,
         } as UserActionType,
         mySelectedTickets.value.map((ticket) => ticket.id),
         status
@@ -1339,6 +1396,11 @@ export const useTicketManagement = () => {
     valueSelectedRoute.value = selectedRoute ? selectedRoute.id : 0;
     console.log("Tuyến được chọn:", selectedRoute);
     console.log("ID tuyến:", valueSelectedRoute.value);
+
+    // Lưu route đã chọn vào localStorage
+    if (selectedRoute) {
+      localStorage.setItem('selectedRouteId', selectedRoute.id.toString());
+    }
   };
 
 
@@ -1425,7 +1487,7 @@ export const useTicketManagement = () => {
     updateTicketsBookedInTrip,
     handleUpdateTickets,
     isCopyTicket,
-    // isMoveTicket,
+    isMoveTicket,
     handleCopyTickets,
     handlePasteTickets,
     handleMoveTickets,
@@ -1441,5 +1503,12 @@ export const useTicketManagement = () => {
     fetchListTransitUpByTrip,
     fetchListTransitDownByTrip,
     handlePrintTickets,
+    fetchListCancelTicketByTrip,
+    loadingListCancelTicket,
+    handleCopyTicketCanceled,
+    handleShowHistoryTicketCanceled,
+    dialogHistoryCancelTicket,
+    loadingHistoryCancelTicket,
+    historyCancelTicketData,
   };
 };

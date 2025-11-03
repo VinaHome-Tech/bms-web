@@ -1,17 +1,17 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, InfoFilled, Location, DCaret } from '@element-plus/icons-vue'
 import { API_GetListPointToConfigTimeByRoute, API_UpdatePointConfigTime } from '~/api/pointAPI';
-import { getListRouteNameByCompany } from '~/api/routeAPI';
+import { API_GetListRouteNameToConfigByCompany } from '~/api/routeAPI';
 import type { DTO_RP_ItemPointConfigTime } from '~/types/pointType';
-import type { DTO_RP_ListRouteName } from '~/types/routeType';
+import type { DTO_RP_ListRouteName, DTO_RP_ListRouteNameToConfig } from '~/types/routeType';
 const useUserStore = userStore()
-const listRoute = ref<DTO_RP_ListRouteName[]>([])
+const listRoute = ref<DTO_RP_ListRouteNameToConfig[]>([])
 const loadingListRoute = ref(false)
 const fetchListRoute = async () => {
     try {
         loadingListRoute.value = true
-        const response = await getListRouteNameByCompany(useUserStore.company_id || '')
+        const response = await API_GetListRouteNameToConfigByCompany(useUserStore.company_id || '')
         if (response.success) {
             listRoute.value = response.result || []
         } else {
@@ -32,7 +32,10 @@ const fetchListPointToConfigTime = async (route_id: number) => {
         loadingListPointConfigTime.value = true
         const response = await API_GetListPointToConfigTimeByRoute(route_id);
         if (response.success) {
-            listPointConfigTime.value = response.result || [];
+            listPointConfigTime.value = (response.result || []).map(point => ({
+                ...point,
+                time_gap: point.time_gap || '00:00'
+            }));
         } else {
             notifyError('Lỗi khi tải danh sách điểm');
         }
@@ -88,12 +91,6 @@ const handleDrop = (event: DragEvent, dropIndex: number) => {
     draggedOverIndex.value = null
 }
 
-const handleTimeChange = (id: number, value: string) => {
-    const index = listPointConfigTime.value.findIndex(item => item.id === id)
-    if (index !== -1) {
-        listPointConfigTime.value[index].time_gap = value ? value : ''
-    }
-}
 
 const handleOpenDialogConfig = async (index: number, row: any) => {
     currentRoute.value = row
@@ -109,13 +106,14 @@ const handleClose = () => {
 
 const handleSave = async () => {
     try {
-        // Call your API to save the configuration
         if (currentRoute.value && typeof currentRoute.value.id === 'number') {
             const response = await API_UpdatePointConfigTime(currentRoute.value.id, listPointConfigTime.value)
             if (response.success) {
-                console.log('Saved data:', listPointConfigTime.value)
+                // console.log('Saved data:', listPointConfigTime.value)
                 notifySuccess('Lưu cấu hình thành công')
-                // handleClose()
+                handleClose()
+            } else {
+                notifyError(response.message || 'Lỗi khi lưu cấu hình')
             }
         } else {
             notifyError('Không xác định được tuyến đường để lưu cấu hình')
@@ -134,12 +132,12 @@ onMounted(async () => {
     <section>
         <div class="flex justify-between items-center mb-2">
             <h3 class="text-xl font-semibold">Cấu hình thời gian</h3>
-            <el-button type="primary" :icon="Plus">Thêm cấu hình</el-button>
         </div>
 
-        <el-table :data="listRoute" style="width: 100%">
+        <el-table v-loading="loadingListRoute" :data="listRoute" style="width: 100%">
             <el-table-column type="index" label="STT" width="60" />
             <el-table-column prop="route_name" label="Tên tuyến" />
+            <el-table-column prop="point_length" label="Số điểm" />
             <el-table-column>
                 <template #default="scope">
                     <el-button type="primary" plain @click="handleOpenDialogConfig(scope.$index, scope.row)">Xem cấu
@@ -213,12 +211,8 @@ onMounted(async () => {
                                     <div class="text-xs text-gray-600 mb-1 flex items-center gap-1">
                                         Thời gian (phút)
                                     </div>
-                                    <!-- <el-input :model-value="point.time_gap"
-                                        @change="(val) => handleTimeChange(point.id, val?.toString() || '')" :min="0"
-                                        :precision="0" controls-position="right" placeholder="0" size="default"
-                                        style="width: 100%;" /> -->
                                     <el-time-picker v-model="point.time_gap" format="HH:mm" value-format="HH:mm"
-                                        style="width: 100%;" />
+                                        placeholder="00:00" style="width: 100%;" />
                                 </div>
                             </div>
                         </div>

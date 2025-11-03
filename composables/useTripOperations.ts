@@ -192,6 +192,7 @@ export const useTripOperations = () => {
 
 
   const printTicketListOfTheTrip = async () => {
+    console.log(selectedTrip.value);
     if (!selectedTrip.value) {
       notifyWarning('Vui lòng chọn chuyến');
       return;
@@ -200,7 +201,7 @@ export const useTripOperations = () => {
       const response = await getTicketsByTripToPrint(selectedTrip.value.trip_id);
       if (response.success) {
         const tickets = response.result || [];
-
+        console.log(tickets);
         const html = `
         <html>
           <head>

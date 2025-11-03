@@ -1,6 +1,6 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-import { Plus, More } from '@element-plus/icons-vue';
+import { Plus, More, Calendar } from '@element-plus/icons-vue';
 import type { FormInstance, CheckboxValueType, FormRules } from 'element-plus'
 import { API_CreateFareConfig, API_DeleteFareConfig, API_GetListConfigFareByCompany, API_UpdateFareConfig } from '~/api/configFareAPI';
 import { API_GetListPointNameByRoute } from '~/api/pointAPI';
@@ -35,7 +35,7 @@ const handleClose = () => {
         priority: false,
         double_room: false,
         same_price: false,
-        date_range: undefined as [Date, Date] | undefined,
+        date_range: undefined as [ Date, Date ] | undefined,
         fare_configs: []
     }
 }
@@ -49,7 +49,7 @@ const ruleForm = ref<ConfigPointInRoute>({
     priority: false,
     double_room: false,
     same_price: false,
-    date_range: undefined as [Date, Date] | undefined,
+    date_range: undefined as [ Date, Date ] | undefined,
     fare_configs: []
 })
 
@@ -268,6 +268,27 @@ const handleSubmit = async (formEl: FormInstance | undefined) => {
     if (!formEl) return
     formEl.validate(async (valid) => {
         if (valid) {
+            // Kiểm tra fare_configs không được để trống
+            if (!ruleForm.value.fare_configs || ruleForm.value.fare_configs.length === 0) {
+                notifyError('Vui lòng thêm ít nhất một cấu hình giá vé')
+                return
+            }
+            
+            // Kiểm tra từng hàng không được để trống nơi đi và nơi đến
+            for (let i = 0; i < ruleForm.value.fare_configs.length; i++) {
+                const config = ruleForm.value.fare_configs[i]
+                
+                if (!config.departure_point_id || config.departure_point_id.length === 0) {
+                    notifyError(`Hàng ${i + 1}: Vui lòng chọn nơi đi`)
+                    return
+                }
+                
+                if (!config.arrival_point_id || config.arrival_point_id.length === 0) {
+                    notifyError(`Hàng ${i + 1}: Vui lòng chọn nơi đến`)
+                    return
+                }
+            }
+            
             const submitData = {
                 ...ruleForm.value,
                 company_id: useUserStore.company_id,
@@ -281,7 +302,7 @@ const handleSubmit = async (formEl: FormInstance | undefined) => {
                 })) || []
             }
             if (modelEdit.value) {
-                console.log('Chỉnh sửa cấu hình:', ruleForm.value)
+                // console.log('Chỉnh sửa cấu hình:', ruleForm.value)
                 try {
                     const response = await API_UpdateFareConfig(submitData)
                     if (response.success) {
@@ -299,7 +320,7 @@ const handleSubmit = async (formEl: FormInstance | undefined) => {
                                         seat_chart_name: sc.seat_chart_name
                                     })),
                                 fare_configs: submitData.fare_configs.map((fc: any, idx: number) => ({
-                                    id: fc.id !== undefined ? fc.id : (cf.fare_configs[idx]?.id ?? Date.now() + idx),
+                                    id: fc.id !== undefined ? fc.id : (cf.fare_configs[ idx ]?.id ?? Date.now() + idx),
                                     departure_point_id: fc.departure_point_id,
                                     arrival_point_id: fc.arrival_point_id,
                                     single_room_price: fc.single_room_price,
@@ -308,14 +329,14 @@ const handleSubmit = async (formEl: FormInstance | undefined) => {
                             } : cf)
                         }))
                     } else {
-                        notifyError('Lưu cấu hình thất bại')
+                        notifyError(response.message || 'Lưu cấu hình thất bại')
                     }
                 } catch (error) {
                     console.log('Submit error:', error)
                     notifyError('Lưu cấu hình thất bại')
                 }
             } else {
-                console.log('Thêm cấu hình mới:', ruleForm.value)
+                // console.log('Thêm cấu hình mới:', ruleForm.value)
                 try {
                     const response = await API_CreateFareConfig(submitData)
                     if (response.success) {
@@ -323,7 +344,7 @@ const handleSubmit = async (formEl: FormInstance | undefined) => {
                         await fetchListConfigFare()
                         handleClose()
                     } else {
-                        notifyError('Thêm cấu hình thất bại')
+                        notifyError(response.message || 'Thêm cấu hình thất bại')
                     }
                 } catch (error) {
                     console.log('Submit error:', error)
@@ -371,6 +392,31 @@ const onDoubleRoomPriceInput = (val: string, row: any) => {
     row.doubleRoomPriceDisplay = formatCurrency_2(numericValue)
 }
 
+// Hàm lấy các điểm đến bị disable dựa trên điểm đi đã chọn ở hàng hiện tại
+const getDisabledArrivalPoints = (currentRowIndex: number, currentDeparturePoints: number[]) => {
+    const disabledPoints: number[] = []
+    
+    // Lặp qua tất cả các hàng khác
+    ruleForm.value.fare_configs?.forEach((config, index) => {
+        if (index !== currentRowIndex) {
+            // Nếu hàng khác có điểm đi và điểm đến
+            if (config.departure_point_id?.length && config.arrival_point_id?.length) {
+                // Kiểm tra xem có điểm đi nào trùng với điểm đi hiện tại không
+                const commonDeparturePoints = config.departure_point_id.filter(depId => 
+                    currentDeparturePoints.includes(depId)
+                )
+                
+                // Nếu có điểm đi trùng, thì disable tất cả điểm đến của hàng đó
+                if (commonDeparturePoints.length > 0) {
+                    disabledPoints.push(...config.arrival_point_id)
+                }
+            }
+        }
+    })
+    
+    return [...new Set(disabledPoints)] // Loại bỏ duplicate
+}
+
 onMounted(async () => {
     await useUserStore.loadUserInfo()
     await fetchListConfigFare()
@@ -382,16 +428,11 @@ onMounted(async () => {
             <h3 class="text-xl font-semibold">Cấu hình giá vé</h3>
             <el-button type="primary" :icon="Plus" @click="handleOpenDialog">Thêm cấu hình</el-button>
         </div>
-        <div>
-            <!-- {{ listRoute }}
-            {{ listSeatChart }}
-            {{ listPoint }}
-            {{ listConfigFare }} -->
+        <div v-loading="loadingListConfigFare">
             <div class="mx-auto">
                 <div class="space-y-1">
                     <div v-for="route in listConfigFare" :key="route.route_id"
                         class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
-                        <!-- Header tuyến đường -->
                         <div class="bg-[#0072bc] p-2">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-4">
@@ -408,121 +449,86 @@ onMounted(async () => {
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Bảng cấu hình -->
                         <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead>
-                                    <tr class="bg-gray-100 border-b border-gray-200">
-                                        <th
-                                            class="pl-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                            ID
-                                        </th>
-                                        <th
-                                            class=" py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                            Tên cấu hình
-                                        </th>
-                                        <th
-                                            class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                            Thời gian áp dụng
-                                        </th>
-                                        <th
-                                            class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                            Sơ đồ ghế
-                                        </th>
-                                        <th
-                                            class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                            Thuộc tính
-                                        </th>
-                                        <th />
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    <tr v-for="(config, index) in route.config_fares" :key="config.id"
-                                        class="hover:bg-blue-50 transition-colors duration-200">
-                                        <!-- STT -->
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span
-                                                class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-semibold text-sm">
-                                                {{ config.id }}
-                                            </span>
-                                        </td>
-
-                                        <!-- Tên cấu hình -->
-                                        <td class=" py-4">
-                                            <div class="flex flex-col">
-                                                <span class="text-sm font-semibold text-gray-900">{{
-                                                    config.config_name }}</span>
-                                            </div>
-                                        </td>
-
-                                        <!-- Thời gian áp dụng -->
-                                        <td class="px-6 py-4">
-                                            <div class="flex items-center gap-2">
-                                                <svg class="text-indigo-500 flex-shrink-0" width="16" height="16"
-                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                    stroke-width="2">
-                                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                                                </svg>
-                                                <div class="flex flex-col">
-                                                    <span class="text-xs text-gray-700">{{
-                                                        formatDate2(config.date_range[0]) }}</span>
-                                                    <span class="text-xs text-gray-500">-</span>
-                                                    <span class="text-xs text-gray-700">{{
-                                                        formatDate2(config.date_range[1]) }}</span>
-                                                </div>
-                                            </div>
-                                        </td>
-
-                                        <!-- Sơ đồ ghế -->
-                                        <td class="px-6 py-4">
-                                            <div class="flex gap-1.5 flex-wrap">
-                                                <el-tag v-for="seat in config.seat_chart" :key="seat.seat_chart_id"
-                                                    class="inline-flex items-center bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-medium">
-                                                    {{ seat.seat_chart_name }}
-                                                </el-tag>
-                                            </div>
-                                        </td>
-
-
-                                        <!-- Thuộc tính -->
-                                        <td class="px-6 py-4">
-                                            <div class="flex gap-1.5 flex-wrap">
-                                                <span v-if="config.double_room"
-                                                    class="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-xs font-medium">
-                                                    Phòng đôi
+                            <el-table :data="route.config_fares" border stripe style="width: 100%"
+                                highlight-current-row>
+                                <el-table-column label="ID" width="80" align="center">
+                                    <template #default="{ row }">
+                                        <span
+                                            class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-semibold text-sm">
+                                            {{ row.id }}
+                                        </span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="Tên cấu hình" min-width="160">
+                                    <template #default="{ row }">
+                                        <span class="text-sm font-semibold text-gray-900">
+                                            {{ row.config_name }}
+                                        </span>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="Thời gian áp dụng" width="180">
+                                    <template #default="{ row }">
+                                        <div class="flex items-center gap-2">
+                                            <el-icon>
+                                                <Calendar />
+                                            </el-icon>
+                                            <div class="flex flex-col leading-tight">
+                                                <span class="text-xs text-gray-700">
+                                                    {{ formatDate2(row.date_range[ 0 ]) }}
                                                 </span>
-                                                <span v-if="config.same_price"
-                                                    class="bg-amber-100 text-amber-700 px-2 py-1 rounded-full text-xs font-medium">
-                                                    Giá đồng nhất
-                                                </span>
-                                                <span v-if="config.priority"
-                                                    class="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-medium">
-                                                    Ưu tiên
+                                                <span class="text-xs text-gray-500 text-center">-</span>
+                                                <span class="text-xs text-gray-700">
+                                                    {{ formatDate2(row.date_range[ 1 ]) }}
                                                 </span>
                                             </div>
-                                        </td>
-                                        <td style="text-align: right;" class="px-5">
-                                            <el-dropdown trigger="click">
-                                                <el-button :icon="More" circle class="el-dropdown-link" />
-                                                <template #dropdown>
-                                                    <el-dropdown-menu>
-                                                        <el-dropdown-item @click="handleEditConfig(config)">Chỉnh
-                                                            sửa</el-dropdown-item>
-                                                        <el-dropdown-item
-                                                            @click="handleDeleteConfig(config.id)">Xoá</el-dropdown-item>
-                                                    </el-dropdown-menu>
-                                                </template>
-                                            </el-dropdown>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                        </div>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="Sơ đồ ghế" min-width="200">
+                                    <template #default="{ row }">
+                                        <div class="flex gap-1.5 flex-wrap">
+                                            <el-tag v-for="seat in row.seat_chart" :key="seat.seat_chart_id"
+                                                size="small" type="primary">
+                                                {{ seat.seat_chart_name }}
+                                            </el-tag>
+                                        </div>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column label="Thuộc tính" min-width="180">
+                                    <template #default="{ row }">
+                                        <div class="flex gap-1.5 flex-wrap">
+                                            <el-tag v-if="row.double_room" size="small" type="info" effect="light">
+                                                Phòng đôi
+                                            </el-tag>
+                                            <el-tag v-if="row.same_price" size="small" type="warning" effect="light">
+                                                Giá đồng nhất
+                                            </el-tag>
+                                            <el-tag v-if="row.priority" size="small" type="danger" effect="light">
+                                                Ưu tiên
+                                            </el-tag>
+                                        </div>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column align="center" width="80">
+                                    <template #default="{ row }">
+                                        <el-dropdown trigger="click">
+                                            <el-button :icon="More" circle class="el-dropdown-link" />
+                                            <template #dropdown>
+                                                <el-dropdown-menu>
+                                                    <el-dropdown-item @click="handleEditConfig(row)">
+                                                        Chỉnh sửa
+                                                    </el-dropdown-item>
+                                                    <el-dropdown-item @click="handleDeleteConfig(row.id)">
+                                                        Xoá
+                                                    </el-dropdown-item>
+                                                </el-dropdown-menu>
+                                            </template>
+                                        </el-dropdown>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
 
-                            <!-- Empty state nếu không có cấu hình -->
                             <div v-if="route.config_fares.length === 0" class="text-center py-12 bg-gray-50">
                                 <svg class="mx-auto text-gray-400 mb-4" width="64" height="64" viewBox="0 0 24 24"
                                     fill="none" stroke="currentColor" stroke-width="1.5">
@@ -537,7 +543,7 @@ onMounted(async () => {
                 </div>
 
                 <!-- Empty state nếu không có tuyến -->
-                <div v-if="listConfigFare.length === 0" class="bg-white rounded-2xl shadow-xl p-12 text-center">
+                <div v-if="listConfigFare.length === 0 && !loadingListConfigFare" class="bg-white rounded-2xl shadow-xl p-12 text-center">
                     <svg class="mx-auto text-gray-400 mb-4" width="80" height="80" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="1.5">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
@@ -559,8 +565,8 @@ onMounted(async () => {
                 </div>
             </template>
             <div class="p-2 pb-4">
-                <el-form ref="ruleFormRef" style="max-width: 1000px" :model="ruleForm" status-icon :rules="rules" label-width="auto"
-                    class="demo-ruleForm" >
+                <el-form ref="ruleFormRef" style="max-width: 1000px" :model="ruleForm" status-icon :rules="rules"
+                    label-width="auto" class="demo-ruleForm">
                     <el-form-item label-position="top" prop="config_name">
                         <template #label>
                             <span class="text-sm font-medium">Tên cấu hình</span>
@@ -614,10 +620,6 @@ onMounted(async () => {
                             Bán phòng đôi
                         </el-checkbox>
                     </el-form-item>
-
-
-
-
 
                     <el-table :data="ruleForm.fare_configs" style="width: 100%" border>
                         <!-- NƠI ĐI -->
@@ -707,7 +709,9 @@ onMounted(async () => {
                                             <el-checkbox-group v-model="scope.row.arrival_point_id">
                                                 <div style="margin-left: 16px;">
                                                     <el-checkbox v-for="point in province.points" :key="point.id"
-                                                        :label="point.id" style="display: block; margin-bottom: 8px;">
+                                                        :label="point.id" 
+                                                        :disabled="getDisabledArrivalPoints(scope.$index, scope.row.departure_point_id || []).includes(point.id)"
+                                                        style="display: block; margin-bottom: 8px;">
                                                         {{ point.name }}
                                                     </el-checkbox>
                                                 </div>

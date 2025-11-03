@@ -32,4 +32,5 @@ export interface DTO_RP_ListRouteNameToConfig {
   id: number;
   route_name: string;
   display_price: number;
+  point_length: number;
 }

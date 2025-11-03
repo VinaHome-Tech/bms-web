@@ -1,4 +1,4 @@
-import type { DTO_RP_GroupPointName, DTO_RP_ItemPointConfigTime } from "~/types/pointType";
+import type { DTO_RP_GroupPointName, DTO_RP_ItemPointConfigTime, DTO_RP_RoutePointName } from "~/types/pointType";
 import type { ApiResponse } from "./APIResponse";
 
 export const API_GetListPointNameByRoute = async (
@@ -61,6 +61,27 @@ export const API_UpdatePointConfigTime = async (
         },
         body: {
           data: pointConfigTimes
+        },
+      }
+    );
+  } catch (error) {
+    console.error("API error:", error);
+    throw error;
+  }
+}
+export const API_GetListRoutePointNameByRoute = async (
+  route_id: number
+): Promise<ApiResponse<DTO_RP_RoutePointName[]>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie("access_token");
+  try {
+    return await $fetch<ApiResponse<DTO_RP_RoutePointName[]>>(
+      `${apiGateWay}/v2/bms-point/get-list-route-point-name-by-route/${route_id}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${cookie.value}`,
         },
       }
     );
