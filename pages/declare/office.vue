@@ -1,33 +1,34 @@
 <script setup lang="ts">
 import {
-    Plus, Delete, Edit
+    Plus, Delete, Edit, Checked
 } from '@element-plus/icons-vue'
-import type { DrawerProps, FormInstance, FormRules } from 'element-plus'
-import { createOffice, deleteOffice, getListOfficeByCompany, updateOffice } from '~/api/officeAPI'
-import type { DTO_RQ_Office, OfficeType } from '~/types/officeType';
+import type { DrawerProps, FormRules } from 'element-plus'
 import { format } from 'date-fns'
-import type { UserActionType } from '~/types/userType';
+import { useOfficeManagement } from '~/composables/declare/office/useOfficeManagement';
 definePageMeta({
     layout: 'default',
 })
+const {
+    drawer,
+    offices,
+    loadingData,
+    ruleFormRef,
+    isEditMode,
+    ruleForm,
+    resetForm,
+    cancelClick,
+    addPhone,
+    removePhone,
+    handleDelete,
+    handleAdd,
+    handleEdit,
+    submitForm,
+    loadingSubmit,
+    fetchListOffice,
+} = useOfficeManagement();
 const useUserStore = userStore();
-const drawer = ref(false)
 const direction = ref<DrawerProps['direction']>('rtl')
-const isEditMode = ref(false)
-const currentEditId = ref<number | null>(null);
-const offices = ref<OfficeType[]>([]);
-const loading = ref(false);
-const ruleFormRef = ref<FormInstance>()
-const ruleForm = reactive<DTO_RQ_Office>({
-    name: null,
-    code: null,
-    address: null,
-    status: false,
-    note: null,
-    phones: [
-        { id: null, phone: null, type: 'mobile' }
-    ],
-});
+
 const rules = reactive<FormRules>({
     name: [
         { required: true, message: 'Vui lòng nhập tên văn phòng', trigger: 'blur' },
@@ -38,7 +39,7 @@ const rules = reactive<FormRules>({
     address: [
         { required: true, message: 'Vui lòng nhập địa chỉ văn phòng', trigger: 'blur' },
     ],
-})
+});
 const phoneRules = [
     { required: true, message: 'Vui lòng nhập số điện thoại', trigger: 'blur' },
     {
@@ -47,184 +48,20 @@ const phoneRules = [
         trigger: 'blur'
     }
 ]
-const removePhone = (index: number) => {
-    if (ruleForm.phones.length > 1) {
-        ruleForm.phones.splice(index, 1)
-        // Clear validation for removed field
-        ruleFormRef.value?.clearValidate([`phones.${index}.number`])
-    }
-}
 
-const addPhone = () => {
-    ruleForm.phones.push({
-        id: null, phone: null, type: 'mobile',
-    })
-}
-
-
-
-const resetForm = (formEl: FormInstance | undefined) => {
-    if (!formEl) return
-    formEl.resetFields()
-    drawer.value = false
-}
-
-
-const cancelClick = () => {
-    drawer.value = false;
-    ruleFormRef.value?.resetFields();
-}
 const search = ref('')
 const filterTableData = computed(() =>
     offices.value.filter(
         (data) =>
             !search.value ||
-            (data.name ?? '').toLowerCase().includes(search.value.toLowerCase())
+            (data.name ?? '').toLowerCase().includes(search.value.toLowerCase()) ||
+            (data.code ?? '').toLowerCase().includes(search.value.toLowerCase())
     )
-)
-const submitForm = async (formEl: FormInstance | undefined) => {
-    if (!formEl) return;
-    await formEl.validate(async (valid) => {
-        if (valid) {
-            try {
-                if (isEditMode.value && currentEditId.value !== null) {
-                    console.log(ruleForm);
-                    const response = await updateOffice({
-                        id: useUserStore.id,
-                        username: useUserStore.username,
-                        full_name: useUserStore.full_name,
-                        company_id: useUserStore.company_id,
-                    } as UserActionType,
-                        ruleForm as DTO_RQ_Office,
-                        currentEditId.value
-                    );
-                    if (response.success) {
-                        ElNotification({
-                            message: h('p', { style: 'color: teal' }, 'Cập nhật văn phòng thành công!'),
-                            type: 'success',
-                        })
-                    }
-                } else {
-                    console.log(ruleForm);
+);
 
-                    const response = await createOffice(
-                        {
-                            id: useUserStore.id,
-                            username: useUserStore.username,
-                            full_name: useUserStore.full_name,
-                            company_id: useUserStore.company_id,
-                        } as UserActionType,
-                        ruleForm as DTO_RQ_Office
-                    );
-
-                    if (response.success) {
-                        ElNotification({
-                            message: h('p', { style: 'color: teal' }, 'Thêm văn phòng mới thành công!'),
-                            type: 'success',
-                        })
-                    }
-                }
-                drawer.value = false;
-                fetchListOffice();
-            } catch (error) {
-                ElNotification({
-                    message: h('p', { style: 'color: red' }, 'Đã xảy ra lỗi. Vui lòng thử lại!'),
-                    type: 'error',
-                });
-                console.error(error);
-            }
-        } else {
-            console.log('error submit!');
-        }
-    });
-};
-
-const handleAdd = () => {
-    isEditMode.value = false;
-    currentEditId.value = null;
-    Object.assign(ruleForm, {
-        name: null,
-        address: null,
-        phones: [],
-        code: null,
-        status: false,
-        note: null,
-    });
-    drawer.value = true;
-};
-const handleEdit = (index: number, row: OfficeType) => {
-    isEditMode.value = true;
-    currentEditId.value = row.id;
-
-    Object.assign(ruleForm, {
-        name: row.name,
-        code: row.code,
-        address: row.address,
-        status: row.status,
-        note: row.note,
-        phones: row.phones,
-    });
-
-    drawer.value = true;
-};
-
-
-const handleDelete = async (index: number, row: OfficeType) => {
-    try {
-        await ElMessageBox.confirm(
-            'Bạn có chắc chắn muốn xóa văn phòng này?',
-            'Xác nhận xoá',
-            {
-                confirmButtonText: 'Xoá',
-                cancelButtonText: 'Huỷ',
-                type: 'warning',
-            }
-        );
-
-        await deleteOffice({
-            id: useUserStore.id,
-            username: useUserStore.username,
-            full_name: useUserStore.full_name,
-            company_id: useUserStore.company_id,
-        } as UserActionType,
-            row.id!
-        );
-        ElNotification({
-            message: h('p', { style: 'color: teal' }, 'Xóa văn phòng thành công!'),
-            type: 'success',
-        });
-        fetchListOffice();
-    } catch (error) {
-        if (error !== 'cancel' && error !== 'close') {
-            ElNotification({
-                message: h('p', { style: 'color: red' }, 'Xóa văn phòng thất bại!'),
-                type: 'error',
-            });
-            console.error(error);
-        }
-    }
-};
-
-const fetchListOffice = async () => {
-    loading.value = true;
-    try {
-        const response = await getListOfficeByCompany(useUserStore.company_id ?? '');
-        if (response.result) {
-            console.log('Danh sách văn phòng:', response.result);
-            offices.value = response.result;
-        } else {
-            ElMessage.error('Không thể tải danh sách văn phòng');
-        }
-    } catch (error) {
-        console.error(error);
-        ElMessage.error('Đã xảy ra lỗi khi tải danh sách văn phòng');
-    } finally {
-        loading.value = false;
-    }
-};
-onMounted(() => {
-    useUserStore.loadUserInfo();
-    fetchListOffice();
+onMounted(async () => {
+    await useUserStore.loadUserInfo();
+    await fetchListOffice(useUserStore.company_id ?? '');
 });
 </script>
 <template>
@@ -234,7 +71,7 @@ onMounted(() => {
             <el-button :icon="Plus" type="primary" @click="handleAdd">Thêm văn phòng</el-button>
         </div>
 
-        <el-table v-loading="loading" element-loading-text="Đang tải dữ liệu..." :data="filterTableData"
+        <el-table v-loading="loadingData" element-loading-text="Đang tải dữ liệu..." :data="filterTableData"
             style="width: 100%">
             <el-table-column type="index" label="STT" width="50" />
             <el-table-column label="Tên văn phòng" prop="name" />
@@ -332,11 +169,11 @@ onMounted(() => {
                                 </el-button>
                             </div>
 
-                            <div v-if="ruleForm.phones.length === 0" class="text-gray-500 text-sm mb-3">
+                            <div v-if="(ruleForm.phones ?? []).length === 0" class="text-gray-500 text-sm mb-3">
                                 Chưa có số điện thoại nào. Nhấn "Thêm số điện thoại" để bắt đầu.
                             </div>
 
-                            <div v-for="(phone, index) in ruleForm.phones" :key="index" class="flex gap-2 ">
+                            <div v-for="(phone, index) in ruleForm.phones ?? []" :key="index" class="flex gap-2 ">
                                 <el-form-item :prop="`phones.${index}.phone`" :rules="phoneRules" class="flex-1 mb-0">
                                     <el-input v-model="phone.phone" :placeholder="`Số điện thoại ${index + 1}`" />
                                 </el-form-item>
@@ -351,7 +188,7 @@ onMounted(() => {
                                 </el-form-item>
 
                                 <el-button type="danger" size="small" class="mt-[4.5px]"
-                                    :disabled="ruleForm.phones.length === 1" :icon="Delete" circle
+                                    :disabled="(ruleForm.phones ?? []).length === 1" :icon="Delete" circle
                                     @click="removePhone(index)" />
                             </div>
                         </div>
@@ -361,7 +198,9 @@ onMounted(() => {
             <template #footer>
                 <div style="flex: auto">
                     <el-button @click="resetForm(ruleFormRef)">Thoát</el-button>
-                    <el-button type="primary" @click="submitForm(ruleFormRef)">Lưu</el-button>
+                    <el-button type="primary" :icon="Checked" :loading="loadingSubmit" @click="submitForm(ruleFormRef)" >
+                        {{ loadingSubmit ? 'Đang lưu...' : 'Lưu thông tin' }}
+                    </el-button>
                 </div>
             </template>
         </el-drawer>
