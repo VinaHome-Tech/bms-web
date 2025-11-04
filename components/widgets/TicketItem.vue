@@ -93,7 +93,7 @@ watch(() => ticket.contact_status, (newStatus) => {
                 isSelected ? 'border-[#0072bc]' : 'border-gray-300'
         ]" @click="handleClick">
             <div class="flex justify-between">
-                <div>
+                <div class="mt-[3px]">
                     <span class="mt-2 ml-1 font-semibold text-[#339933] text-base">{{ ticket.seat_name }}</span>
                 </div>
                 <div v-if="ticket.booked_status">

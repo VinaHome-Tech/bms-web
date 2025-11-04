@@ -184,8 +184,8 @@ const handleDelete = (row: CargoData | null): void => {
 
                 <el-table-column type="index" label="" width="50" align="center" />
                 <el-table-column prop="cargo_name" label="Tên hàng" />
-                <el-table-column prop="sender_phone" label="SĐT người gửi" />
-                <el-table-column prop="receiver_phone" label="SĐT người nhận" />
+                <el-table-column prop="sender_phone" label="Người gửi" />
+                <el-table-column prop="receiver_phone" label="Người nhận" />
                 <el-table-column prop="shipping_fee" label="Cước" />
                 <el-table-column prop="collected_amount" label="Đã thu" />
                 <el-table-column prop="remaining_amount" label="Chưa thu" />

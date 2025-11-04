@@ -1,4 +1,4 @@
-import type { DTO_RP_ListRouteName, DTO_RQ_Route, RouteType } from "~/types/routeType";
+import type { DTO_RP_ListRouteName, DTO_RP_ListRouteNameToConfig, DTO_RQ_Route, RouteType } from "~/types/routeType";
 import type { ApiResponse } from "./APIResponse";
 import type { UserActionType } from "~/types/userType";
 
@@ -7,7 +7,7 @@ export const createRoute = async (user: UserActionType, data_create: DTO_RQ_Rout
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
   try {
-    return await $fetch<ApiResponse<RouteType>>(`${apiGateWay}/v2/route/create-route`, {
+    return await $fetch<ApiResponse<RouteType>>(`${apiGateWay}/v2/bms-route/create-route`, {
       method: "POST",
       headers: {
         'Authorization': `Bearer ${cookie.value}`,
@@ -28,7 +28,7 @@ export const updateRoute = async (user: UserActionType, data_update: DTO_RQ_Rout
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
   try {
-    return await $fetch<ApiResponse<RouteType>>(`${apiGateWay}/v2/route/update-route/${id}`, {
+    return await $fetch<ApiResponse<RouteType>>(`${apiGateWay}/v2/bms-route/update-route/${id}`, {
       method: "PUT",
       headers: {
         'Authorization': `Bearer ${cookie.value}`,
@@ -49,7 +49,7 @@ export const deleteRoute = async (user: UserActionType, id: number): Promise<Api
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
   try {
-    return await $fetch<ApiResponse<void>>(`${apiGateWay}/v2/route/delete-route/${id}`, {
+    return await $fetch<ApiResponse<void>>(`${apiGateWay}/v2/bms-route/delete-route/${id}`, {
       method: "DELETE",
       headers: {
         'Authorization': `Bearer ${cookie.value}`
@@ -69,7 +69,7 @@ export const getListRouteByCompany = async (company_id: string): Promise<ApiResp
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
   try {
-    return await $fetch<ApiResponse<RouteType[]>>(`${apiGateWay}/v2/route/get-list-route-by-company/${company_id}`, {
+    return await $fetch<ApiResponse<RouteType[]>>(`${apiGateWay}/v2/bms-route/get-list-route-by-company/${company_id}`, {
       method: "GET",
       headers: {
         'Authorization': `Bearer ${cookie.value}`
@@ -86,7 +86,7 @@ export const updateRouteOrder = async (data: { route_id: number; display_order: 
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
   try {
-    return await $fetch<ApiResponse<RouteType>>(`${apiGateWay}/v2/route/update-route-order`, {
+    return await $fetch<ApiResponse<RouteType>>(`${apiGateWay}/v2/bms-route/update-route-order`, {
       method: "POST",
       headers: {
         'Authorization': `Bearer ${cookie.value}`,
@@ -104,7 +104,24 @@ export const getListRouteNameByCompany = async (id: string): Promise<ApiResponse
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
   try {
-    return await $fetch<ApiResponse<DTO_RP_ListRouteName[]>>(`${apiGateWay}/v2/route/get-list-route-name-by-company/${id}`, {
+    return await $fetch<ApiResponse<DTO_RP_ListRouteName[]>>(`${apiGateWay}/v2/bms-route/get-list-route-name-by-company/${id}`, {
+      method: "GET",
+      headers: {
+        'Authorization': `Bearer ${cookie.value}`
+      }
+    });
+  } catch (error) {
+    console.error("API error:", error);
+    throw error;
+  }
+}
+
+export const API_GetListRouteNameToConfigByCompany = async (id: string): Promise<ApiResponse<DTO_RP_ListRouteNameToConfig[]>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie('access_token');
+  try {
+    return await $fetch<ApiResponse<DTO_RP_ListRouteNameToConfig[]>>(`${apiGateWay}/v2/bms-route/get-list-route-name-to-config-by-company/${id}`, {
       method: "GET",
       headers: {
         'Authorization': `Bearer ${cookie.value}`
@@ -121,7 +138,7 @@ export const getListRouteNameActionByCompany = async (id: string): Promise<ApiRe
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
   try {
-    return await $fetch<ApiResponse<DTO_RP_ListRouteName[]>>(`${apiGateWay}/v2/route/get-list-route-name-action-by-company/${id}`, {
+    return await $fetch<ApiResponse<DTO_RP_ListRouteName[]>>(`${apiGateWay}/v2/bms-route/get-list-route-name-action-by-company/${id}`, {
       method: "GET",
       headers: {
         'Authorization': `Bearer ${cookie.value}`

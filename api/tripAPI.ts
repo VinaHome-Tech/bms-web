@@ -153,3 +153,31 @@ export const updateNote = async (
     throw error;
   }
 }
+
+export const API_UpdateTicketsBookedInTrip = async (
+  tripId: number,
+  ticketsBooked: number,
+  totalTicketsPrice: number
+): Promise<ApiResponse<void>> => {
+  const config = useRuntimeConfig();
+  const apiGateWay = config.public.apiGateWay;
+  const cookie = useCookie("access_token");
+  try {
+    return await $fetch<ApiResponse<void>>(
+      `${apiGateWay}/v2/trip/update-tickets-booked-in-trip/${tripId}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${cookie.value}`,
+        },
+        body: {
+          tickets_booked: ticketsBooked,
+          total_tickets_price: totalTicketsPrice,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
+}

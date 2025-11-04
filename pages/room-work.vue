@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { SwitchButton } from '@element-plus/icons-vue'
-import type {  OfficeType } from '~/types/officeType'
-import { getListOfficeRoomWorkByCompany } from '~/api/officeAPI'
+import { API_GetListOfficeRoomWorkByCompanyId } from '~/api/bms-service/office/bms_office.api'
+import type { OfficeRoomWork } from '~/types/office/office.interface'
 definePageMeta({
   middleware: ['auth'],
   layout: false,
@@ -15,7 +15,7 @@ const selectedOffice = ref<number | null>(null)
 const searchQuery = ref('')
 const filterByAvailability = ref(false)
 
-const offices = ref<OfficeType[]>([]);
+const offices = ref<OfficeRoomWork[]>([]);
 const isLoading = ref(true);
 
 const filteredOffices = computed(() => {
@@ -57,9 +57,12 @@ const confirmSelection = () => {
 const fetchOfficeList = async () => {
   isLoading.value = true;
   try {
-    const res = await getListOfficeRoomWorkByCompany(String(useUserStore.company_id ?? ''));
-    offices.value = res.result ?? [];
-    // console.log('Danh sách văn phòng:', offices.value);
+    const res = await API_GetListOfficeRoomWorkByCompanyId(useUserStore.company_id ?? '');
+    if (res.success && res.result) {
+      offices.value = res.result;
+    } else {
+      notifyError(res.message || 'Lỗi khi lấy danh sách văn phòng!');
+    }
   } catch (err) {
     console.error('Lỗi khi lấy danh sách văn phòng:', err);
   } finally {
@@ -166,10 +169,10 @@ onMounted(async () => {
           !office.status ? 'opacity-60 cursor-not-allowed' : ''
         ]" @click="office.status && selectOffice(office.id as number)">
           <div class="p-4">
-            <h3 class="text-xl font-semibold text-gray-800 mb-2">{{ office.name }}</h3>
-            <p class="text-gray-600 mb-1">
-              <span class="text-sm font-medium text-gray-700">Địa chỉ:</span> {{ office.address }}
-            </p>
+            <h3 class="text-base font-semibold text-gray-800 mb-2">{{ office.name }}</h3>
+            <div class="text-gray-600 mb-1">
+              <span class="text-sm font-medium text-gray-700">Địa chỉ: {{ office.address }}</span> 
+            </div>
             <div class="mb-1">
               <h4 class="text-sm font-medium text-gray-700">Số điện thoại:</h4>
               <div class="flex flex-wrap gap-1">

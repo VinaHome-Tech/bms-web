@@ -3,8 +3,8 @@ import logo from '@/assets/image/logo-4.png';
 import LoginForm from '~/components/form/LoginForm.vue';
 import type { LoginFormType } from '~/types/authType';
 import { ecosystemModules } from '~/mock/ecosystemModules';
-import { loginBMS } from '~/api/authAPI';
 import { scheduleTokenRefresh } from '~/lib/auth';
+import { API_LoginBMS } from '~/api/identity-service/auth/bms_auth';
 definePageMeta({
     middleware: [ 'guest' ],
     layout: false,
@@ -14,7 +14,7 @@ const handleLogin = async (payload: LoginFormType) => {
     const store = userStore()
     submitLoading.value = true;
     try {
-        const response = await loginBMS(payload)
+        const response = await API_LoginBMS(payload)
         if (response.success && response.result) {
             notifySuccess('Đăng nhập thành công!')
             const {

@@ -17,9 +17,7 @@ import {
   DataAnalysis,
   Postcard,
   Service,
-  Message,
-  Phone,
-  Edit,
+  Operation,
 } from '@element-plus/icons-vue'
 import IconZalo from '~/assets/icon/static/icon-zalo.png'
 import IconPhone from '~/assets/icon/static/icon-phone.png'
@@ -47,6 +45,7 @@ const Icons: Record<string, Component> = {
   Finished,
   Lock,
   DataAnalysis,
+  Operation,
 };
 const { handleQueryTicket } = useTicketManagement();
 // const { handleLogout } = useLogout();
@@ -62,10 +61,6 @@ const notifications = ref([
   { id: 3, text: "Backup hoàn thành", time: "10 phút trước", type: "success" }
 ])
 
-
-const openSettings = () => {
-  console.log('Open settings')
-}
 
 const handleNotificationCommand = (command: number) => {
   console.log('Notification clicked:', command)
@@ -104,31 +99,30 @@ const menuItems = [
   {
     type: 'item',
     label: 'Tổng quan',
-    index: '11',
+    index: '1',
     icon: 'HomeFilled',
     to: '/dashboard',
   },
   {
     type: 'item',
     label: 'Đặt vé',
-    index: '12',
+    index: '2',
     icon: 'Ticket',
     to: '/ticket',
   },
   {
     type: 'submenu',
     label: 'Khai báo',
-    index: '13',
+    index: '3',
     icon: 'Finished',
     children: [
-      { label: 'Văn phòng', index: '13-1', to: '/declare/office' },
-      { label: 'Phương tiện', index: '13-2', to: '/declare/vehicle' },
-      { label: 'Tuyến', index: '13-3', to: '/declare/route' },
-      { label: 'Điểm dừng', index: '13-4', to: '/declare/point' },
-      { label: 'Nhân viên', index: '13-5', to: '/declare/employee' },
-      { label: 'Đại lý', index: '13-6', to: '/declare/agent' },
-      { label: 'Lịch chạy', index: '13-7', to: '/declare/schedule' },
-      { label: 'Mã giảm giá', index: '13-8', to: '/declare/discount' },
+      { label: 'Văn phòng', index: '3-1', to: '/declare/office' },
+      { label: 'Phương tiện', index: '3-2', to: '/declare/vehicle' },
+      { label: 'Tuyến', index: '3-3', to: '/declare/route' },
+      { label: 'Nhân viên', index: '3-5', to: '/declare/employee' },
+      { label: 'Đại lý', index: '3-6', to: '/declare/agent' },
+      { label: 'Lịch chạy', index: '3-7', to: '/declare/schedule' },
+      { label: 'Mã giảm giá', index: '3-8', to: '/declare/discount' },
       { label: 'Sơ đồ ghế', index: '13-9', to: '/declare/seat' },
 
     ],
@@ -136,7 +130,7 @@ const menuItems = [
   {
     type: 'submenu',
     label: 'Báo cáo',
-    index: '14',
+    index: '4',
     icon: 'DataAnalysis',
     children: [
       { label: 'Báo cáo vé', index: '14-1', to: '/report/ticket' },
@@ -145,6 +139,18 @@ const menuItems = [
 
     ],
   },
+  {
+    type: 'submenu',
+    label: 'Cấu hình',
+    index: '5',
+    icon: 'Operation',
+    children: [
+      { label: 'Giá vé', index: '14-1', to: '/config/fare' },
+      { label: 'Thời gian', index: '14-2', to: '/config/point-time' },
+
+    ],
+  },
+
 ];
 
 const searchQuery = ref('')
@@ -208,7 +214,7 @@ const querySearch = (queryString: string, callback: (results: DTO_RP_SearchTicke
       return
     }
 
-    if (queryString.trim().length < 4) {
+    if (queryString.trim().length < 3) {
       callback([])
       return
     }
@@ -243,6 +249,38 @@ const handleSelectTicket = (item: Record<string, any>): void => {
   const ticket = item as DTO_RP_SearchTicket;
   handleQueryTicket(ticket);
 }
+
+
+// Handle menu navigation với force refresh
+const handleMenuItemClick = async (routePath: string | undefined) => {
+  if (!routePath) return
+  
+  
+  try {
+    const route = useRoute()
+    
+    // Kiểm tra nếu đã ở trang hiện tại
+    if (route.path === routePath) {
+      // Force refresh trang hiện tại
+      await nextTick()
+      window.location.reload()
+      return
+    }
+    
+    // Navigate đến trang mới với force refresh
+    await navigateTo(routePath, { 
+      replace: false,
+      external: false 
+    })
+    
+    // Đảm bảo trang được refresh sau khi navigate
+    await nextTick()
+  } catch (error) {
+    console.error('Navigation error:', error)
+    // Fallback: sử dụng window.location
+    window.location.href = routePath
+  }
+}
 const {
   dialogFormChangePassword,
   loadingChangePassword,
@@ -268,17 +306,15 @@ onMounted(async () => {
         </div>
 
         <template #dropdown>
-          <el-menu :default-active="$route.path" router class="el-menu-vertical-demo">
+          <el-menu :default-active="$route.path" unique-opened class="el-menu-vertical-demo">
             <template v-for="item in menuItems" :key="item.index">
               <!-- item thường -->
-              <NuxtLink v-if="item.type === 'item'" :to="item.to">
-                <el-menu-item :index="item.to">
-                  <el-icon>
-                    <component :is="Icons[ item.icon as string ]" />
-                  </el-icon>
-                  <span class="text-base">{{ item.label }}</span>
-                </el-menu-item>
-              </NuxtLink>
+              <el-menu-item v-if="item.type === 'item'" :index="item.to" @click="handleMenuItemClick(item.to)">
+                <el-icon>
+                  <component :is="Icons[ item.icon as string ]" />
+                </el-icon>
+                <span class="text-base">{{ item.label }}</span>
+              </el-menu-item>
 
               <!-- submenu -->
               <el-sub-menu v-else-if="item.type === 'submenu'" :index="item.index">
@@ -289,11 +325,9 @@ onMounted(async () => {
                   <span class="text-base">{{ item.label }}</span>
                 </template>
 
-                <NuxtLink v-for="child in item.children" :key="child.index" :to="child.to">
-                  <el-menu-item :index="child.to">
-                    <span class="text-base">{{ child.label }}</span>
-                  </el-menu-item>
-                </NuxtLink>
+                <el-menu-item v-for="child in item.children" :key="child.index" :index="child.to" @click="handleMenuItemClick(child.to)">
+                  <span class="text-base">{{ child.label }}</span>
+                </el-menu-item>
               </el-sub-menu>
             </template>
           </el-menu>

@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { remove, update } from "firebase/database";
+import { API_GetHistoryTicket } from "~/api/historyTicketAPI";
 import { getListRouteNameActionByCompany } from "~/api/routeAPI";
 import {
+  API_GetListCancelTicketByTrip,
   cancelTickets,
   copyTickets,
   getListCustomerByTrip,
@@ -12,10 +14,13 @@ import {
   updateContactStatus,
   updateTickets,
 } from "~/api/ticketAPI";
+import { API_UpdateTicketsBookedInTrip } from "~/api/tripAPI";
 import { userStore } from "~/stores/useUserStore";
+import type { DTO_RP_HistoryTicket } from "~/types/historyTicketType";
 import type { DTO_RP_ListRouteName } from "~/types/routeType";
 import type {
   CancelTicketType,
+  DTO_RP_CancelTicket,
   DTO_RP_ListCustomerByTrip,
   DTO_RP_ListTransitDownByTrip,
   DTO_RP_ListTransitUpByTrip,
@@ -33,6 +38,8 @@ export const queryRouteID = ref<number | null>(null);
 export const queryDate = ref<Date | string>(new Date());
 export const queryTripID = ref<number | null>(null);
 export const queryTicketID = ref<number | null>(null);
+export const listCancelTicket = ref<DTO_RP_CancelTicket[]>([]);
+
 export const useTicketManagement = () => {
   const loadingListTicket = ref(false);
   const useUserStore = userStore();
@@ -40,12 +47,60 @@ export const useTicketManagement = () => {
 
   const dialogFormEditTicket = ref(false);
   const loadingItemTicket = ref(false);
+  const loadingListCancelTicket = ref(false);
 
   const updatingTicketIds = ref<Set<number>>(new Set());
   const useOffice = useOfficeStore();
   const copyTicketStore = useCopyTicketStore();
   const moveTicketStore = useMoveTicketStore();
   const isCopyTicket = ref(false);
+  const dialogHistoryCancelTicket = ref(false);
+  const loadingHistoryCancelTicket = ref(false);
+  const historyCancelTicketData = ref<DTO_RP_HistoryTicket[]>([]);
+
+  const fetchListCancelTicketByTrip = async (trip_id: number) => {
+    loadingListCancelTicket.value = true;
+    try {
+      const response = await API_GetListCancelTicketByTrip(trip_id);
+      if (response.success) {
+        listCancelTicket.value = response.result || [];
+      } else {
+        notifyError(response.message || 'Lỗi khi lấy danh sách vé huỷ!');
+      }
+    } catch (error) {
+      console.error('❌ Lỗi khi gọi API lấy danh sách vé huỷ:', error);
+      notifyError('Lỗi khi lấy danh sách vé huỷ!');
+    } finally {
+      loadingListCancelTicket.value = false;
+    }
+  };
+
+  const handleCopyTicketCanceled = async (ticket: DTO_RP_CancelTicket) => {
+    console.log("Sao chép vé huỷ:", ticket);
+  };
+
+  const handleShowHistoryTicketCanceled = async (ticket: DTO_RP_CancelTicket) => {
+    dialogHistoryCancelTicket.value = true;
+    loadingHistoryCancelTicket.value = true;
+    console.log("Xem lịch sử vé huỷ:", ticket);
+    try {
+      const response = await API_GetHistoryTicket(ticket.ticket_code);
+      if (response.success) {
+        if (response.result) {
+          console.log("Lịch sử vé huỷ:", response.result);
+          historyCancelTicketData.value = response.result;
+        }
+      } else {
+        console.error(response.message || "Không thể tải lịch sử vé huỷ!");
+        notifyError(response.message || "Không thể tải lịch sử vé huỷ!");
+      }
+    } catch (error) {
+      console.error("Lỗi khi tải lịch sử vé huỷ:", error);
+      notifyError("Lỗi khi tải lịch sử vé huỷ!");
+    } finally {
+      loadingHistoryCancelTicket.value = false;
+    }
+  };
 
   const fetchListTicketByTrip = async (id: number) => {
     loadingListTicket.value = true;
@@ -437,20 +492,23 @@ export const useTicketManagement = () => {
     );
   });
 
-  const updateTicketsBookedInTrip = () => {
-    const bookedTicketsCount = ticketList.value.filter(
+  const updateTicketsBookedInTrip = async () => {
+    const bookedTickets = ticketList.value.filter(
       (ticket) => ticket.booked_status === true
-    ).length;
-    console.log(
-      `Số lượng vé đã đặt (booked_status = true): ${bookedTicketsCount}`
     );
-    console.log("Vé:", ticketList.value);
+
+    const bookedTicketsCount = bookedTickets.length;
+
+    const totalTicketsPrice = bookedTickets.reduce((sum, ticket) => {
+      return sum + (ticket.ticket_display_price || 0);
+    }, 0);
 
     tripList.value = tripList.value.map((trip) => {
       if (trip.trip_id === selectedTrip.value?.trip_id) {
         return {
           ...trip,
           tickets_booked: bookedTicketsCount,
+          total_tickets_price: totalTicketsPrice,
         };
       }
       return trip;
@@ -459,123 +517,21 @@ export const useTicketManagement = () => {
     selectedTrip.value = {
       ...selectedTrip.value!,
       tickets_booked: bookedTicketsCount,
+      total_tickets_price: totalTicketsPrice,
     };
+    try {
+      await API_UpdateTicketsBookedInTrip(
+        selectedTrip.value.trip_id,
+        bookedTicketsCount,
+        totalTicketsPrice
+      );
+      // ElMessage.success("Cập nhật số lượng vé thành công!");
+    } catch (error) {
+      console.error("Lỗi khi cập nhật vé:", error);
+      ElMessage.error("Cập nhật số lượng vé thất bại!");
+    }
   };
-  // const updateTicketsBookedInMultipleTrips = async (
-  //   sourceTripId: number,
-  //   destinationTripId: number,
-  //   movedTicketsCount: number = 0
-  // ) => {
-  //   try {
-  //     console.log("🔄 Cập nhật số lượng vé cho 2 chuyến:", {
-  //       sourceTripId,
-  //       destinationTripId,
-  //       movedTicketsCount,
-  //     });
 
-  //     // 🔹 1. Lấy danh sách vé cho chuyến nguồn
-  //     const sourceResponse = await getListTicketsByTrip(sourceTripId);
-  //     let sourceBookedCount = 0;
-  //     if (sourceResponse.success && sourceResponse.result) {
-  //       sourceBookedCount = sourceResponse.result.filter(
-  //         (ticket: TicketType) => ticket.booked_status === true
-  //       ).length;
-  //     }
-
-  //     // 🔹 2. Lấy danh sách vé cho chuyến đích
-  //     const destinationResponse = await getListTicketsByTrip(destinationTripId);
-  //     let destinationBookedCount = 0;
-  //     if (destinationResponse.success && destinationResponse.result) {
-  //       destinationBookedCount = destinationResponse.result.filter(
-  //         (ticket: TicketType) => ticket.booked_status === true
-  //       ).length;
-  //     }
-
-  //     // 🔹 3. Cập nhật tripList cho cả 2 chuyến
-  //     tripList.value = tripList.value.map((trip) => {
-  //       if (trip.trip_id === sourceTripId) {
-  //         return {
-  //           ...trip,
-  //           tickets_booked: sourceBookedCount,
-  //         };
-  //       }
-  //       if (trip.trip_id === destinationTripId) {
-  //         return {
-  //           ...trip,
-  //           tickets_booked: destinationBookedCount,
-  //         };
-  //       }
-  //       return trip;
-  //     });
-
-  //     // 🔹 4. Cập nhật selectedTrip nếu đang xem một trong 2 chuyến
-  //     if (selectedTrip.value?.trip_id === sourceTripId) {
-  //       selectedTrip.value = {
-  //         ...selectedTrip.value,
-  //         tickets_booked: sourceBookedCount,
-  //       };
-  //     } else if (selectedTrip.value?.trip_id === destinationTripId) {
-  //       selectedTrip.value = {
-  //         ...selectedTrip.value,
-  //         tickets_booked: destinationBookedCount,
-  //       };
-  //     }
-
-  //     console.log("✅ Đã cập nhật số lượng vé:", {
-  //       sourceTrip: { id: sourceTripId, booked: sourceBookedCount },
-  //       destinationTrip: {
-  //         id: destinationTripId,
-  //         booked: destinationBookedCount,
-  //       },
-  //     });
-  //   } catch (error) {
-  //     console.error("❌ Lỗi khi cập nhật số lượng vé cho 2 chuyến:", error);
-  //     ElNotification({
-  //       message: h(
-  //         "p",
-  //         { style: "color: red" },
-  //         "Không thể cập nhật số lượng vé cho các chuyến!"
-  //       ),
-  //       type: "error",
-  //     });
-  //   }
-  // };
-
-  // // 🔹 THÊM: Hàm tiện ích để cập nhật số lượng vé từ danh sách tickets có sẵn
-  // const updateTicketsBookedFromTicketList = (
-  //   tripId: number,
-  //   ticketsList: TicketType[]
-  // ) => {
-  //   const bookedCount = ticketsList.filter(
-  //     (ticket) => ticket.booked_status === true
-  //   ).length;
-
-  //   // Cập nhật tripList
-  //   tripList.value = tripList.value.map((trip) => {
-  //     if (trip.trip_id === tripId) {
-  //       return {
-  //         ...trip,
-  //         tickets_booked: bookedCount,
-  //       };
-  //     }
-  //     return trip;
-  //   });
-
-  //   // Cập nhật selectedTrip nếu đang xem chuyến này
-  //   if (selectedTrip.value?.trip_id === tripId) {
-  //     selectedTrip.value = {
-  //       ...selectedTrip.value,
-  //       tickets_booked: bookedCount,
-  //     };
-  //   }
-
-  //   console.log(
-  //     `📊 Cập nhật số lượng vé cho chuyến ${tripId}: ${bookedCount} vé`
-  //   );
-  //   return bookedCount;
-  // };
-
-  // [FEAT]: Cancel tickets
   // DB-6 Cancel Tickets
   const handleCancelTickets = async (tickets: CancelTicketType) => {
     console.log("Hủy vé:", tickets);
@@ -588,6 +544,7 @@ export const useTicketManagement = () => {
           username: useUserStore.username,
           full_name: useUserStore.full_name,
           company_id: useUserStore.company_id,
+          office_name: useOffice.name,
         } as UserActionType,
         tickets
       );
@@ -766,10 +723,10 @@ export const useTicketManagement = () => {
 
   // DB-7 Copy Tickets
   const handleCopyTickets = async () => {
-    console.log("Sao chép vé:", mySelectedTickets.value);
-    notifySuccess(`Đã sao chép ${mySelectedTickets.value.length} vé!`);
+    // console.log("Sao chép vé:", mySelectedTickets.value);
+    notifyWarning("Đã sao chép thông tin vé!");
     await copyTicketStore.setTickets(mySelectedTickets.value);
-    console.log("Pinia sao chép:", copyTicketStore.mySelectedTickets);
+    // console.log("Pinia sao chép:", copyTicketStore.mySelectedTickets);
     await clearAllSelectedTickets();
     isCopyTicket.value = true;
   };
@@ -777,12 +734,12 @@ export const useTicketManagement = () => {
   // DB-7 Copy Tickets
   const handlePasteTickets = async () => {
     if (!isCopyTicket.value) {
-      notifyWarning("Chưa sao chép vé nào!");
+      notifyInfo("Chưa sao chép vé nào!");
       return;
     }
     const copiedTickets = copyTicketStore.mySelectedTickets;
     if (copiedTickets.length === 0) {
-      notifyWarning("Không có vé nào để dán!");
+      notifyInfo("Không có vé nào để dán!");
       return;
     }
     loadingItemTicket.value = true;
@@ -929,6 +886,7 @@ export const useTicketManagement = () => {
           username: useUserStore.username,
           full_name: useUserStore.full_name,
           company_id: useUserStore.company_id,
+          office_name: useOffice.name,
         } as UserActionType,
         sourceTickets,
         destinationSeats.map((t) => t.id)
@@ -1049,36 +1007,14 @@ export const useTicketManagement = () => {
           await clearAllSelectedTickets();
           cancelMoveTickets();
           updateTicketsBookedInTrip();
-
-          ElNotification({
-            message: h(
-              "p",
-              { style: "color: green" },
-              `Di chuyển thành công ${destinationSeats.length} vé!`
-            ),
-            type: "success",
-          });
+          notifySuccess(`Di chuyển thành công ${destinationSeats.length} vé!`);
         }
       } else {
-        ElNotification({
-          message: h(
-            "p",
-            { style: "color: red" },
-            response.message || "Di chuyển vé thất bại!"
-          ),
-          type: "error",
-        });
+        notifyError(response.message || "Di chuyển vé thất bại!");
       }
     } catch (error) {
       console.error("Lỗi khi dán vé di chuyển:", error);
-      ElNotification({
-        message: h(
-          "p",
-          { style: "color: red" },
-          "Đã xảy ra lỗi khi dán vé di chuyển!"
-        ),
-        type: "error",
-      });
+      notifyError("Đã xảy ra lỗi khi di chuyển vé!");
     } finally {
       loadingMoveTicket.value = false;
       updatingTicketIds.value.clear();
@@ -1104,6 +1040,7 @@ export const useTicketManagement = () => {
           username: useUserStore.username,
           full_name: useUserStore.full_name,
           company_id: useUserStore.company_id,
+          office_name: useOffice.name,
         } as UserActionType,
         mySelectedTickets.value.map((ticket) => ticket.id),
         status
@@ -1151,7 +1088,6 @@ export const useTicketManagement = () => {
                   payment_method: ticket.payment_method || "",
                   booked_status: true,
                   contact_status: status,
-                  office_id: mySelectedTickets.value[ 0 ].office_id || 0,
                   user_created: mySelectedTickets.value[ 0 ].user_created || "",
                   office_created:
                     mySelectedTickets.value[ 0 ].office_created || "",
@@ -1434,37 +1370,21 @@ export const useTicketManagement = () => {
   const loadingListRouteName = ref(false);
   const valueSelectedRoute = ref<number | null>(null);
 
+  // BM-36 Get List Route Name Action By Company
   const fetchListRouteName = async (company_id: string) => {
     loadingListRouteName.value = true;
     try {
       const response = await getListRouteNameActionByCompany(company_id);
       if (response.success) {
         if (response.result) {
-          console.log("Danh sách tuyến:", response.result);
+          // console.log("Danh sách tuyến:", response.result);
           routeNames.value = response.result;
-          //   if (routeNames.value.length > 0) {
-          //     valueSelectedRoute.value = routeNames.value[0].id;
-          //   }
         }
       } else {
-        ElNotification({
-          message: h(
-            "p",
-            { style: "color: red" },
-            response.message || "Không thể tải danh sách tuyến!"
-          ),
-          type: "error",
-        });
+        notifyError(response.message || "Lấy danh sách tuyến thất bại!");
       }
     } catch (error) {
-      ElNotification({
-        message: h(
-          "p",
-          { style: "color: red" },
-          "Đã xảy ra lỗi khi tải danh sách tuyến!"
-        ),
-        type: "error",
-      });
+      notifyError("Đã xảy ra lỗi khi lấy danh sách tuyến!");
       console.error("Error fetching route names:", error);
     } finally {
       loadingListRouteName.value = false;
@@ -1476,6 +1396,11 @@ export const useTicketManagement = () => {
     valueSelectedRoute.value = selectedRoute ? selectedRoute.id : 0;
     console.log("Tuyến được chọn:", selectedRoute);
     console.log("ID tuyến:", valueSelectedRoute.value);
+
+    // Lưu route đã chọn vào localStorage
+    if (selectedRoute) {
+      localStorage.setItem('selectedRouteId', selectedRoute.id.toString());
+    }
   };
 
 
@@ -1562,7 +1487,7 @@ export const useTicketManagement = () => {
     updateTicketsBookedInTrip,
     handleUpdateTickets,
     isCopyTicket,
-    // isMoveTicket,
+    isMoveTicket,
     handleCopyTickets,
     handlePasteTickets,
     handleMoveTickets,
@@ -1578,5 +1503,12 @@ export const useTicketManagement = () => {
     fetchListTransitUpByTrip,
     fetchListTransitDownByTrip,
     handlePrintTickets,
+    fetchListCancelTicketByTrip,
+    loadingListCancelTicket,
+    handleCopyTicketCanceled,
+    handleShowHistoryTicketCanceled,
+    dialogHistoryCancelTicket,
+    loadingHistoryCancelTicket,
+    historyCancelTicketData,
   };
 };
