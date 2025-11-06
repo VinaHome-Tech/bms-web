@@ -38,3 +38,12 @@ export const API_UpdateOffice = async (office_id: number, data: DTO_RQ_Office): 
     body: data,
   })
 }
+
+// M1_v2.F5
+export const API_DeleteOffice = async (office_id: number): Promise<ApiResponse<null>> => {
+  const { $apiFetch } = useNuxtApp()
+  const config = useRuntimeConfig()
+  return await $apiFetch<ApiResponse<null>>(`${config.public.apiGateWay}/v2/bms-office/${office_id}`, {
+    method: "DELETE",
+  })
+}

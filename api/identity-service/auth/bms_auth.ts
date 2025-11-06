@@ -3,20 +3,6 @@ import type { ApiResponse } from "~/api/APIResponse";
 import type { LoginFormType } from "~/types/authType";
 import type { UserBMSType } from "~/types/userType";
 
-// export const loginBMS = async (data: LoginFormType): Promise<ApiResponse<UserBMSType>> => {
-//   const config = useRuntimeConfig();
-//   const apiGateWay = config.public.apiGateWay;
-//   try {
-//     return await $fetch<ApiResponse<UserBMSType>>(`${apiGateWay}/v3/bus-auth/login-bms`, {
-//       method: "POST",
-//       body: data,
-//     });
-//   } catch (error) {
-//     console.error('API error:', error);
-//     throw error;
-//   }
-// };
-
 // M1_v3.F1
 export const API_LoginBMS = async (data: LoginFormType): Promise<ApiResponse<UserBMSType>> => {
   const { $apiFetch } = useNuxtApp()
