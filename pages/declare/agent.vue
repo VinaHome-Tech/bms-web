@@ -287,7 +287,7 @@ onMounted(() => {
             </el-table-column>
         </el-table>
 
-        <el-drawer v-model="drawer" :direction="direction" :before-close="cancelClick" size="50%">
+        <el-drawer v-model="drawer" :direction="direction" :before-close="cancelClick" size="55%">
             <template #header>
                 <div class="font-semibold text-lg text-black">{{ isEditMode ? 'Chỉnh sửa đại lý' : 'Thêm đại lý'
                 }}</div>

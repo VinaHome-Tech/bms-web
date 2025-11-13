@@ -11,3 +11,7 @@ export interface Route {
     status?: boolean;
     display_order?: number;
 }
+export interface RouteName {
+    id: number;
+    route_name: string;
+}

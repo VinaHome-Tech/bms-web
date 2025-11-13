@@ -4,7 +4,7 @@ import {
     Edit
 } from '@element-plus/icons-vue'
 const props = defineProps<{
-    modelValue: string | null;
+    modelValue: string | null | undefined;
     prop: string;
     label: string;
 }>()

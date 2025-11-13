@@ -7,6 +7,7 @@ export const API_GetListOfficeRoomWorkByCompanyId = async (company_id: string): 
   const config = useRuntimeConfig()
   return await $apiFetch<ApiResponse<OfficeRoomWork[]>>(`${config.public.apiGateWay}/v2/bms-office/companies/${company_id}/room-work`, {
     method: "GET",
+    credentials: "include",
   })
 }
 

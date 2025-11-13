@@ -1,6 +1,6 @@
 import type { FormInstance } from "element-plus";
-import { API_CreateRoute, API_DeleteRoute, API_GetListRouteByCompanyId, API_UpdateRoute } from "~/api/bms-service/route/bms_route.api";
-import type { Route } from "~/types/route/route.interface";
+import { API_CreateRoute, API_DeleteRoute, API_GetListRouteByCompanyId, API_GetListRouteNameByCompanyId, API_UpdateRoute, API_UpdateRouteOrder } from "~/api/bms-service/route/bms_route.api";
+import type { Route, RouteName } from "~/types/route/route.interface";
 
 export const useRouteManagement = () => {
     const useUserStore = userStore();
@@ -8,6 +8,7 @@ export const useRouteManagement = () => {
     const isEditMode = ref(false);
     const currentEditId = ref<number | null>(null);
     const routes = ref<Route[]>([]);
+    const routesName = ref<RouteName[]>([]);
     const loadingData = ref(false);
     const loadingSubmit = ref(false);
     const ruleFormRef = ref<FormInstance>();
@@ -21,7 +22,7 @@ export const useRouteManagement = () => {
         route_name: undefined,
         route_name_e_ticket: undefined,
         short_name: undefined,
-        status: undefined,
+        status: false,
         display_order: undefined,
     });
     const handleAdd = () => {
@@ -36,7 +37,7 @@ export const useRouteManagement = () => {
             route_name: undefined,
             route_name_e_ticket: undefined,
             short_name: undefined,
-            status: undefined,
+            status: false,
             display_order: undefined,
         };
         drawer.value = true;
@@ -145,6 +146,22 @@ export const useRouteManagement = () => {
             loadingData.value = false;
         }
     }
+    const fetchListRoutesName = async (company_id: string) => {
+        try {
+            const response = await API_GetListRouteNameByCompanyId(company_id);
+            if (response.success) {
+                routesName.value = (response.result || []).map(route => ({
+                    id: route.id!,
+                    route_name: route.route_name || ''
+                }));
+            } else {
+                ElMessage.error(response.message || "Lấy danh sách tên tuyến đường thất bại.");
+            }
+        } catch (error) {
+            console.error(error);
+            ElMessage.error("Lỗi khi tải danh sách tên tuyến đường.");
+        } 
+    }
     const handleMoveUp = async (item: Route, index: number) => {
         console.log('Move Up clicked', item, index);
         if (index <= 0 || !item.display_order) return;
@@ -164,8 +181,8 @@ export const useRouteManagement = () => {
             prevItem.display_order = currentOrder;
 
             await Promise.all([
-                updateRouteOrder({ route_id: item.id!, display_order: item.display_order, company_id: useUserStore.company_id ?? '' }),
-                updateRouteOrder({ route_id: prevItem.id!, display_order: prevItem.display_order, company_id: useUserStore.company_id ?? '' })
+                API_UpdateRouteOrder(useUserStore.company_id ?? '', { route_id: item.id!, display_order: item.display_order }),
+                API_UpdateRouteOrder(useUserStore.company_id ?? '', { route_id: prevItem.id!, display_order: prevItem.display_order })
             ]);
 
             routes.value.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
@@ -177,7 +194,6 @@ export const useRouteManagement = () => {
             loadingData.value = false;
         }
     };
-
     const handleMoveDown = async (item: Route, index: number) => {
         console.log('Move Down clicked', item, index);
         if (index >= routes.value.length - 1 || !item.display_order) return;
@@ -196,8 +212,8 @@ export const useRouteManagement = () => {
 
 
             await Promise.all([
-                updateRouteOrder({ route_id: item.id!, display_order: item.display_order, company_id: useUserStore.company_id ?? '' }),
-                updateRouteOrder({ route_id: nextItem.id!, display_order: nextItem.display_order, company_id: useUserStore.company_id ?? '' })
+                API_UpdateRouteOrder(useUserStore.company_id ?? '', { route_id: item.id!, display_order: item.display_order }),
+                API_UpdateRouteOrder(useUserStore.company_id ?? '', { route_id: nextItem.id!, display_order: nextItem.display_order })
             ]);
 
             routes.value.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
@@ -212,6 +228,7 @@ export const useRouteManagement = () => {
     };
     return {
         routes,
+        routesName,
         loadingData,
         loadingSubmit,
         ruleFormRef,
@@ -226,6 +243,7 @@ export const useRouteManagement = () => {
         resetForm,
         cancelClick,
         fetchListRoutes,
+        fetchListRoutesName,
         handleMoveUp,
         handleMoveDown,
     }
