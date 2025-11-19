@@ -10,7 +10,7 @@ import InputNote from '~/components/inputs/inputNote.vue'
 import TripList from '~/components/widgets/TripList.vue'
 import TripInformation from '~/components/widgets/TripInformation.vue'
 import RouteInfo from '~/components/widgets/RouteInfo.vue'
-import { format } from 'date-fns';
+import { format, formatDate } from 'date-fns';
 import type { TripType } from '~/types/tripType';
 import { useFirebase } from '~/composables/useFirebase';
 import { get, update } from 'firebase/database';
@@ -33,151 +33,57 @@ import type { DTO_RP_CancelTicket } from '~/types/ticketType';
 import ItemCancelTicket from '~/components/widgets/ItemCancelTicket.vue';
 import HistoryTicketCanceled from '~/components/dialog/HistoryTicketCanceled.vue';
 import { useTicketHistory } from '~/composables/ticket/useTicketHistory';
+import { useRouteManagement } from '~/composables/route/useRouteManagement';
+import { valueSelectedDate, valueSelectedRoute } from '~/composables/route/useRouteGlobal';
+import { useRouteActions } from '~/composables/route/useRouteActions';
+import { useRouteList } from '~/composables/route/useRouteList';
+import { useTripList } from '~/composables/trip/useTripList';
+import { useTripActions } from '~/composables/trip/useTripActions';
+import { valueSelectedTrip } from '~/composables/trip/useTripGlobal';
+import type { TripItem } from '~/types/trip/trip.interface';
+import { useTicketList } from '~/composables/ticket/useTicketList';
+import { useTicketLocal } from '~/composables/ticket/useTicketLocal';
+import { useTicketFirebase } from '~/composables/ticket/useTicketFirebase';
+import { useTicketActions } from '~/composables/ticket/useTicketActions';
+import { localSelectedTickets } from '~/composables/ticket/useTicketGlobal';
+import { useTicketManager } from '~/composables/ticket/useTicketManager';
 definePageMeta({
   layout: 'default',
 })
 
+const {
+  routesNameAction,
+  loadingRouteNameAction,
+  fetchListRoutesNameAction,
+} = useRouteList();
+const {
+  handleChangeRoute,
+} = useRouteActions();
 
 const {
-  loadingListTrip,
-  fetchListTripByRouteAndDate,
-  dialogFormEditTripInformation,
-  loadingFormEditTripInformation,
-  handleOpenFormEditTripInformation,
-  handleClosedDialogdialogFormEditTripInformation,
-  handleUpdateTripInformation,
-
-} = useTripManagement();
-
+  loadingListItemTrip,
+  listItemTrip,
+  fetchListItemTripByRouteAndDate
+} = useTripList();
 const {
-  handleOpenCargoDialog,
-  handleClosedDialogCargo,
-  dialogFormCargo,
-  isEditCargo,
-  handleSaveCargo,
-} = useCargoManagement();
-
-const {
-  dialogChangeTimeTrip,
-  loadingFormChangeTimeTrip,
-  handleUpdateTimeTrip,
-  handleOpenChangeTimeDialog,
-  openMessageBoxDeleteTrip,
-  openMessageBoxConfirmationDepart,
-  printTicketListOfTheTrip,
-  handleUpdateNote,
-} = useTripOperations();
-
-const {
-  routeNames,
-  loadingListRouteName,
-  valueSelectedRoute,
-  fetchListRouteName,
-  handleRouteChange,
-  loadingListTicket,
-  // selectedTickets,
-  fetchListTicketByTrip,
-  getFloorSeats,
-  getAvailableFloors,
-  setupRealtimeListener,
-  isTicketSelected,
-  clearAllSelectedTickets,
-  handleTicketClick,
-  getTicketSelector,
-
-  mySelectedTickets,
-  dialogFormEditTicket,
-  updatingTicketIds,
-  handleOpenFormEditTicket,
-  handleCancelTickets,
-  handleUpdateTickets,
-  isCopyTicket,
-  isMoveTicket,
-  handleCopyTickets,
-  handlePasteTickets,
-  handleMoveTickets,
-  cancelMoveTickets,
-  handleUpdateContactStatus,
-  fetchListCustomerByTrip,
-  loadingTabCustomer,
-  listCustomer,
-  loadingTransitUp,
-  loadingTransitDown,
-  listTransitUp,
-  listTransitDown,
-  fetchListTransitUpByTrip,
-  fetchListTransitDownByTrip,
-  handlePrintTickets,
-
-  fetchListCancelTicketByTrip,
-  loadingListCancelTicket,
-
-} = useTicketManagement();
-
-const {
-  handleCopyTicketCanceled,
-  handleShowHistoryTicketCanceled,
-  dialogHistoryCancelTicket,
-  loadingHistoryCancelTicket,
-  dataHistoryTicketCanceled,
-} = useTicketHistory();
+  
+} = useTripActions();
 
 
-const { db, ref: dbRef, off } = useFirebase()
 
-const useUserStore = userStore();
-const officeStore = useOfficeStore();
+/// Dialog Edit Trip Information
+const dialogEditTripInfo = ref(false);
+const handleOpenDialogEditTripInfo = () => {
+  dialogEditTripInfo.value = true;
+};
+const handleCloseDialogEditTripInfo = () => {
+  dialogEditTripInfo.value = false;
+};
+///
 
-
-const valueSelectedDate = ref<string | Date | undefined>(undefined);
-function handleDateChange(date: Date) {
-  // console.log('Ngày được chọn:', date)
-  valueSelectedDate.value = date;
-  // console.log('Ngày chọn:', valueSelectedDate.value);
-  if (queryDate.value !== date) {
-    queryDate.value = date;
-  }
-}
-
-
-const activeNames = ref([ '1' ])
+/// Tab 
 const activeTab = ref('1');
-const elTabTicketPending = ref(false);
-const showRouteInfo = ref(false);
-const hasLoadedTickets = ref(false); // Flag để theo dõi đã load vé hay chưa
-
-const handleChange = (val: CollapseModelValue) => {
-  console.log(val)
-}
-
-const handleViewRoute = () => {
-  // console.log('Xem lộ trình được click');
-  showRouteInfo.value = !showRouteInfo.value;
-}
-
-
-
-
-
-const handleTripSelected = async (trip: TripType) => {
-  // console.log('Trip được chọn:', trip);
-  selectedTrip.value = trip;
-  activeTab.value = '';
-  selectedTickets.value = [];
-  elTabTicketPending.value = false;
-  hasLoadedTickets.value = false; // Reset flag khi chuyển trip
-}
-
-
-
-
-
-
-
-
-const handleClickTabs = async (tab: TabsPaneContext, event: Event) => {
-  // console.log(tab, event)
-  // console.log('Tab được click:', tab.props.name);
+const handleClickTabs = async (tab: TabsPaneContext) => {
   if (tab.props.name === '1') {
     // console.log('Sơ đồ ghế tab được chọn');
     // console.log('Chuyến hiện tại:', selectedTrip.value);
@@ -227,6 +133,154 @@ const handleClickTabs = async (tab: TabsPaneContext, event: Event) => {
     console.log('Thu chi chuyến tab được chọn');
   }
 }
+///
+
+/// Trip Selection
+const handleClickItemTrip = (trip: TripItem) => {
+  console.log("Clicked trip:", trip)
+  valueSelectedTrip.value = trip;
+  activeTab.value = '1';
+  fetchListTicketByTripId(trip);
+}
+///
+
+
+const {
+  loadingListTrip,
+  fetchListTripByRouteAndDate,
+  dialogFormEditTripInformation,
+  loadingFormEditTripInformation,
+  handleOpenFormEditTripInformation,
+  handleClosedDialogdialogFormEditTripInformation,
+  handleUpdateTripInformation,
+
+} = useTripManagement();
+
+const {
+  handleOpenCargoDialog,
+  handleClosedDialogCargo,
+  dialogFormCargo,
+  isEditCargo,
+  handleSaveCargo,
+} = useCargoManagement();
+
+const {
+  dialogChangeTimeTrip,
+  loadingFormChangeTimeTrip,
+  handleUpdateTimeTrip,
+  handleOpenChangeTimeDialog,
+  openMessageBoxDeleteTrip,
+  openMessageBoxConfirmationDepart,
+  printTicketListOfTheTrip,
+  handleUpdateNote,
+} = useTripOperations();
+
+const {
+  routeNames,
+  loadingListRouteName,
+  // valueSelectedRoute,
+  fetchListRouteName,
+  handleRouteChange,
+  // loadingListTicket,
+  // selectedTickets,
+  fetchListTicketByTrip,
+  // getFloorSeats,
+  // getAvailableFloors,
+  setupRealtimeListener,
+  isTicketSelected,
+  clearAllSelectedTickets,
+  handleTicketClick,
+  getTicketSelector,
+
+  mySelectedTickets,
+  dialogFormEditTicket,
+  updatingTicketIds,
+  handleOpenFormEditTicket,
+  handleCancelTickets,
+  // handleUpdateTickets,
+  isCopyTicket,
+  isMoveTicket,
+  handleCopyTickets,
+  handlePasteTickets,
+  handleMoveTickets,
+  cancelMoveTickets,
+  handleUpdateContactStatus,
+  fetchListCustomerByTrip,
+  loadingTabCustomer,
+  listCustomer,
+  loadingTransitUp,
+  loadingTransitDown,
+  listTransitUp,
+  listTransitDown,
+  fetchListTransitUpByTrip,
+  fetchListTransitDownByTrip,
+  handlePrintTickets,
+
+  fetchListCancelTicketByTrip,
+  loadingListCancelTicket,
+
+} = useTicketManagement();
+
+const {
+  handleCopyTicketCanceled,
+  handleShowHistoryTicketCanceled,
+  dialogHistoryCancelTicket,
+  loadingHistoryCancelTicket,
+  dataHistoryTicketCanceled,
+} = useTicketHistory();
+
+
+const { db, ref: dbRef, off } = useFirebase()
+
+const useUserStore = userStore();
+const officeStore = useOfficeStore();
+
+
+
+function handleDateChange(date: Date) {
+  // console.log('Ngày được chọn:', date)
+  valueSelectedDate.value = date;
+  // console.log('Ngày chọn:', valueSelectedDate.value);
+  if (queryDate.value !== date) {
+    queryDate.value = date;
+  }
+}
+
+
+const elTabTicketPending = ref(false);
+const showRouteInfo = ref(false);
+const hasLoadedTickets = ref(false); // Flag để theo dõi đã load vé hay chưa
+
+const handleChange = (val: CollapseModelValue) => {
+  console.log(val)
+}
+
+const handleViewRoute = () => {
+  // console.log('Xem lộ trình được click');
+  showRouteInfo.value = !showRouteInfo.value;
+}
+
+
+
+
+
+const handleTripSelected = async (trip: TripType) => {
+  // console.log('Trip được chọn:', trip);
+  selectedTrip.value = trip;
+  activeTab.value = '';
+  selectedTickets.value = [];
+  elTabTicketPending.value = false;
+  hasLoadedTickets.value = false; // Reset flag khi chuyển trip
+}
+
+
+
+
+
+
+
+
+
 
 watch(selectedTrip, async (newTrip, oldTrip) => {
   // Chỉ reset khi thực sự chuyển sang trip khác, không phải khi cập nhật thông tin cùng trip
@@ -359,23 +413,23 @@ const ticketsByOffice = computed(() => {
 
 
 
-watch([ valueSelectedDate, valueSelectedRoute ], ([ newDate, newRoute ], [ oldDate, oldRoute ]) => {
-  // console.log('Ngày:', oldDate, '=>', newDate);
-  // console.log('Tuyến:', oldRoute, '=>', newRoute);
+// watch([ valueSelectedDate, valueSelectedRoute ], ([ newDate, newRoute ], [ oldDate, oldRoute ]) => {
+//   // console.log('Ngày:', oldDate, '=>', newDate);
+//   // console.log('Tuyến:', oldRoute, '=>', newRoute);
 
-  if (newDate && newRoute) {
-    fetchListTripByRouteAndDate(newDate, newRoute as number, useUserStore.company_id ?? '');
-    selectedTrip.value = null;
-    if (!queryTripID.value) {
-      selectedTrip.value = null;
-    }
-  }
+//   if (newDate && newRoute) {
+//     fetchListTripByRouteAndDate(newDate, newRoute as number, useUserStore.company_id ?? '');
+//     selectedTrip.value = null;
+//     if (!queryTripID.value) {
+//       selectedTrip.value = null;
+//     }
+//   }
 
-  console.log("QUERY ROUTE ID:", queryRouteID.value);
-  console.log("QUERY DATE:", queryDate.value);
-  console.log("QUERY TRIP ID:", queryTripID.value);
-  console.log("QUERY TICKET ID:", queryTicketID.value);
-});
+//   console.log("QUERY ROUTE ID:", queryRouteID.value);
+//   console.log("QUERY DATE:", queryDate.value);
+//   console.log("QUERY TRIP ID:", queryTripID.value);
+//   console.log("QUERY TICKET ID:", queryTicketID.value);
+// });
 
 // ✅ THÊM: Watcher cho tripList - chạy sau khi có danh sách chuyến
 watch(tripList, async (newTripList) => {
@@ -531,15 +585,54 @@ const handleClickTabs_2 = async (tab: TabsPaneContext, event: Event) => {
 onMounted(async () => {
   await useUserStore.loadUserInfo();
   await officeStore.loadOfficeStore();
-  await fetchListRouteName(String(useUserStore.company_id ?? ''));
+  await fetchListRoutesNameAction(useUserStore.company_id ?? '');
 
   // Tự động load route từ localStorage nếu có
-  const savedRouteId = localStorage.getItem('selectedRouteId');
-  if (savedRouteId && !queryRouteID.value) {
-    queryRouteID.value = parseInt(savedRouteId);
-    console.log('✅ Đã tự động load route từ localStorage:', savedRouteId);
+  // const savedRouteId = localStorage.getItem('selectedRouteId');
+  // if (savedRouteId && !queryRouteID.value) {
+  //   queryRouteID.value = parseInt(savedRouteId);
+  //   console.log('✅ Đã tự động load route từ localStorage:', savedRouteId);
+  // }
+});
+// const {
+//   loadingListTicket,
+//   listItemTicket,
+//   fetchListTicketByTripId,
+//   getFloorSeats,
+//   getAvailableFloors,
+// } = useTicketList();
+const {
+  fetchListTicketByTripId,
+  getAvailableFloors,
+  getFloorSeats,
+  listItemTicket,
+  loadingListTicket,
+} = useTicketManager();
+watch([ valueSelectedDate, valueSelectedRoute ], async ([ newDate, newRoute ]) => {
+  if (newDate && newRoute) {
+    await fetchListItemTripByRouteAndDate(useUserStore.company_id ?? '', newRoute as number, newDate);
+    valueSelectedTrip.value = null;
+    // selectedTrip.value = null;
+    // if (!queryTripID.value) {
+    //   selectedTrip.value = null;
+    // }
   }
 });
+watch(() => valueSelectedTrip.value?.id, (tripId) => {
+  if (tripId) {
+    console.log("✅ Trip loaded, initializing listener...");
+    setupFirebaseListener();
+  }
+});
+onMounted(async () => {
+  // Lấy route đã lưu từ localStorage khi component được mounted
+  const savedRoute = localStorage.getItem('selectedRoute')
+  if (savedRoute) {
+    valueSelectedRoute.value = parseInt(savedRoute)
+  }
+  //
+})
+
 
 </script>
 
@@ -548,36 +641,39 @@ onMounted(async () => {
     <el-container>
       <el-aside width="20%" class="">
         <div>
-          <el-select v-model="queryRouteID!" :loading="loadingListRouteName" placeholder="Chọn tuyến"
-            @change="(value) => { valueSelectedRoute = value; handleRouteChange(value); }">
-            <el-option v-for="item in routeNames" :key="item.id" :label="item.route_name" :value="item.id" />
+          <el-select v-model="valueSelectedRoute!" :loading="loadingRouteNameAction" placeholder="Chọn tuyến"
+            @change="handleChangeRoute">
+            <el-option v-for="item in routesNameAction" :key="item.id" :label="item.route_name" :value="item.id" />
             <template #empty>
-              <span v-if="loadingListRouteName">Đang tải danh sách tuyến...</span>
+              <span v-if="loadingRouteNameAction">Đang tải danh sách tuyến...</span>
               <span v-else>Không có tuyến nào</span>
             </template>
           </el-select>
         </div>
+        <!-- <div>
+          {{ valueSelectedRoute }} - {{ valueSelectedDate?.toLocaleString() }}
+        </div> -->
         <div class="mt-2">
           <Calendar v-model="valueSelectedDate" @change="handleDateChange" />
         </div>
 
         <div class="mt-2">
-          <TripList :loading="loadingListTrip" :trips="tripList" @trip-selected="handleTripSelected" />
+          <TripList :loading="loadingListItemTrip" :trips="listItemTrip" @trip-selected="handleClickItemTrip" />
         </div>
 
       </el-aside>
       <el-container>
         <el-header>
-          <section v-if="selectedTrip">
+          <section v-if="valueSelectedTrip">
             <!-- Trip Information Section -->
             <div class="bg-white px-2 rounded-lg shadow-md">
-              <el-collapse v-model="activeNames" @change="handleChange">
+              <el-collapse @change="handleChange">
                 <el-collapse-item name="1">
                   <template #title>
                     <span class="text-[16px] font-semibold text-black">
-                      {{ selectedTrip.departure_time?.substring(0, 5) }} •
-                      {{ format(new Date(valueSelectedDate as Date), 'dd/MM/yyyy') }} •
-                      {{routeNames.find(r => r.id === valueSelectedRoute)?.route_name || 'Tuyến chưa xác định'}}
+                      {{ valueSelectedTrip.start_time?.substring(0, 5) }} •
+                      {{ formatDate(valueSelectedTrip.start_date as Date, 'dd/MM/yyyy') }} •
+                      {{ valueSelectedTrip.route_name || 'Tuyến chưa xác định' }}
                     </span>
                   </template>
                   <template #icon="{ isActive }">
@@ -598,7 +694,7 @@ onMounted(async () => {
                     </span>
                   </template>
 
-                  <TripInformation :trip="selectedTrip" />
+                  <TripInformation :trip="valueSelectedTrip" />
                   <div v-if="ticketsByOffice && hasLoadedTickets">
                     <span class="font-medium text-black text-[14px]">Đặt chỗ: </span>
                     <span class="font-medium text-[#0072bc] text-[14px]">{{ ticketsByOffice }}</span>
@@ -633,16 +729,16 @@ onMounted(async () => {
                   </div>
                   <div class="mb-2">
                     <el-button :icon="RefreshRight" type="info" @click="handleReloadTicketList" />
-                    <el-button :icon="Setting" type="info" @click="handleOpenFormEditTripInformation" />
+                    <el-button :icon="Setting" type="info" @click="handleOpenDialogEditTripInfo" />
                   </div>
                 </div>
-                <InputNote :note="selectedTrip?.note" @update="handleUpdateNote" />
+                <InputNote :note="valueSelectedTrip?.note" @update="handleUpdateNote" />
               </div>
             </div>
 
             <!-- Route Information Section - Hiển thị lộ trình ở dưới -->
-            <RouteInfo :show="showRouteInfo" :route-id="valueSelectedRoute || undefined"
-              :trip-time="selectedTrip.departure_time || ''" @close="showRouteInfo = false" />
+            <!-- <RouteInfo :show="showRouteInfo" :route-id="valueSelectedRoute || undefined"
+              :trip-time="selectedTrip.departure_time || ''" @close="showRouteInfo = false" /> -->
 
 
 
@@ -659,7 +755,7 @@ onMounted(async () => {
 
         </el-header>
         <el-main>
-          <section v-if="selectedTrip" class="mt-1">
+          <section v-if="valueSelectedTrip" class="mt-1">
             <div class="bg-white px-2 rounded-lg shadow-md">
               <el-tabs v-model="activeTab" @tab-click="handleClickTabs">
                 <el-tab-pane label="Sơ đồ ghế" name="1">
@@ -669,15 +765,18 @@ onMounted(async () => {
                   <div v-else>
                     <div class="mb-2">
                       <div class="flex flex-wrap gap-3 justify-center items-start">
+                        {{ listItemTicket }}
                         <div v-for="floor in getAvailableFloors()" :key="`floor-${floor}`" class="flex-1 min-w-[300px]">
                           <div class="flex flex-col gap-1">
                             <div v-for="row in getFloorSeats(floor)" :key="`floor${floor}-row${row.rowNumber}`"
                               class="grid gap-1 w-full"
                               :style="{ gridTemplateColumns: `repeat(${row.seats.length}, 1fr)` }">
 
-                              <TicketItem v-for="seat in row.seats" :key="seat.id" :ticket="seat"
-                                :onClick="() => handleTicketClick(seat)" :isSelected="isTicketSelected(seat)"
-                                :selectedBy="getTicketSelector(seat)" :isLoading="isTicketUpdating(seat.id)"
+                              <TicketItem v-for="seat in row.seats" :key="seat.id"
+                                :ticket="getTicketWithFirebaseInfo(seat)"
+                                :onClick="() => handleAddLocalSelectedTicket(seat)"
+                                :isSelected="ticketsAreBeingSelected(seat)" @requestUnlock="handleRequestUnlock"
+                                :isLoading="isTicketUpdating(seat.id)"
                                 @update-contact-status="(status) => handleUpdateContactStatus(status)"
                                 :is-move-ticket="isMoveTicket" />
                             </div>
@@ -687,46 +786,7 @@ onMounted(async () => {
                     </div>
 
 
-                    <div v-if="mySelectedTickets.length > 0">
-                      <!-- Container chung cho cả hai div -->
-                      <div class="fixed left-1/2 transform -translate-x-1/2 w-[90%] max-w-5xl z-50"
-                        style="bottom: 8px;">
 
-                        <!-- Div trên - Di chuyển vé -->
-                        <div v-if="isMoveTicket"
-                          class="absolute -top-[70px] left-0 bg-white border border-gray-300 shadow-lg transition-all duration-300 rounded-xl min-w-[300px] max-w-[600px]">
-                          <!-- Header với close button -->
-                          <div
-                            class="flex items-center justify-between px-4 py-1 bg-blue-50 rounded-t-xl border-b border-gray-200">
-                            <div class="flex items-center gap-2">
-                              <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                              <span class="text-sm font-semibold text-gray-700">Di chuyển vé</span>
-                              <span class="text-xs text-gray-500">({{ mySelectedTickets.length }} vé)</span>
-                            </div>
-                            <el-icon @click="cancelMoveTickets"
-                              class="cursor-pointer hover:text-red-500 hover:bg-red-50 p-1 rounded transition-all">
-                              <CloseBold />
-                            </el-icon>
-                          </div>
-
-                          <!-- Selected tickets -->
-                          <div class="px-4 py-2">
-                            <div class="flex flex-wrap gap-2 max-h-20 overflow-y-auto">
-                              <el-tag v-for="ticket in mySelectedTickets" :key="ticket.id" type="warning" effect="dark"
-                                size="small" class="animate-fade-in">
-                                <span class="text-sm font-medium">{{ ticket.seat_name }}</span>
-                              </el-tag>
-                            </div>
-                          </div>
-                        </div>
-
-                        <TicketActionToolbar :selected-tickets="mySelectedTickets" :is-copy-ticket="isCopyTicket"
-                          :has-different-phone-numbers="hasDifferentPhoneNumbers"
-                          @clear-all="clearAllSelectedTickets(); cancelMoveTickets();" @paste="handlePasteTickets"
-                          @edit="handleOpenFormEditTicket" @copy="handleCopyTickets" @move="handleMoveTickets"
-                          @cancel="handleCancelTickets" />
-                      </div>
-                    </div>
                   </div>
                 </el-tab-pane>
                 <el-tab-pane label="Hành khách" name="2">
@@ -768,19 +828,56 @@ onMounted(async () => {
         </el-main>
       </el-container>
     </el-container>
-    <EditTicketDialog v-model="dialogFormEditTicket" :selected-tickets="mySelectedTickets"
-      @closed="clearAllSelectedTickets" @update-tickets="handleUpdateTickets" @cancel-tickets="handleCancelTickets"
-      @print="handlePrintTickets" />
+    <EditTicketDialog v-model="dialogEditTicket" :local-selected-tickets="localSelectedTickets"
+      @closed="handleCloseDialogEditTicket" @save="handleUpdateTickets" />
 
-    <EditTripInformationDialog v-model="dialogFormEditTripInformation" :trip="selectedTrip"
-      :is-updating="loadingFormEditTripInformation" @updated="handleUpdateTripInformation"
-      @closed="handleClosedDialogdialogFormEditTripInformation" />
+    <EditTripInformationDialog v-model="dialogEditTripInfo" :trip="valueSelectedTrip"
+      @closed="handleCloseDialogEditTripInfo" />
 
     <ChangeTimeTrip v-model="dialogChangeTimeTrip" :trip="selectedTrip" :is-updating="loadingFormChangeTimeTrip"
       @updated="handleUpdateTimeTrip" />
 
     <HistoryTicketCanceled v-model="dialogHistoryCancelTicket" :data="dataHistoryTicketCanceled"
       :loading="loadingHistoryCancelTicket" />
+
+    <div v-if="localSelectedTickets.length > 0">
+      <!-- Container chung cho cả hai div -->
+      <div class="fixed left-1/2 transform -translate-x-1/2 w-[90%] max-w-5xl z-50" style="bottom: 8px;">
+
+        <!-- Div trên - Di chuyển vé -->
+        <div v-if="isMoveTicket"
+          class="absolute -top-[70px] left-0 bg-white border border-gray-300 shadow-lg transition-all duration-300 rounded-xl min-w-[300px] max-w-[600px]">
+          <!-- Header với close button -->
+          <div class="flex items-center justify-between px-4 py-1 bg-blue-50 rounded-t-xl border-b border-gray-200">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+              <span class="text-sm font-semibold text-gray-700">Di chuyển vé</span>
+              <span class="text-xs text-gray-500">({{ mySelectedTickets.length }} vé)</span>
+            </div>
+            <el-icon @click="cancelMoveTickets"
+              class="cursor-pointer hover:text-red-500 hover:bg-red-50 p-1 rounded transition-all">
+              <CloseBold />
+            </el-icon>
+          </div>
+
+          <!-- Selected tickets -->
+          <div class="px-4 py-2">
+            <div class="flex flex-wrap gap-2 max-h-20 overflow-y-auto">
+              <el-tag v-for="ticket in localSelectedTickets" :key="ticket.id" type="warning" effect="dark" size="small"
+                class="animate-fade-in">
+                <span class="text-sm font-medium">{{ ticket.seat_name }}</span>
+              </el-tag>
+            </div>
+          </div>
+        </div>
+
+        <TicketActionToolbar :selected-tickets="localSelectedTickets" :is-copy-ticket="isCopyTicket"
+          :has-different-phone-numbers="hasDifferentPhoneNumbers"
+          @clear-all="handleClearLocalSelectedTickets(); cancelMoveTickets();" @paste="handlePasteTickets"
+          @edit="handleOpenDialogEditTicket" @copy="handleCopyTickets" @move="handleMoveTickets"
+          @cancel="handleCancelTickets" />
+      </div>
+    </div>
   </section>
 
 </template>

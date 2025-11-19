@@ -57,3 +57,12 @@ export const API_GetListRouteNameByCompanyId = async (company_id: string): Promi
         method: "GET",
     })
 }
+
+// M3_v2.F7
+export const API_GetListRouteNameActionByCompanyId = async (company_id: string): Promise<ApiResponse<RouteName[]>> => {
+    const { $apiFetch } = useNuxtApp()
+    const config = useRuntimeConfig()
+    return await $apiFetch<ApiResponse<RouteName[]>>(`${config.public.apiGateWay}/v2/bms-route/companies/${company_id}/route-names-action`, {
+        method: "GET",
+    })
+}

@@ -22,3 +22,9 @@ export interface DTO_RQ_Vehicle {
     registration_expiry?: Date;
     maintenance_due?: Date;
 }
+
+export interface LicensePlateVehicle {
+    id: number;
+    license_plate: string;
+    phone?: string;
+}

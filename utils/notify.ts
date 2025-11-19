@@ -1,31 +1,34 @@
-import { ElNotification } from 'element-plus'
+import { ElNotification, ElMessage } from 'element-plus'
 import { h } from 'vue'
 
 export const notifySuccess = (message: string) => {
-  ElNotification({
-    message: h('p', { style: 'color: teal' }, message),
+  ElMessage({
+    message: message,
     type: 'success',
+    plain: true,
   })
 }
 
 export const notifyError = (message: string) => {
-  ElNotification({
-    message: h('p', { style: 'color: red' }, message),
+  ElMessage({
+    message: message,
     type: 'error',
+    plain: true,
   })
 }
 
 export const notifyWarning = (message: string) => {
-  ElNotification({
-    message: h('p', { style: 'color: orange' }, message),
+  ElMessage({
+    message: message,
     type: 'warning',
+    plain: true,
   })
 }
 
 export const notifyInfo = (message: string) => {
-  ElNotification({
-    message: h('p', { style: 'color: blue' }, message),
+  ElMessage({
+    message: message,
     type: 'info',
+    plain: true,
   })
 }
-

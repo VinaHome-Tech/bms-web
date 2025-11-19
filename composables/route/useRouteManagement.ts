@@ -1,5 +1,5 @@
 import type { FormInstance } from "element-plus";
-import { API_CreateRoute, API_DeleteRoute, API_GetListRouteByCompanyId, API_GetListRouteNameByCompanyId, API_UpdateRoute, API_UpdateRouteOrder } from "~/api/bms-service/route/bms_route.api";
+import { API_CreateRoute, API_DeleteRoute, API_GetListRouteByCompanyId, API_GetListRouteNameActionByCompanyId, API_GetListRouteNameByCompanyId, API_UpdateRoute, API_UpdateRouteOrder } from "~/api/bms-service/route/bms_route.api";
 import type { Route, RouteName } from "~/types/route/route.interface";
 
 export const useRouteManagement = () => {
@@ -9,6 +9,7 @@ export const useRouteManagement = () => {
     const currentEditId = ref<number | null>(null);
     const routes = ref<Route[]>([]);
     const routesName = ref<RouteName[]>([]);
+    
     const loadingData = ref(false);
     const loadingSubmit = ref(false);
     const ruleFormRef = ref<FormInstance>();
@@ -137,11 +138,11 @@ export const useRouteManagement = () => {
             if (response.success) {
                 routes.value = response.result || [];
             } else {
-                ElMessage.error(response.message || "Lấy danh sách tuyến đường thất bại.");
+                ElMessage.error(response.message || "Lấy danh sách tuyến thất bại.");
             }
         } catch (error) {
             console.error(error);
-            ElMessage.error("Lỗi khi tải danh sách tuyến đường.");
+            ElMessage.error("Lỗi khi tải danh sách tuyến.");
         } finally {
             loadingData.value = false;
         }
@@ -155,13 +156,14 @@ export const useRouteManagement = () => {
                     route_name: route.route_name || ''
                 }));
             } else {
-                ElMessage.error(response.message || "Lấy danh sách tên tuyến đường thất bại.");
+                ElMessage.error(response.message || "Lấy danh sách tuyến thất bại.");
             }
         } catch (error) {
             console.error(error);
-            ElMessage.error("Lỗi khi tải danh sách tên tuyến đường.");
+            ElMessage.error("Lỗi khi tải danh sách tuyến.");
         } 
     }
+    
     const handleMoveUp = async (item: Route, index: number) => {
         console.log('Move Up clicked', item, index);
         if (index <= 0 || !item.display_order) return;

@@ -1,3 +1,15 @@
+<script setup lang="ts">
+import { format, formatDate } from 'date-fns';
+import { formatCurrencyWithoutSymbol } from '~/lib/formatCurrency';
+import type { TripItem } from '~/types/trip/trip.interface';
+
+interface Props {
+  trip: TripItem;
+}
+
+defineProps<Props>();
+</script>
+
 <template>
   <el-row>
     <el-col :span="8">
@@ -7,7 +19,7 @@
       </div>
       <div>
         <span class="font-medium text-black text-[14px]">Số điện thoại xe: </span>
-        <span class="font-medium text-[#0072bc] text-[14px]">{{ trip.vehicle_phone || '' }}</span>
+        <span class="font-medium text-[#0072bc] text-[14px]">{{ trip.vehicle_phone }}</span>
       </div>
       <div>
         <span class="font-medium text-black text-[14px]">Sơ đồ ghế: </span>
@@ -16,8 +28,8 @@
       <div>
         <span class="font-medium text-black text-[14px]">Khởi hành: </span>
         <span class="font-medium text-[#0072bc] text-[14px]">{{
-          trip.departure_time?.substring(0, 5) }} - {{
-          format(new Date(trip.departure_date as Date), 'dd/MM/yyyy') }}</span>
+          trip.start_time?.substring(0, 5)  }} - {{
+          format(new Date(trip.start_date as Date), 'dd/MM/yyyy') }}</span>
       </div>
     </el-col>
     <el-col :span="8">
@@ -37,13 +49,13 @@
     <el-col :span="8">
       <div>
         <span class="font-medium text-black text-[14px]">Tổng vé: </span>
-        <span class="font-medium text-[#0072bc] text-[14px]">{{ trip.tickets_booked }}/{{
-          trip.total_ticket }}</span>
+        <span class="font-medium text-[#0072bc] text-[14px]">{{ trip.ticket_booked }}/{{
+          trip.total_seat }}</span>
       </div>
       <div>
         <span class="font-medium text-black text-[14px]">Tiền vé: </span>
-        <span class="font-medium text-[#0072bc] text-[14px]">0/{{
-          formatCurrencyWithoutSymbol(trip.total_tickets_price ?? 0) }}</span>
+        <!-- <span class="font-medium text-[#0072bc] text-[14px]">0/{{
+          formatCurrencyWithoutSymbol(trip.total_tickets_price ?? 0) }}</span> -->
       </div>
       <div>
         <span class="font-medium text-black text-[14px]">Số hàng: </span>
@@ -57,14 +69,3 @@
   </el-row>
 </template>
 
-<script setup lang="ts">
-import { format } from 'date-fns';
-import { formatCurrencyWithoutSymbol } from '~/lib/formatCurrency';
-import type { TripType } from '~/types/tripType';
-
-interface Props {
-  trip: TripType;
-}
-
-defineProps<Props>();
-</script>
