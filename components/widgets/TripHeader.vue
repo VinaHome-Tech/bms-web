@@ -6,7 +6,7 @@ import { format, formatDate } from 'date-fns';
 import InputNote from '~/components/inputs/inputNote.vue';
 import ChangeTimeTrip from '~/components/dialog/ChangeTimeTrip.vue';
 import EditTripInformationDialog from '~/components/dialog/EditTripInformationDialog.vue';
-import { useTicketList } from '~/composables/ticket/useTicketList';
+import { listItemTicket, useTicketList } from '~/composables/ticket/useTicketList';
 import type { DTO_RQ_ChangeTimeTrip, TripItem } from '~/types/trip/trip.interface';
 import { API_CancelTrip, API_ChangeTimeTrip, API_UpdateTripNote } from '~/api/booking-service/trip/bms_trip.api';
 const showRouteInfo = ref(false);
@@ -30,8 +30,8 @@ const handleReloadListTicket = async () => {
     await fetchListTicketByTripId(valueSelectedTrip.value as TripItem);
 }
 const formatVND = (value: number) => {
-  if (value == null) return '0';
-  return new Intl.NumberFormat('vi-VN', { style: 'decimal' }).format(value);
+    if (value == null) return '0';
+    return new Intl.NumberFormat('vi-VN', { style: 'decimal' }).format(value);
 };
 const handleUpdateNote = async (newNote: string) => {
     if (valueSelectedTrip.value) {
@@ -67,40 +67,195 @@ const handleUpdateTimeTrip = async (data: DTO_RQ_ChangeTimeTrip) => {
     }
 };
 const handleCancelTrip = async () => {
-  if (!valueSelectedTrip.value) return;
+    if (!valueSelectedTrip.value) return;
 
-  try {
-    // Hiển thị hộp xác nhận
-    await ElMessageBox.confirm(
-      `Bạn có chắc chắn muốn hủy chuyến này không?`,
-      'Xác nhận huỷ chuyến',
-      {
-        confirmButtonText: 'Huỷ',
-        cancelButtonText: 'Đóng',
-        type: 'warning',
-      }
-    );
+    try {
+        // Hiển thị hộp xác nhận
+        await ElMessageBox.confirm(
+            `Bạn có chắc chắn muốn hủy chuyến này không?`,
+            'Xác nhận huỷ chuyến',
+            {
+                confirmButtonText: 'Huỷ',
+                cancelButtonText: 'Đóng',
+                type: 'warning',
+            }
+        );
 
-    // Nếu người dùng nhấn "Huỷ", gọi API
-    const response = await API_CancelTrip(valueSelectedTrip.value.id || 0);
-    if (response.success) {
-      notifySuccess('Hủy chuyến thành công.');
-      // Cập nhật danh sách trips
-      listItemTrip.value = listItemTrip.value.filter(
-        trip => trip.id !== valueSelectedTrip.value?.id
-      );
-      valueSelectedTrip.value = null;
-    } else {
-      notifyError(response.message || 'Hủy chuyến thất bại. Vui lòng thử lại.');
+        // Nếu người dùng nhấn "Huỷ", gọi API
+        const response = await API_CancelTrip(valueSelectedTrip.value.id || 0);
+        if (response.success) {
+            notifySuccess('Hủy chuyến thành công.');
+            // Cập nhật danh sách trips
+            listItemTrip.value = listItemTrip.value.filter(
+                trip => trip.id !== valueSelectedTrip.value?.id
+            );
+            valueSelectedTrip.value = null;
+        } else {
+            notifyError(response.message || 'Hủy chuyến thất bại. Vui lòng thử lại.');
+        }
+    } catch (error) {
+        // Nếu người dùng nhấn "Đóng", sẽ vào catch, không làm gì cả
+        if (error !== 'cancel') {
+            console.error('Lỗi khi hủy chuyến:', error);
+            notifyError('Đã xảy ra lỗi khi hủy chuyến. Vui lòng thử lại.');
+        }
     }
-  } catch (error) {
-    // Nếu người dùng nhấn "Đóng", sẽ vào catch, không làm gì cả
-    if (error !== 'cancel') {
-      console.error('Lỗi khi hủy chuyến:', error);
-      notifyError('Đã xảy ra lỗi khi hủy chuyến. Vui lòng thử lại.');
-    }
-  }
 };
+
+
+const handlePrintListSeatInTrip = () => {
+    const trip = valueSelectedTrip.value;
+    const tickets = listItemTicket.value;
+
+    if (!trip || tickets.length === 0) {
+        return notifyError("Không có dữ liệu để in sơ đồ ghế.");
+    }
+
+    // ======= Gom vé theo tầng =======
+    const grouped = new Map();
+    tickets.forEach(t => {
+        const floor = t.seat_floor ?? 1;
+        if (!grouped.has(floor)) grouped.set(floor, []);
+        grouped.get(floor)!.push(t);
+    });
+
+    // ======= Hàm dựng sơ đồ theo row/column =======
+    const buildSeatGrid = (seatList: any[]) => {
+        if (!seatList || seatList.length === 0) return "";
+
+        const maxRow = Math.max(...seatList.map(s => s.seat_row ?? 1));
+        const maxCol = Math.max(...seatList.map(s => s.seat_column ?? 1));
+
+        let html = `<table style="width: 100%; border-collapse: collapse; margin: 15px 0; table-layout: fixed;">`;
+
+        for (let r = 1; r <= maxRow; r++) {
+      html += `<tr>`;
+      for (let c = 1; c <= maxCol; c++) {
+        const seat = seatList.find(s => s.seat_row === r && s.seat_column === c);
+        const isBooked = seat?.booked_status;
+        const cellStyle = isBooked
+          ? "background-color: #d4edda; color: #155724;"
+          : "background-color: #f8f9fa;";
+        
+        const seatInfo = seat ? `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <div style="font-weight: bold; font-size: 14px; text-align: left;">${seat.seat_name}</div>
+            ${seat.phone ? `<span style="font-size: 14px; text-align: right;">${seat.phone}</span>` : ""}
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-start; width: 100%;">
+            ${seat.name ? `<div style="font-size: 12px; margin-bottom: 2px;">${seat.name}</div>` : ""}
+            ${seat.point_up ? `<div style="font-size: 12px; margin-bottom: 2px;">↑ ${seat.point_up}</div>` : ""}
+            ${seat.point_down ? `<div style="font-size: 12px; margin-bottom: 2px;">↓ ${seat.point_down}</div>` : ""}
+            ${seat.note ? `<div style="font-size: 12px; margin-bottom: 2px; font-style: italic;">${seat.note}</div>` : ""}
+            ${isBooked ? `
+              <div style="display: flex; justify-content: space-between; width: 100%; margin-top: 4px; padding-top: 4px;">
+                <div style="font-size: 11px;">
+                  <span>${seat.money_paid ?? 0}</span>
+                  <span>/</span>
+                  <span>${seat.total_price ?? 0}</span>
+                </div>
+                <div style="font-size: 11px; font-weight: bold;">${seat.payment_method || ""}</div>
+              </div>
+            ` : ""}
+          </div>
+        ` : "";
+        
+        html += `<td style="${cellStyle} padding: 10px 8px; border: 1px solid #ddd; vertical-align: top; text-align: left; height: auto; word-wrap: break-word;">${seatInfo}</td>`;
+      }
+      html += `</tr>`;
+    }
+
+        html += `</table>`;
+        return html;
+    };
+
+    // ======= Render toàn bộ tầng =======
+    let fullSeatHTML = "";
+    [ ...grouped.entries() ]
+        .sort((a, b) => a[ 0 ] - b[ 0 ])
+        .forEach(([ floor, seatList ]) => {
+            fullSeatHTML += `
+        <div style="page-break-inside: avoid; margin-bottom: 40px;">
+          <h3 style="margin-bottom: 10px; border-bottom: 2px solid #333; padding-bottom: 5px;">Tầng ${floor}</h3>
+          ${buildSeatGrid(seatList)}
+        </div>
+      `;
+        });
+
+    // ======= Template A4 =======
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>In sơ đồ ghế</title>
+      <style>
+        * { margin: 0; padding: 0; }
+        body {
+          font-family: Arial, sans-serif;
+          padding: 20px;
+          margin: 0;
+        }
+        .header {
+          text-align: center;
+          margin-bottom: 30px;
+          border-bottom: 3px solid #000;
+          padding-bottom: 15px;
+        }
+        .header h2 {
+          margin: 10px 0 5px 0;
+          font-size: 20px;
+        }
+        .header p {
+          margin: 5px 0;
+          font-size: 14px;
+        }
+        .legend {
+          margin-top: 20px;
+          font-size: 12px;
+        }
+        @media print {
+          body { padding: 10px; margin: 0; }
+          .no-print { display: none; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h2>${trip.route_name || "N/A"}</h2>
+        <p><strong>Ngày:</strong> ${trip.start_date || "N/A"}</p>
+        <p><strong>Giờ:</strong> ${trip.start_time || "N/A"}</p>
+        <p><strong>Xe:</strong> ${trip.license_plate || "N/A"}</p>
+      </div>
+      ${fullSeatHTML}
+      <div class="legend">
+        <p><span style="background-color: #d4edda; padding: 2px 8px; border: 1px solid #ddd;">Ghế đã đặt</span></p>
+      </div>
+    </body>
+    </html>
+  `;
+
+    // ======= Tạo iframe để in =======
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (doc) {
+        doc.open();
+        doc.write(htmlContent);
+        doc.close();
+
+        iframe.onload = () => {
+            setTimeout(() => {
+                iframe.contentWindow?.print();
+                document.body.removeChild(iframe);
+            }, 250);
+        };
+    }
+};
+
+
 </script>
 
 <template>
@@ -139,12 +294,12 @@ const handleCancelTrip = async () => {
                                 <span class="font-medium text-black text-[14px]">Biển số: </span>
                                 <span class="font-medium text-[#0072bc] text-[14px]">{{ valueSelectedTrip.license_plate
                                     || ''
-                                    }}</span>
+                                }}</span>
                             </div>
                             <div>
                                 <span class="font-medium text-black text-[14px]">Số điện thoại xe: </span>
                                 <span class="font-medium text-[#0072bc] text-[14px]">{{ valueSelectedTrip.vehicle_phone
-                                    }}</span>
+                                }}</span>
                             </div>
                             <div>
                                 <span class="font-medium text-black text-[14px]">Sơ đồ ghế: </span>
@@ -176,7 +331,7 @@ const handleCancelTrip = async () => {
                             <div>
                                 <span class="font-medium text-black text-[14px]">Tổng vé: </span>
                                 <span class="font-medium text-[#0072bc] text-[14px]">{{ valueSelectedTrip.ticket_booked
-                                    }}/{{
+                                }}/{{
                                         valueSelectedTrip.total_seat }}</span>
                             </div>
                             <div>
@@ -209,7 +364,7 @@ const handleCancelTrip = async () => {
             <div class="py-2">
                 <div class="flex justify-between items-center">
                     <div class="mb-2">
-                        <el-button :icon="Printer">In phơi</el-button>
+                        <el-button :icon="Printer" @click="handlePrintListSeatInTrip">In phơi</el-button>
                         <!-- <el-button :icon="Finished">Xuất bến</el-button> -->
                         <el-button :icon="Delete" type="danger" plain @click="handleCancelTrip">Huỷ chuyến</el-button>
                         <el-button :icon="Timer" @click="handleOpenDialogChangeTimeTrip">Đổi giờ</el-button>
@@ -251,5 +406,6 @@ const handleCancelTrip = async () => {
         </div>
     </section>
     <EditTripInformationDialog v-model="dialogEditTrip" :trip="valueSelectedTrip" />
-    <ChangeTimeTrip v-model="dialogChangeTimeTrip" :trip="valueSelectedTrip" :loading="loadingChangeTimeTrip" @updated="handleUpdateTimeTrip"/>
+    <ChangeTimeTrip v-model="dialogChangeTimeTrip" :trip="valueSelectedTrip" :loading="loadingChangeTimeTrip"
+        @updated="handleUpdateTimeTrip" />
 </template>

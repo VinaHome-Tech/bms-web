@@ -2,10 +2,10 @@
 import { API_GetListTicketByTripId } from "~/api/booking-service/ticket/bms_ticket.api";
 import type { TicketItem } from "~/types/ticket/ticket.interface";
 import type { TripItem } from "~/types/trip/trip.interface";
-
+export const listItemTicket = ref<TicketItem[]>([]);
 export const useTicketList = () => {
     const loadingListTicket = ref(false);
-    const listItemTicket = ref<TicketItem[]>([]);
+    
     const fetchListTicketByTripId = async (trip: TripItem) => {
         loadingListTicket.value = true;
         try {
@@ -25,7 +25,6 @@ export const useTicketList = () => {
     
     return {
         loadingListTicket,
-        listItemTicket,
         fetchListTicketByTripId,
     }
 }

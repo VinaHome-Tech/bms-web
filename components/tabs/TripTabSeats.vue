@@ -48,7 +48,7 @@ const ticketsByFloor = computed(() => {
 const floors = computed(() => {
     return ticketsByFloor.value.map(item => item[ 0 ])
 })
-const allTickets = ref<TicketItem[]>([]);
+
 // Lấy ghế theo row/column trong một tầng
 const getFloorSeats = (floor: number) => {
     const floorTickets = props.tickets.filter(t => t.seat_floor === floor)
@@ -72,7 +72,7 @@ const getFloorSeats = (floor: number) => {
 
     return seats
 }
-
+const allTickets = ref<TicketItem[]>([]);
 const getContactStatusInfo = (status: number | null | undefined) => {
     return CONTACT_STATUSES.find(s => s.value === status) || CONTACT_STATUSES[ 0 ]
 }
