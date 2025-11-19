@@ -67,19 +67,39 @@ const handleUpdateTimeTrip = async (data: DTO_RQ_ChangeTimeTrip) => {
     }
 };
 const handleCancelTrip = async () => {
-    try {
-        const response = await API_CancelTrip(valueSelectedTrip.value?.id || 0);
-        if (response.success) {
-            notifySuccess('Hủy chuyến thành công.');
-            listItemTrip.value = listItemTrip.value.filter(trip => trip.id !== valueSelectedTrip.value?.id);
-            valueSelectedTrip.value = null;
-        } else {
-            notifyError(response.message || 'Hủy chuyến thất bại. Vui lòng thử lại.');
-        }
-    } catch (error) {
-        console.error('Lỗi khi hủy chuyến:', error);
-        notifyError('Đã xảy ra lỗi khi hủy chuyến. Vui lòng thử lại.');
+  if (!valueSelectedTrip.value) return;
+
+  try {
+    // Hiển thị hộp xác nhận
+    await ElMessageBox.confirm(
+      `Bạn có chắc chắn muốn hủy chuyến này không?`,
+      'Xác nhận huỷ chuyến',
+      {
+        confirmButtonText: 'Huỷ',
+        cancelButtonText: 'Đóng',
+        type: 'warning',
+      }
+    );
+
+    // Nếu người dùng nhấn "Huỷ", gọi API
+    const response = await API_CancelTrip(valueSelectedTrip.value.id || 0);
+    if (response.success) {
+      notifySuccess('Hủy chuyến thành công.');
+      // Cập nhật danh sách trips
+      listItemTrip.value = listItemTrip.value.filter(
+        trip => trip.id !== valueSelectedTrip.value?.id
+      );
+      valueSelectedTrip.value = null;
+    } else {
+      notifyError(response.message || 'Hủy chuyến thất bại. Vui lòng thử lại.');
     }
+  } catch (error) {
+    // Nếu người dùng nhấn "Đóng", sẽ vào catch, không làm gì cả
+    if (error !== 'cancel') {
+      console.error('Lỗi khi hủy chuyến:', error);
+      notifyError('Đã xảy ra lỗi khi hủy chuyến. Vui lòng thử lại.');
+    }
+  }
 };
 </script>
 
