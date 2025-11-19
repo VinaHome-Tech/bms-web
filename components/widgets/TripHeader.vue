@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { valueSelectedTrip } from '~/composables/trip/useTripGlobal';
+import { listItemTrip, valueSelectedTrip } from '~/composables/trip/useTripGlobal';
 import { ArrowUpBold, ArrowRightBold, Printer, Finished, Delete, Timer, Plus, More, RefreshRight, Setting } from '@element-plus/icons-vue';
 import { format, formatDate } from 'date-fns';
 import InputNote from '~/components/inputs/inputNote.vue';
@@ -8,7 +8,7 @@ import ChangeTimeTrip from '~/components/dialog/ChangeTimeTrip.vue';
 import EditTripInformationDialog from '~/components/dialog/EditTripInformationDialog.vue';
 import { useTicketList } from '~/composables/ticket/useTicketList';
 import type { DTO_RQ_ChangeTimeTrip, TripItem } from '~/types/trip/trip.interface';
-import { API_ChangeTimeTrip, API_UpdateTripNote } from '~/api/booking-service/trip/bms_trip.api';
+import { API_CancelTrip, API_ChangeTimeTrip, API_UpdateTripNote } from '~/api/booking-service/trip/bms_trip.api';
 const showRouteInfo = ref(false);
 const dialogEditTrip = ref(false);
 const handleViewRoute = () => {
@@ -66,7 +66,21 @@ const handleUpdateTimeTrip = async (data: DTO_RQ_ChangeTimeTrip) => {
         dialogChangeTimeTrip.value = false;
     }
 };
-
+const handleCancelTrip = async () => {
+    try {
+        const response = await API_CancelTrip(valueSelectedTrip.value?.id || 0);
+        if (response.success) {
+            notifySuccess('Hủy chuyến thành công.');
+            listItemTrip.value = listItemTrip.value.filter(trip => trip.id !== valueSelectedTrip.value?.id);
+            valueSelectedTrip.value = null;
+        } else {
+            notifyError(response.message || 'Hủy chuyến thất bại. Vui lòng thử lại.');
+        }
+    } catch (error) {
+        console.error('Lỗi khi hủy chuyến:', error);
+        notifyError('Đã xảy ra lỗi khi hủy chuyến. Vui lòng thử lại.');
+    }
+};
 </script>
 
 <template>
@@ -177,7 +191,7 @@ const handleUpdateTimeTrip = async (data: DTO_RQ_ChangeTimeTrip) => {
                     <div class="mb-2">
                         <el-button :icon="Printer">In phơi</el-button>
                         <!-- <el-button :icon="Finished">Xuất bến</el-button> -->
-                        <el-button :icon="Delete" type="danger" plain>Huỷ chuyến</el-button>
+                        <el-button :icon="Delete" type="danger" plain @click="handleCancelTrip">Huỷ chuyến</el-button>
                         <el-button :icon="Timer" @click="handleOpenDialogChangeTimeTrip">Đổi giờ</el-button>
                         <el-button :icon="Plus" type="warning" plain>Thêm hàng</el-button>
                         <el-dropdown style="margin-left: 12px;">

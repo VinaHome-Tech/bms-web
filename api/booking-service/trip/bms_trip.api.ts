@@ -34,3 +34,10 @@ export const API_ChangeTimeTrip = async (data: DTO_RQ_ChangeTimeTrip): Promise<A
         body: data,
     })
 }
+export const API_CancelTrip = async (tripID: number): Promise<ApiResponse<TripItem>> => {
+    const { $apiFetch } = useNuxtApp()
+    const config = useRuntimeConfig()
+    return await $apiFetch<ApiResponse<TripItem>>(`${config.public.apiGateWay}/v3/bms-trip/${tripID}/cancel-trip`, {
+        method: "PUT",
+    })
+}
