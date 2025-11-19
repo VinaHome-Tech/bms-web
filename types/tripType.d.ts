@@ -40,9 +40,6 @@ export interface DTO_RP_ListTripItem {
   trip_time: string;
 }
 
-export interface DTO_RQ_ChangeTimeTrip {
-  trip_id: number;
-  departure_time: string;
-}
+
 
 

@@ -24,4 +24,11 @@ export interface TripItem {
     total_seat?: number;
     ticket_booked?: number;
     note?: string;
+    total_price?: number;
+    money_paid?: number;
+}
+
+export interface DTO_RQ_ChangeTimeTrip {
+  id: number;
+  start_time: string;
 }

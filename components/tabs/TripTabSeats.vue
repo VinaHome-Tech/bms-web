@@ -359,6 +359,12 @@ const handleUpdateTickets = async (data: DTO_RQ_Ticket) => {
                     updatedAt: Date.now() // để trigger real-time sync
                 });
             });
+            const bookedTickets = props.tickets.filter(t => t.booked_status === true);
+            if (valueSelectedTrip.value) {
+                valueSelectedTrip.value.ticket_booked = bookedTickets.length;
+                valueSelectedTrip.value.total_price = bookedTickets.reduce((sum, t) => sum + (t.total_price || 0), 0);
+                valueSelectedTrip.value.money_paid = bookedTickets.reduce((sum, t) => sum + (t.money_paid || 0), 0);
+            }
         } else {
             notifyError(response.message || 'Cập nhật thông tin vé thất bại. Vui lòng thử lại.');
         }
@@ -410,6 +416,12 @@ const handleCancelTickets = async () => {
                     updatedAt: Date.now() // để trigger real-time sync
                 });
             });
+            const bookedTickets = props.tickets.filter(t => t.booked_status === true);
+            if (valueSelectedTrip.value) {
+                valueSelectedTrip.value.ticket_booked = bookedTickets.length;
+                valueSelectedTrip.value.total_price = bookedTickets.reduce((sum, t) => sum + (t.total_price || 0), 0);
+                valueSelectedTrip.value.money_paid = bookedTickets.reduce((sum, t) => sum + (t.money_paid || 0), 0);
+            }
         } else {
             notifyError(response.message || 'Hủy vé thất bại. Vui lòng thử lại.');
         }
@@ -511,14 +523,14 @@ const handleCancelTickets = async () => {
                                         </div>
                                         <div v-if="ticket.booked_status" class="px-1">
                                             <span class="text-[14px] font-medium text-[#0072bc]">* {{ ticket.note
-                                                }}</span>
+                                            }}</span>
                                         </div>
 
                                         <div v-if="ticket.booked_status">
                                             <div
                                                 class="flex justify-between items-center text-[14px] font-medium text-gray-600">
-                                                <span>0/{{ formatCurrencyWithoutSymbol(ticket.total_price || 0)
-                                                }}</span>
+                                                <span>{{ formatCurrencyWithoutSymbol(ticket.money_paid || 0)}}/{{ formatCurrencyWithoutSymbol(ticket.total_price || 0)
+                                                    }}</span>
                                                 <span>{{ ticket.payment_method }}</span>
                                             </div>
                                             <div class="h-[5px] bg-[#0072bc] rounded-lg" />
