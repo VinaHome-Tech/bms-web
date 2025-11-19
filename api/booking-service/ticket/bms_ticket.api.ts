@@ -34,3 +34,14 @@ export const API_CancelTickets = async (tripID: number, ticketIds: number[], use
         },
     })
 }
+export const API_MoveTickets = async (tripID: number, oldTicketId: number, newTicketId: number): Promise<ApiResponse<any>> => {
+    const { $apiFetch } = useNuxtApp()
+    const config = useRuntimeConfig()
+    return await $apiFetch<ApiResponse<any>>(`${config.public.apiGateWay}/v3/bms-ticket/trip/${tripID}/move-tickets`, {
+        method: "POST",
+        body: {
+            old_ticket_id: oldTicketId,
+            new_ticket_id: newTicketId,
+        },
+    })
+}

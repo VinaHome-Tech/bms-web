@@ -269,6 +269,7 @@ const handlePrintListSeatInTrip = () => {
                             {{ valueSelectedTrip.start_time?.substring(0, 5) }} •
                             {{ formatDate(valueSelectedTrip.start_date as Date, 'dd/MM/yyyy') }} •
                             {{ valueSelectedTrip.route_name || 'Tuyến chưa xác định' }}
+                            [{{ valueSelectedTrip.id }}]
                         </span>
                     </template>
                     <template #icon="{ isActive }">

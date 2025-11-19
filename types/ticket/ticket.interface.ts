@@ -36,6 +36,7 @@ export interface TicketItem {
     booked_status?: boolean;
     contact_status?: number;
     ticket_code?: string;
+    trip_id?: number;
 
     selected?: boolean;
     selectedBy?: string;

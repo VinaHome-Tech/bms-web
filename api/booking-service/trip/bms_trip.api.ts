@@ -41,3 +41,10 @@ export const API_CancelTrip = async (tripID: number): Promise<ApiResponse<TripIt
         method: "PUT",
     })
 }
+export const API_GetTripSummaryById = async (tripID: number): Promise<ApiResponse<any>> => {
+    const { $apiFetch } = useNuxtApp()
+    const config = useRuntimeConfig()
+    return await $apiFetch<ApiResponse<any>>(`${config.public.apiGateWay}/v3/bms-trip/${tripID}/summary`, {
+        method: "GET",
+    })
+}
