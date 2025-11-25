@@ -102,17 +102,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { CloseBold, Delete, Edit, CopyDocument, Rank } from '@element-plus/icons-vue';
-
-// Props
-interface TicketType {
-  id: number;
-  seat_name: string;
-  booked_status: boolean;
-  ticket_phone?: string;
-}
+import type { TicketItem } from '~/types/ticket/ticket.interface';
 
 interface Props {
-  selectedTickets: TicketType[];
+  selectedTickets: TicketItem[];
   isCopyTicket: boolean;
   hasDifferentPhoneNumbers: boolean;
 }
@@ -144,6 +137,6 @@ const handleCancelTickets = () => {
     .filter(t => t.booked_status === true)
     .map(t => t.id);
   
-  emit('cancel', { id: bookedTicketIds });
+  // emit('cancel', { id: bookedTicketIds  });
 };
 </script>

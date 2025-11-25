@@ -4,7 +4,7 @@ import {
 } from '@element-plus/icons-vue'
 import type { DrawerProps, FormRules } from 'element-plus'
 import { format } from 'date-fns'
-import { useOfficeManagement } from '~/composables/declare/office/useOfficeManagement';
+import { useOfficeManagement } from '~/composables/office/useOfficeManagement';
 definePageMeta({
     layout: 'default',
 })

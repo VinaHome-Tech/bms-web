@@ -1,32 +1,46 @@
 <script setup lang="ts">
 import {
-    Plus, Delete, Edit
+    Plus, Delete, Edit, Checked
 } from '@element-plus/icons-vue'
-import type { DrawerProps, FormInstance, FormRules } from 'element-plus'
-import type { DTO_RQ_Schedule, ScheduleType } from '~/types/scheduleType';
+import type { DrawerProps, FormRules } from 'element-plus'
 import Select from '~/components/inputs/select.vue'
-import type { DTO_RP_ListRouteName } from '~/types/routeType';
-import { getListRouteNameByCompany } from '~/api/routeAPI';
-import type { SeatChartNameType } from '~/types/seatType';
-import { getSeatChartNameByCompany } from '~/api/seatAPI';
 import InputDate from '~/components/inputs/inputDate.vue';
-import { createSchedule, deleteSchedule, getListSchedulesByCompany, updateSchedule } from '~/api/scheduleAPI';
 import { format } from 'date-fns'
-import type { UserActionType } from '~/types/userType';
+import { useRouteManagement } from '~/composables/route/useRouteManagement';
+import { useSeatManagement } from '~/composables/seat/useSeatManagement';
+import { useScheduleManagement } from '~/composables/schedule/useScheduleManagement';
 definePageMeta({
     layout: 'default',
 })
-const useUserStore = userStore();
-const drawer = ref(false)
-const direction = ref<DrawerProps['direction']>('rtl')
-const isEditMode = ref(false)
-const currentEditId = ref<number | null>(null);
-const loading = ref(false);
-const schedules = ref<ScheduleType[]>([]);
-const routeNames = ref<DTO_RP_ListRouteName[]>([]);
-const seatChartNames = ref<SeatChartNameType[]>([]);
+const {
+    routesName,
+    fetchListRoutesName,
+} = useRouteManagement();
+const {
+    seatChartsName,
+    fetchListSeatChartsName,
+} = useSeatManagement();
+const {
+    drawer,
+    isEditMode,
+    schedules,
+    loadingData,
+    loadingSubmit,
+    ruleFormRef,
+    ruleForm,
+    fetchListSchedules,
+    handleDelete,
+    submitForm,
+    handleAdd,
+    handleEdit,
+    cancelClick,
+    resetForm,
 
-const ruleFormRef = ref<FormInstance>()
+} = useScheduleManagement();
+const useUserStore = userStore();
+
+const direction = ref<DrawerProps[ 'direction' ]>('rtl')
+
 const rules = reactive<FormRules>({
     route_id: [
         { required: true, message: 'Vui lòng chọn tuyến', trigger: 'blur' },
@@ -41,251 +55,16 @@ const rules = reactive<FormRules>({
         { required: true, message: 'Vui lòng chọn ngày bắt đầu', trigger: 'blur' },
     ],
 });
-const resetForm = (formEl: FormInstance | undefined) => {
-    if (!formEl) return
-    formEl.resetFields()
-    drawer.value = false
-}
-const cancelClick = () => {
-    drawer.value = false;
-    ruleFormRef.value?.resetFields();
-}
-const ruleForm = ref<DTO_RQ_Schedule>({
-    route_id: null,
-    seat_chart_id: null,
-    start_time: '',
-    repeat_type: 'weekday',
-    weekdays: [],
-    odd_even_type: '',
-    start_date: null,
-    end_date: null,
-    trip_type: null,
-    is_known_end_date: false,
-});
-const handleAdd = () => {
-    isEditMode.value = false;
-    currentEditId.value = null;
-    Object.assign(ruleForm, {
-        route_id: null,
-        seat_chart_id: null,
-        start_time: '',
-        repeat_type: 'weekday',
-        weekdays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-        odd_even_type: '',
-        start_date: null,
-        end_date: null,
-        is_known_end_date: false,
-    });
-    drawer.value = true;
-};
-const handleEdit = (index: number, row: ScheduleType) => {
-  isEditMode.value = true;
-  currentEditId.value = row.id;
-  const startTimeFormatted = row.start_time?.slice(0, 5) || '';
-
-  Object.assign(ruleForm.value, {
-    ...row,
-    start_time: startTimeFormatted,
-  });
-
-  drawer.value = true;
-};
 
 
-const fetchListRouteName = async () => {
-    loading.value = true;
-    try {
-        const response = await getListRouteNameByCompany(useUserStore.company_id ?? '');
-        if (response.result) {
-            routeNames.value = response.result;
-            console.log(routeNames.value);
-        } else {
-            ElNotification({
-                message: h('p', { style: 'color: red' }, 'Không tìm thấy tuyến nào!'),
-                type: 'warning',
-            });
-        }
-    } catch (error) {
-        ElNotification({
-            message: h('p', { style: 'color: red' }, 'Đã xảy ra lỗi khi tải danh sách tuyến!'),
-            type: 'error',
-        });
-        console.error('Error fetching route names:', error);
-    } finally {
-        loading.value = false;
-    }
-};
-const fetchListSeatChartName = async () => {
-    loading.value = true;
-    try {
-        const response = await getSeatChartNameByCompany(useUserStore.company_id ?? '');
-        if (response.result) {
-            seatChartNames.value = response.result;
-            console.log(seatChartNames.value);
-        } else {
-            ElNotification({
-                message: h('p', { style: 'color: red' }, 'Không tìm thấy sơ đồ ghế nào!'),
-                type: 'warning',
-            });
-        }
-    } catch (error) {
-        ElNotification({
-            message: h('p', { style: 'color: red' }, 'Đã xảy ra lỗi khi tải danh sách sơ đồ ghế!'),
-            type: 'error',
-        });
-        console.error('Error fetching seat chart names:', error);
-    } finally {
-        loading.value = false;
-    }
-};
-const fetchListSchedules = async () => {
-    loading.value = true;
-    try {
-        const response = await getListSchedulesByCompany(useUserStore.company_id ?? '');
-        if (response.result) {
-            schedules.value = response.result;
-            console.log("Danh sách lịch chạy:", schedules.value);
-        } else {
-            ElNotification({
-                message: h('p', { style: 'color: red' }, 'Không tìm thấy lịch chạy nào!'),
-                type: 'warning',
-            });
-        }
-    } catch (error) {
-        ElNotification({
-            message: h('p', { style: 'color: red' }, 'Đã xảy ra lỗi khi tải danh sách lịch chạy!'),
-            type: 'error',
-        });
-        console.error('Error fetching schedules:', error);
-    } finally {
-        loading.value = false;
-    }
-};
-
-
-
-const handleDelete = async (index: number, row: ScheduleType) => {
-    loading.value = true;
-    try {
-        await ElMessageBox.confirm(
-            'Bạn có chắc chắn muốn xóa lịch chạy này?',
-            'Xác nhận xoá',
-            {
-                confirmButtonText: 'Xoá',
-                cancelButtonText: 'Huỷ',
-                type: 'warning',
-            }
-        );
-
-        await deleteSchedule(
-            {
-                id: useUserStore.id,
-                username: useUserStore.username,
-                full_name: useUserStore.full_name,
-                company_id: useUserStore.company_id,
-            } as UserActionType,
-            row.id!
-        );
-        schedules.value = schedules.value.filter(schedule => schedule.id !== row.id);
-        ElNotification({
-            message: h('p', { style: 'color: teal' }, 'Xóa lịch chạy thành công!'),
-            type: 'success',
-        });
-    } catch (error) {
-        if (error !== 'cancel' && error !== 'close') {
-            ElNotification({
-                message: h('p', { style: 'color: red' }, 'Xóa lịch chạy thất bại!'),
-                type: 'error',
-            });
-            console.error(error);
-        }
-    } finally {
-        loading.value = false;
-    }
-};
-const submitForm = async (formEl: FormInstance | undefined) => {
-    if (!formEl) return;
-    await formEl.validate(async (valid) => {
-        if (valid) {
-            try {
-                if (isEditMode.value && currentEditId.value !== null) {
-
-                    console.log(ruleForm);
-                    const response = await updateSchedule(
-                        {
-                            id: useUserStore.id,
-                            username: useUserStore.username,
-                            full_name: useUserStore.full_name,
-                            company_id: useUserStore.company_id,
-                        } as UserActionType,
-                        ruleForm.value as DTO_RQ_Schedule,
-                        currentEditId.value
-                    );
-                    if (response.success) {
-                        ElNotification({
-                            message: h('p', { style: 'color: teal' }, 'Cập nhật lịch chạy thành công!'),
-                            type: 'success',
-                        })
-                        if (response.result) {
-                            const index = schedules.value.findIndex(schedule => schedule.id === currentEditId.value);
-                            if (index !== -1) {
-                                schedules.value[index] = response.result;
-                            }
-                        }
-                    } else {
-                        ElNotification({
-                            message: h('p', { style: 'color: red' }, response.message || 'Cập nhật lịch chạy thất bại!'),
-                            type: 'error',
-                        });
-                    }
-                } else {
-                    console.log('Thêm lịch chạy mới:', ruleForm);
-                    const response = await createSchedule(
-                        {
-                            id: useUserStore.id,
-                            username: useUserStore.username,
-                            full_name: useUserStore.full_name,
-                            company_id: useUserStore.company_id,
-                        } as UserActionType,
-                        ruleForm.value as DTO_RQ_Schedule
-                    );
-                    if (response.success) {
-                        ElNotification({
-                            message: h('p', { style: 'color: green' }, 'Thêm lịch chạy thành công!'),
-                            type: 'success',
-                        });
-                        if (response.result) {
-                            schedules.value.push(response.result);
-                        }
-                    } else {
-                        ElNotification({
-                            message: h('p', { style: 'color: red' }, response.message || 'Thêm lịch chạy thất bại!'),
-                            type: 'error',
-                        });
-                    }
-                }
-                drawer.value = false;
-            } catch (error) {
-                ElNotification({
-                    message: h('p', { style: 'color: red' }, 'Đã xảy ra lỗi. Vui lòng thử lại!'),
-                    type: 'error',
-                });
-                console.error(error);
-            }
-        } else {
-            console.log('error submit!');
-        }
-    });
-
-}
 const routeNameOptions = computed(() =>
-    routeNames.value.map(r => ({
+    routesName.value.map(r => ({
         label: r.route_name,
         value: r.id
     }))
 );
 const seatChartNameOptions = computed(() =>
-    seatChartNames.value.map(s => ({
+    seatChartsName.value.map(s => ({
         label: s.seat_chart_name,
         value: s.id
     }))
@@ -300,32 +79,37 @@ watch(
     () => ruleForm.value.trip_type,
     (newVal) => {
         if (newVal === 2) {
-            ruleForm.value.seat_chart_id = null
+            ruleForm.value.seat_chart_id = undefined;
         }
     }
 )
 watch(() => ruleForm.value.repeat_type, (newType, oldType) => {
     if (newType !== oldType) {
         if (newType === 'weekday') {
-            ruleForm.value.odd_even_type = ''
+            ruleForm.value.odd_even_type = undefined;
+            ruleForm.value.weekdays = [
+                'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+            ]
+
             // ruleForm.value.weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
         } else if (newType === 'odd_even') {
             // ruleForm.value.weekdays = []
+            ruleForm.value.weekdays = [];
             ruleForm.value.odd_even_type = 'odd'
         }
     }
 })
 watch(() => ruleForm.value.is_known_end_date, (val) => {
     if (!val) {
-        ruleForm.value.end_date = null;
+        ruleForm.value.end_date = undefined;
     }
 })
 
-onMounted(() => {
-    useUserStore.loadUserInfo();
-    fetchListRouteName();
-    fetchListSeatChartName();
-    fetchListSchedules();
+onMounted(async () => {
+    await useUserStore.loadUserInfo();
+    await fetchListSchedules(useUserStore.company_id ?? '');
+    await fetchListRoutesName(useUserStore.company_id ?? '');
+    await fetchListSeatChartsName(useUserStore.company_id ?? '');
 }); 
 </script>
 <template>
@@ -334,7 +118,8 @@ onMounted(() => {
             <h3 class="text-lg font-semibold">DANH SÁCH LỊCH CHẠY</h3>
             <el-button :icon="Plus" type="primary" @click="handleAdd">Thêm lịch chạy</el-button>
         </div>
-        <el-table v-loading="loading" element-loading-text="Đang tải dữ liệu..." :data="schedules" style="width: 100%">
+        <el-table v-loading="loadingData" element-loading-text="Đang tải dữ liệu..." :data="schedules"
+            style="width: 100%">
             <el-table-column type="index" label="STT" width="50" />
             <el-table-column label="Tuyến" prop="route_name" />
             <el-table-column label="Sơ đồ ghế" prop="seat_chart_name" />
@@ -397,7 +182,7 @@ onMounted(() => {
                                 <span class="text-sm font-medium text-gray-700">Thời gian khởi hành</span>
                             </template>
                             <el-time-select v-model="ruleForm.start_time" start="00:05" step="00:05" end="23:55"
-                                placeholder="Chọn thời gian" style="width: 180px" format="HH:mm"/>
+                                placeholder="Chọn thời gian" style="width: 180px" format="HH:mm" />
                         </el-form-item>
                         <div class="mb-4">
                             <span class="text-sm font-medium text-gray-700 block mb-3">Lặp lại lịch</span>
@@ -445,7 +230,9 @@ onMounted(() => {
             <template #footer>
                 <div style="flex: auto">
                     <el-button @click="resetForm(ruleFormRef)">Thoát</el-button>
-                    <el-button type="primary" @click="submitForm(ruleFormRef)">Lưu</el-button>
+                    <el-button type="primary" :icon="Checked" :loading="loadingSubmit" @click="submitForm(ruleFormRef)">
+                        {{ loadingSubmit ? 'Đang lưu...' : 'Lưu thông tin' }}
+                    </el-button>
                 </div>
             </template>
         </el-drawer>

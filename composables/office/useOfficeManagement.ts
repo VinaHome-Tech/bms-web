@@ -1,6 +1,6 @@
 import type { DTO_RQ_Office, Office } from "~/types/office/office.interface";
 import type { FormInstance } from 'element-plus'
-import { API_CreateOffice, API_GetListOfficeByCompanyId, API_UpdateOffice } from "~/api/bms-service/office/bms_office.api";
+import { API_CreateOffice, API_DeleteOffice, API_GetListOfficeByCompanyId, API_UpdateOffice } from "~/api/bms-service/office/bms_office.api";
 export const useOfficeManagement = () => {
     const useUserStore = userStore();
     const drawer = ref(false);
@@ -144,16 +144,13 @@ export const useOfficeManagement = () => {
                 }
             );
 
-            await deleteOffice({
-                id: useUserStore.id,
-                username: useUserStore.username,
-                full_name: useUserStore.full_name,
-                company_id: useUserStore.company_id,
-            } as UserActionType,
-                row.id!
-            );
-            notifySuccess('Xóa văn phòng thành công!');
-            offices.value.splice(index, 1);
+            const response = await API_DeleteOffice(row.id!);
+            if (response.success) {
+                notifySuccess('Xóa văn phòng thành công!');
+                offices.value.splice(index, 1);
+            } else {
+                notifyError(response.message || 'Xóa văn phòng thất bại!');
+            }
         } catch (error) {
             if (error !== 'cancel' && error !== 'close') {
                 notifyError('Xóa văn phòng thất bại!');

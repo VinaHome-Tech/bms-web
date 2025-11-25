@@ -119,7 +119,7 @@ const menuItems = [
       { label: 'Văn phòng', index: '3-1', to: '/declare/office' },
       { label: 'Phương tiện', index: '3-2', to: '/declare/vehicle' },
       { label: 'Tuyến', index: '3-3', to: '/declare/route' },
-      { label: 'Nhân viên', index: '3-5', to: '/declare/employee' },
+      { label: 'Nhân viên', index: '3-5', to: '/declare/account' },
       { label: 'Đại lý', index: '3-6', to: '/declare/agent' },
       { label: 'Lịch chạy', index: '3-7', to: '/declare/schedule' },
       { label: 'Mã giảm giá', index: '3-8', to: '/declare/discount' },

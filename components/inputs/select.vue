@@ -10,7 +10,7 @@ interface Option {
 }
 
 const props = defineProps<{
-    modelValue: string | number | null;
+    modelValue: string | number | null | undefined;
     prop: string;
     label: string;
     options: Option[];

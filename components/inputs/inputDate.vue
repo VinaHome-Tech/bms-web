@@ -1,67 +1,67 @@
-<script setup lang="ts">
-import { computed, ref } from 'vue';
+    <script setup lang="ts">
+    import { computed, ref } from 'vue';
 
 
-const props = defineProps<{
-    modelValue: string | Date | null;
-    prop: string;
-    label: string;
-    placeholder?: string;
-    type?: 'date' | 'datetime' | 'daterange' | 'datetimerange' | 'month' | 'year';
-    format?: string;
-    valueFormat?: string;
-    disabledDate?: (date: Date) => boolean;
-    clearable?: boolean;
-}>()
+    const props = defineProps<{
+        modelValue: string | Date | null | undefined;
+        prop: string;
+        label: string;
+        placeholder?: string;
+        type?: 'date' | 'datetime' | 'daterange' | 'datetimerange' | 'month' | 'year';
+        format?: string;
+        valueFormat?: string;
+        disabledDate?: (date: Date) => boolean;
+        clearable?: boolean;
+    }>()
 
-const emit = defineEmits<{
-    (e: 'update:modelValue', value: string | Date | null): void;
-}>()
+    const emit = defineEmits<{
+        (e: 'update:modelValue', value: string | Date | null): void;
+    }>()
 
-const isFocused = ref(false);
-const isHovered = ref(false);
+    const isFocused = ref(false);
+    const isHovered = ref(false);
 
-const inputValue = computed({
-    get: () => props.modelValue === null ? '' : props.modelValue,
-    set: (val: string | Date | null) => {
-        emit('update:modelValue', val === '' ? null : val);
-    }
-});
+    const inputValue = computed({
+        get: () => props.modelValue === null ? '' : props.modelValue,
+        set: (val: string | Date | null) => {
+            emit('update:modelValue', val === '' ? null : val);
+        }
+    });
 
-const handleFocus = () => {
-    isFocused.value = true;
-};
+    const handleFocus = () => {
+        isFocused.value = true;
+    };
 
-const handleBlur = () => {
-    isFocused.value = false;
-};
+    const handleBlur = () => {
+        isFocused.value = false;
+    };
 
-const handleMouseEnter = () => {
-    isHovered.value = true;
-};
+    const handleMouseEnter = () => {
+        isHovered.value = true;
+    };
 
-const handleMouseLeave = () => {
-    isHovered.value = false;
-};
-</script>
+    const handleMouseLeave = () => {
+        isHovered.value = false;
+    };
+    </script>
 
-<template>
-    <el-form-item :prop="prop" label-position="top">
-        <template #label>
-            <label class="text-sm font-medium text-gray-700">{{ label }}</label>
-        </template>
+    <template>
+        <el-form-item :prop="prop" label-position="top">
+            <template #label>
+                <label class="text-sm font-medium text-gray-700">{{ label }}</label>
+            </template>
 
-        <div class="datepicker-container" :class="{
-            'hovered': isHovered,
-            'focused': isFocused
-        }" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
-            <el-date-picker v-model="inputValue" :type="type || 'date'" :placeholder="placeholder || 'Chọn ngày'"
-                :format="format" :value-format="valueFormat" :disabled-date="disabledDate"
-                :clearable="clearable !== false" size="large" @focus="handleFocus" @blur="handleBlur"
-                class="transition-all duration-300 ease-in-out" style="width: 100%"  />
-        </div>
-    </el-form-item>
-</template>
+            <div class="datepicker-container" :class="{
+                'hovered': isHovered,
+                'focused': isFocused
+            }" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
+                <el-date-picker v-model="inputValue" :type="type || 'date'" :placeholder="placeholder || 'Chọn ngày'"
+                    :format="format" :value-format="valueFormat" :disabled-date="disabledDate"
+                    :clearable="clearable !== false" size="large" @focus="handleFocus" @blur="handleBlur"
+                    class="transition-all duration-300 ease-in-out" style="width: 100%"  />
+            </div>
+        </el-form-item>
+    </template>
 
 <style scoped>
 .datepicker-container {
