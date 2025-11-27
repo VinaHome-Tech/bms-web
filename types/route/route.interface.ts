@@ -12,6 +12,6 @@ export interface Route {
     display_order?: number;
 }
 export interface RouteName {
-    id: number;
+    id: string;
     route_name: string;
 }

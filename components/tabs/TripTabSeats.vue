@@ -6,7 +6,7 @@ import { Location, Unlock, Delete, Edit, Rank, CloseBold, CopyDocument } from '@
 import { formatCurrencyWithoutSymbol } from '~/lib/formatCurrency'
 import { listItemTrip, valueSelectedTrip } from '~/composables/trip/useTripGlobal';
 import EditTicketDialog from '~/components/dialog/EditTicketDialog.vue'
-import { API_CancelTickets, API_MoveTickets, API_UpdateTickets } from '~/api/booking-service/ticket/bms_ticket.api';
+import { API_CancelTickets, API_GetTicketByTripId, API_MoveTickets, API_UpdateTickets } from '~/api/booking-service/ticket/bms_ticket.api';
 import { listItemTicket } from '~/composables/ticket/useTicketList';
 import { useTripList } from '~/composables/trip/useTripList';
 import { valueSelectedDate, valueSelectedRoute } from '~/composables/route/useRouteGlobal';
@@ -46,11 +46,11 @@ const ticketsByFloor = computed(() => {
     })
 
     return Array.from(grouped.entries())
-        .sort((a, b) => a[ 0 ] - b[ 0 ])
+        .sort((a, b) => a[0] - b[0])
 })
 
 const floors = computed(() => {
-    return ticketsByFloor.value.map(item => item[ 0 ])
+    return ticketsByFloor.value.map(item => item[0])
 })
 
 // Lấy ghế theo row/column trong một tầng
@@ -65,12 +65,12 @@ const getFloorSeats = (floor: number) => {
     const seats: (TicketItem | null)[][] = []
 
     for (let r = 1; r <= maxRow; r++) {
-        seats[ r - 1 ] = []
+        seats[r - 1] = []
         for (let c = 1; c <= maxCol; c++) {
             const ticket = floorTickets.find(
                 t => t.seat_row === r && t.seat_column === c
             )
-            seats[ r - 1 ][ c - 1 ] = ticket || null
+            seats[r - 1][c - 1] = ticket || null
         }
     }
 
@@ -78,7 +78,7 @@ const getFloorSeats = (floor: number) => {
 }
 const allTickets = ref<TicketItem[]>([]);
 const getContactStatusInfo = (status: number | null | undefined) => {
-    return CONTACT_STATUSES.find(s => s.value === status) || CONTACT_STATUSES[ 0 ]
+    return CONTACT_STATUSES.find(s => s.value === status) || CONTACT_STATUSES[0]
 }
 
 const { $firebase } = useNuxtApp();
@@ -96,14 +96,6 @@ const listCopyTickets = ref<TicketItem[]>([]);
 const handleClearAll = () => {
     selectedTickets.value.forEach(t => removeTicketFromFirebase(t))
     selectedTickets.value = []
-    isMoveTickets.value = false;
-    listMoveTickets.value = [];
-}
-const handleClearAllOldTrip = (oldTripId: number) => {
-    selectedTickets.value.forEach(t => {
-        removeTicketFromFirebase(t); // xóa trên Firebase
-    });
-    selectedTickets.value = [];
     isMoveTickets.value = false;
     listMoveTickets.value = [];
 }
@@ -151,22 +143,24 @@ const addLocalSelected = (t: TicketItem) => {
 const removeLocalSelected = (t: TicketItem) => {
     selectedTickets.value = selectedTickets.value.filter(x => x.id !== t.id)
 }
-const removeTicketFromFirebase = (t: TicketItem) => {
-    if (!ticketsRef.value || !t?.id) return;
-    const ticketRef = $firebase.ref($firebase.db, `tickets/${tripId.value}/${t.id}`);
-    $firebase.remove(ticketRef);
+const removeTicketFromFirebase = (ticket: TicketItem, tripId?: number) => {
+    const tid = tripId ?? ticket.trip_id;
+    const ref = $firebase.ref($firebase.db, `tickets/${tid}/${ticket.id}`);
+    $firebase.remove(ref);
 };
+
+
 
 
 
 
 // Bắt đầu countdown cho ticket
 interface TicketCountdown {
-    [ ticketId: number ]: number; // thời gian còn lại tính bằng giây
+    [ticketId: number]: number; // thời gian còn lại tính bằng giây
 }
 
 interface TicketInterval {
-    [ ticketId: number ]: number; // lưu ID interval để clear
+    [ticketId: number]: number; // lưu ID interval để clear
 }
 
 const countdowns = reactive<TicketCountdown>({});
@@ -175,17 +169,17 @@ const intervals: TicketInterval = {};
 // Bắt đầu countdown cho 1 vé
 const startCountdown = (ticketId: number) => {
     // Reset countdown 10 phút
-    countdowns[ ticketId ] = 10 * 60;
+    countdowns[ticketId] = 10 * 60;
 
     // Nếu vé này đã có interval thì clear trước
-    if (intervals[ ticketId ]) {
-        clearInterval(intervals[ ticketId ]);
+    if (intervals[ticketId]) {
+        clearInterval(intervals[ticketId]);
     }
 
     // Tạo interval riêng cho vé này
-    intervals[ ticketId ] = window.setInterval(() => {
-        if (countdowns[ ticketId ] > 0) {
-            countdowns[ ticketId ]--;
+    intervals[ticketId] = window.setInterval(() => {
+        if (countdowns[ticketId] > 0) {
+            countdowns[ticketId]--;
         } else {
             // Hết countdown -> bỏ chọn vé
             stopCountdown(ticketId);
@@ -194,18 +188,18 @@ const startCountdown = (ticketId: number) => {
                 removeLocalSelected(ticket);
                 removeTicketFromFirebase(ticket); // nếu muốn đồng bộ Firebase
             }
-            clearInterval(intervals[ ticketId ]);
-            delete intervals[ ticketId ];
+            clearInterval(intervals[ticketId]);
+            delete intervals[ticketId];
         }
     }, 1000);
 };
 
 // Dừng countdown (bỏ chọn)
 const stopCountdown = (ticketId: number) => {
-    countdowns[ ticketId ] = 0;
-    if (intervals[ ticketId ]) {
-        clearInterval(intervals[ ticketId ]);
-        delete intervals[ ticketId ];
+    countdowns[ticketId] = 0;
+    if (intervals[ticketId]) {
+        clearInterval(intervals[ticketId]);
+        delete intervals[ticketId];
         isMoveTickets.value = false;
         listMoveTickets.value = [];
     }
@@ -213,165 +207,144 @@ const stopCountdown = (ticketId: number) => {
 
 
 
-// --- Click handling (keeps group-by-phone rules) ---
+const MODES = {
+    MOVE: 'move',
+    COPY: 'copy',
+    NONE: null
+};
+
+const activeMode = ref<'move' | 'copy' | null>(null);
+const actionTickets = ref<TicketItem[]>([]);
+
 // --- Click handler ---
 const handleSeatClick = async (ticket: TicketItem) => {
     if (!ticket?.id || !ticketsRef.value) return;
-    const phone = ticket.phone?.trim();
-    const userFullName = useUserStore.full_name || 'N/A';
-    const currentlySelected = isTicketSelected(ticket);
 
-    if (isMoveTickets.value === true) {
-        const totalMoveTickets = listMoveTickets.value.length;
+    const currentlySelected = isTicketSelected(ticket);
+    const phone = ticket.phone?.trim();
+    const userFullName = useUserStore.full_name || "N/A";
+
+    // ====================== MODE MOVE ======================
+    // ====================== MODE MOVE ======================
+    if (activeMode.value === MODES.MOVE) {
         if (ticket.booked_status) {
             notifyWarning("Ghế này đã có người đặt!");
             return;
         }
-        if (listMoveTickets.value.some(t => t.id === ticket.id)) {
-            notifyWarning("Vé này đang được chọn để di chuyển. Không thể chọn!");
+
+        const oldTicket = actionTickets.value.shift();
+        if (!oldTicket?.id) {
+            notifyError("Vé nguồn không hợp lệ.");
             return;
         }
-        const oldTicket = listMoveTickets.value.shift();
-        if (!oldTicket) return;
 
         try {
             loadingTickets.value.push(ticket.id);
-            await new Promise(resolve => setTimeout(resolve, 1000));
+
             const response = await API_MoveTickets(
                 valueSelectedTrip.value?.id || 0,
-                oldTicket.id || 0,
-                ticket.id,
+                oldTicket.id,
+                ticket.id
             );
-            if (response.success && response.result) {
-                const { newTicket, oldTicket: resetOldTicket } = response.result;
-                // Lấy trip_id từ response của backend
-                const oldTripId = resetOldTicket.trip_id;  // trip cũ (từ vé cũ)
-                const newTripId = newTicket.trip_id;        // trip mới (trip được chọn hiện tại)
 
-                console.log('=== DI CHUYỂN VÉ ===');
-                console.log('Vé cũ:', resetOldTicket.id, '- Ghế:', resetOldTicket.seat_name, '- From Trip:', oldTripId);
-                console.log('Vé mới:', newTicket.id, '- Ghế:', newTicket.seat_name, '- To Trip:', newTripId);
-
-                // BƯỚC 1: Cập nhật danh sách vé
-                listItemTicket.value = listItemTicket.value.map(t => {
-                    if (t.id === newTicket.id) {
-                        console.log('✓ Cập nhật vé mới:', newTicket.id, '- Trạng thái:', newTicket.booked_status);
-                        return { ...t, ...newTicket };
-                    }
-                    if (t.id === resetOldTicket.id) {
-                        console.log('✓ Reset vé cũ:', resetOldTicket.id, '- Trạng thái cũ:', t.booked_status, '- Trạng thái mới:', resetOldTicket.booked_status);
-                        return { ...t, ...resetOldTicket };
-                    }
-                    return t;
-                });
-
-                // Debug: In ra toàn bộ vé của trip cũ (56)
-                console.log('--- DEBUG: Vé của Trip 56 sau khi cập nhật ---');
-                const ticketsTrip56 = listItemTicket.value.filter(t => t.trip_id === oldTripId);
-                console.log('Tổng vé của Trip 56:', ticketsTrip56.length);
-                ticketsTrip56.forEach(t => {
-                    console.log(`  ID: ${t.id}, Ghế: ${t.seat_name}, booked_status: ${t.booked_status}`);
-                });
-
-                // BƯỚC 2: Backend trả về thông tin trip trong response
-                // Nếu API trả về trực tiếp trip_info hoặc có field ticket_booked, money_paid, total_price
-                // Bạn có thể dùng trực tiếp từ response
-
-                // Nếu response chứa trip info (ví dụ: response.result.tripAInfo, response.result.tripBInfo)
-                // Thì dùng:
-                // const oldTripSummary = response.result.tripAInfo || { ... };
-                // const newTripSummary = response.result.tripBInfo || { ... };
-
-                // Nếu không, gọi API riêng để lấy thông tin trip:
-                const fetchTripSummary = async (tripId: number) => {
-                    try {
-                        const res = await API_GetTripSummaryById(tripId);  // Gọi API lấy trip info
-                        if (res?.success) {
-                            return {
-                                ticket_booked: res.result.totalBooked,        // Backend trả totalBooked
-                                total_price: res.result.totalPrice,           // Backend trả totalPrice
-                                money_paid: res.result.moneyPaid,
-                            };
-                        }
-                    } catch (error) {
-                        console.error(`Lỗi lấy trip ${tripId}:`, error);
-                    }
-                    return null;
-                };
-
-                const oldTripSummary = await fetchTripSummary(oldTripId);
-                const newTripSummary = await fetchTripSummary(newTripId);
-
-                if (!oldTripSummary || !newTripSummary) {
-                    notifyError('Không thể cập nhật thông tin chuyến. Vui lòng refresh trang.');
-                    return;
-                }
-
-                console.log('oldTripSummary từ API:', oldTripSummary);
-                console.log('newTripSummary từ API:', newTripSummary);
-
-                listItemTrip.value = listItemTrip.value.map(trip => {
-                    if (trip.id === oldTripId) {
-                        console.log(`Cập nhật Trip A (${oldTripId}):`, oldTripSummary);
-                        return { ...trip, ...oldTripSummary };
-                    }
-                    if (trip.id === newTripId) {
-                        console.log(`Cập nhật Trip B (${newTripId}):`, newTripSummary);
-                        return { ...trip, ...newTripSummary };
-                    }
-                    return trip;
-                });
-
-                // BƯỚC 4: Cập nhật valueSelectedTrip (Quan trọng!)
-                // Nếu trip được chọn là trip A, cập nhật nó
-                if (valueSelectedTrip.value?.id === oldTripId) {
-                    console.log('Cập nhật valueSelectedTrip (Trip A):', oldTripSummary);
-                    valueSelectedTrip.value = {
-                        ...valueSelectedTrip.value,
-                        ...oldTripSummary
-                    };
-                }
-                // Nếu trip được chọn là trip B, cập nhật nó
-                else if (valueSelectedTrip.value?.id === newTripId) {
-                    console.log('Cập nhật valueSelectedTrip (Trip B):', newTripSummary);
-                    valueSelectedTrip.value = {
-                        ...valueSelectedTrip.value,
-                        ...newTripSummary
-                    };
-                }
-
-                console.log('valueSelectedTrip sau cập nhật:', valueSelectedTrip.value);
-
-                notifySuccess(
-                    `Đã di chuyển ${resetOldTicket.seat_name} → ${newTicket.seat_name}`
-                );
-
-                if (listMoveTickets.value.length === 0) {
-                    const removeTicketFromFirebase_2 = (t: TicketItem, tripIdToRemove: number) => {
-                        if (!ticketsRef.value || !t?.id) return;
-                        const ticketRef = $firebase.ref($firebase.db, `tickets/${tripIdToRemove}/${t.id}`);
-                        $firebase.remove(ticketRef);
-                    };
-                    selectedTickets.value.forEach(t => removeTicketFromFirebase_2(t, oldTripId));
-                    handleClearAll();
-                }
-            } else {
-                notifyError(response.message || "Di chuyển vé thất bại. Vui lòng thử lại.");
-                listMoveTickets.value.unshift(oldTicket);
+            if (!response.success) {
+                notifyError(response.message || "Di chuyển vé thất bại.");
+                actionTickets.value.unshift(oldTicket);
                 return;
             }
-        } catch (error) {
-            console.error("Lỗi di chuyển vé:", error);
-            listMoveTickets.value.unshift(oldTicket);
-            notifyError("Không thể di chuyển vé. Vui lòng thử lại.");
-            return;
+
+            const { newTicket, oldTicket: resetOld } = response.result;
+
+            const oldTripId = Number(resetOld.trip_id);
+            const newTripId = Number(newTicket.trip_id);
+
+            // ============================================================
+            // 🔥🔥 FIREBASE SYNC — CHUẨN NHẤT
+            // ============================================================
+
+            // 1) PUSH VÉ CŨ ĐÃ RESET LÊN TRIP CŨ
+            // 1) XÓA node realtime cũ hoàn toàn (tránh bị click lại)
+            const oldRealtimeRef = $firebase.ref(
+                $firebase.db,
+                `tickets/${oldTripId}/${resetOld.id}`
+            );
+            $firebase.remove(oldRealtimeRef);
+
+            // 2) Tạo realtime node mới cho newTicket (không đẩy full info lên)
+            const newRealtimeRef = $firebase.ref(
+                $firebase.db,
+                `tickets/${newTripId}/${newTicket.id}`
+            );
+            $firebase.set(newRealtimeRef, {
+                selected: false,
+                selectedBy: null,
+                countdown: null,
+                updatedAt: Date.now()
+            });
+
+
+
+            // 2) PUSH VÉ MỚI ĐÃ ĐƯỢC COPY INF0 LÊN TRIP MỚI
+            const newRef = $firebase.ref(
+                $firebase.db,
+                `tickets/${newTripId}/${newTicket.id}`
+            );
+
+            $firebase.set(newRef, {
+                ...newTicket,
+                selected: false,
+                selectedBy: null,
+                countdown: null,
+                updatedAt: Date.now()
+            });
+
+            // ============================================================
+            // 🔥🔥 LOCAL UI UPDATE
+            // ============================================================
+
+            // Xóa selected local vé cũ
+            removeLocalSelected(resetOld);
+            stopCountdown(resetOld.id);
+            selectedTickets.value = selectedTickets.value.filter(t => t.id !== resetOld.id);
+
+            // Update UI local 2 vé
+            updateTicketsOnUI(newTicket, resetOld);
+
+            // ============================================================
+            // 🔥🔥 UPDATE SUMMARY LOCAL
+            // ============================================================
+            await updateTripSummaryAfterMove(oldTripId, newTripId);
+
+            // ============================================================
+            // 🔥🔥 REFRESH NẾU ĐANG ĐỨNG TRONG TRIP ĐÓ
+            // ============================================================
+            const currentTripId = Number(valueSelectedTrip.value?.id);
+
+            if (currentTripId === oldTripId) {
+                await refreshTicketListForTrip(oldTripId);
+            }
+            if (currentTripId === newTripId) {
+                await refreshTicketListForTrip(newTripId);
+            }
+
+            notifySuccess(`Đã di chuyển ${resetOld.seat_name} → ${newTicket.seat_name}`);
+
+            if (actionTickets.value.length === 0) {
+                resetSelection();
+            }
+
+        } catch (err) {
+            console.error("MOVE ERROR:", err);
+            actionTickets.value.unshift(oldTicket);
+            notifyError("Không thể di chuyển vé.");
         } finally {
             loadingTickets.value = loadingTickets.value.filter(id => id !== ticket.id);
         }
 
-        console.log("Vé cần di chuyển: ", totalMoveTickets);
         return;
     }
+
+
     const groupOfPhone = (phoneVal: string | undefined | null) =>
         props.tickets.filter(t => t.phone?.trim() === (phoneVal ?? ''));
 
@@ -436,6 +409,127 @@ const handleSeatClick = async (ticket: TicketItem) => {
         });
     }
 };
+const resetSelection = () => {
+    // 1) Reset mode action (MOVE / COPY)
+    activeMode.value = null;
+    actionTickets.value = [];
+
+    // 2) Bỏ chọn tất cả vé đang được chọn local
+    selectedTickets.value.forEach(t => {
+        removeTicketFromFirebase(t);
+        stopCountdown(t.id!);
+    });
+
+    selectedTickets.value = [];
+
+    // 3) Xóa danh sách ghế local (nếu bạn có dùng)
+    if (typeof handleClearAll === 'function') {
+        handleClearAll();
+    }
+
+    // 4) Xóa trạng thái loading (nếu còn sót)
+    loadingTickets.value = [];
+};
+
+const updateTicketsOnUI = (newTicket: TicketItem, resetOldTicket: TicketItem) => {
+    const currentTripId = Number(valueSelectedTrip.value?.id);
+
+    listItemTicket.value = listItemTicket.value
+        .map(t => {
+            if (t.id === newTicket.id) return { ...t, ...newTicket };
+            if (t.id === resetOldTicket.id) return { ...t, ...resetOldTicket };
+            return t;
+        })
+        // ❗ Loại bỏ vé KHÔNG thuộc trip đang xem
+        .filter(t => Number(t.trip_id) === currentTripId);
+};
+
+
+
+
+const refreshTicketListForTrip = async (tripId: number) => {
+    try {
+        const res = await API_GetTicketByTripId(tripId);
+        if (res.success && res.result) {
+            listItemTicket.value = res.result;
+        }
+    } catch (err) {
+        console.error("Lỗi tải danh sách vé:", err);
+    }
+};
+
+const updateTripSummaryAfterMove = async (oldTripId: number, newTripId: number) => {
+    try {
+        const [oldRes, newRes] = await Promise.all([
+            API_GetTripSummaryById(oldTripId),
+            API_GetTripSummaryById(newTripId),
+        ]);
+
+        if (!oldRes.success || !newRes.success) return;
+
+        const oldData = oldRes.result;
+        const newData = newRes.result;
+
+        // ===== 1. UPDATE listItemTrip (sidebar + list trips) =====
+        listItemTrip.value = listItemTrip.value.map(trip => {
+            const tid = Number(trip.id);
+
+            if (tid === oldTripId) {
+                return {
+                    ...trip,
+                    total_booked: oldData.total_booked,
+                    total_price: oldData.total_price,
+                    money_paid: oldData.money_paid,
+                    total_surcharge: oldData.total_surcharge
+                };
+            }
+
+            if (tid === newTripId) {
+                return {
+                    ...trip,
+                    total_booked: newData.total_booked,
+                    total_price: newData.total_price,
+                    money_paid: newData.money_paid,
+                    total_surcharge: newData.total_surcharge
+                };
+            }
+
+            return trip;
+        });
+
+        // ===== 2. UPDATE TRIP ĐANG ĐƯỢC SELECT =====
+        if (valueSelectedTrip.value) {
+            const current = Number(valueSelectedTrip.value.id);
+
+            if (current === oldTripId) {
+                Object.assign(valueSelectedTrip.value, {
+                    total_booked: oldData.total_booked,
+                    total_price: oldData.total_price,
+                    money_paid: oldData.money_paid,
+                    total_surcharge: oldData.total_surcharge
+                });
+            }
+
+            if (current === newTripId) {
+                Object.assign(valueSelectedTrip.value, {
+                    total_booked: newData.total_booked,
+                    total_price: newData.total_price,
+                    money_paid: newData.money_paid,
+                    total_surcharge: newData.total_surcharge
+                });
+            }
+        }
+
+        // DEBUG
+        console.log("----- SUMMARY UPDATE CHECK -----");
+        console.log("valueSelectedTrip AFTER:", JSON.parse(JSON.stringify(valueSelectedTrip.value)));
+        console.log("listItemTrip AFTER:", JSON.parse(JSON.stringify(listItemTrip.value)));
+
+    } catch (err) {
+        console.error("❌ updateTripSummaryAfterMove error:", err);
+        notifyError("Không thể cập nhật thông tin chuyến. Vui lòng tải lại trang.");
+    }
+};
 
 // Số lượng vé đã book
 const bookedTicketsCount = computed(() =>
@@ -465,6 +559,7 @@ const syncAllTickets = () => {
             }
         })
 
+
         // Cập nhật selectedTickets của user hiện tại
         selectedTickets.value = allTickets.value.filter(
             t => t.selected && t.selectedBy === (useUserStore.full_name || '')
@@ -474,7 +569,16 @@ const syncAllTickets = () => {
 }
 
 
+// watch(tripId, (newTripId, oldTripId) => {
+//     console.log("🔥 Trip changed → re-sync Firebase");
 
+//     // Tắt listener cũ
+//     if (oldTripId) {
+//         const oldRef = $firebase.ref($firebase.db, `tickets/${oldTripId}`);
+//         $firebase.off(oldRef);
+//     }
+
+// })
 
 // lifecycle
 onMounted(() => {
@@ -482,8 +586,22 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-    if (ticketsRef.value) $firebase.off(ticketsRef.value);
+    if (ticketsRef.value) {
+        // Tắt listener
+        $firebase.off(ticketsRef.value);
+
+        const user = useUserStore.full_name;
+
+        allTickets.value.forEach(t => {
+            if (t.selectedBy === user) {
+                removeTicketFromFirebase(t); // 🔥 truyền đúng từng ticket
+            }
+        });
+    }
 });
+
+
+
 
 
 
@@ -611,38 +729,58 @@ const handleCancelTickets = async () => {
     }
 }
 
-// Action: Di chuyển vé
-const handleMoveTickets = () => {
-    isMoveTickets.value = true;
-    listMoveTickets.value = [ ...selectedTickets.value ];
-    if (listMoveTickets.value) {
-        notifySuccess(`Di chuyển vé: ${listMoveTickets.value.map(t => t.seat_name).join(', ')}`);
+// Reset toàn bộ state
+const resetActionState = () => {
+    activeMode.value = null;
+    actionTickets.value = [];
+};
+
+// Notify theo kiểu đẹp & tự động
+const notifyAction = (mode: 'move' | 'copy') => {
+    if (actionTickets.value.length === 0) return;
+
+    const seatNames = actionTickets.value.map(t => t.seat_name).join(", ");
+    const actionName = mode === 'move' ? "Di chuyển" : "Sao chép";
+
+    notifySuccess(`${actionName} vé: ${seatNames}`);
+};
+const startAction = (mode: 'move' | 'copy') => {
+    // Không chọn vé → không làm gì
+    if (selectedTickets.value.length === 0) {
+        notifyWarning("Bạn chưa chọn vé");
+        return;
     }
-    handleCancelCopyTickets();
-}
+
+    // Reset toàn bộ state trước khi bật mode mới
+    resetActionState();
+
+    // Bật mode mới
+    activeMode.value = mode;
+
+    // Snapshot danh sách vé
+    actionTickets.value = [...selectedTickets.value];
+
+    // Notify
+    notifyAction(mode);
+};
+
+// Move Tickets
+const handleMoveTickets = () => startAction('move');
 const handleCancelMoveTickets = () => {
-    isMoveTickets.value = false;
-    listMoveTickets.value = [];
+    if (activeMode.value === 'move') resetActionState();
+};
 
-}
-const isSelectedForMove = (ticket: TicketItem) => {
-    return isMoveTickets.value && listMoveTickets.value.some(t => t.id === ticket.id);
-}
-
-// Action: Sao chép vé
-const handleCopyTickets = () => {
-    isCopyTickets.value = true;
-    listCopyTickets.value = [ ...selectedTickets.value ];
-    if (listCopyTickets.value) {
-        notifySuccess(`Sao chép vé: ${listCopyTickets.value.map(t => t.seat_name).join(', ')}`);
-    }
-    handleCancelMoveTickets();
-
-}
+// Copy Tickets
+const handleCopyTickets = () => startAction('copy');
 const handleCancelCopyTickets = () => {
-    isCopyTickets.value = false;
-    listCopyTickets.value = [];
-}
+    if (activeMode.value === 'copy') resetActionState();
+};
+
+// Kiểm tra xem vé có đang được chọn để MOVE
+const isSelectedForMove = (ticket: TicketItem) => {
+    return activeMode.value === 'move' &&
+        actionTickets.value.some(t => t.id === ticket.id);
+};
 </script>
 
 <template>
@@ -664,17 +802,20 @@ const handleCancelCopyTickets = () => {
                             <div v-for="(ticket, colIdx) in row" :key="`${rowIdx}-${colIdx}`" class="flex-1">
                                 <!-- Ticket Card -->
 
-                                <div v-if="ticket" @click="handleSeatClick(ticket)"
-                                    class="relative w-full h-full min-h-[120px] border-2 rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-shadow flex flex-col"
+                                <div v-if="ticket" @click="ticket.seat_status ? handleSeatClick(ticket) : null"
+                                    class="relative w-full h-full min-h-[120px] border-2 rounded-lg overflow-hidden transition-shadow flex flex-col"
                                     :class="[
-                                        isSelectedForMove(ticket)
-                                            ? 'border-transparent'
-                                            : isTicketSelected(ticket)
-                                                ? 'border-[#0072bc]'
-                                                : 'border-gray-300'
+                                        !ticket.seat_status
+                                            ? 'border-none pointer-events-none opacity-40'
+                                            : isSelectedForMove(ticket)
+                                                ? 'border-transparent cursor-pointer hover:shadow-lg'
+                                                : isTicketSelected(ticket)
+                                                    ? 'border-[#0072bc] cursor-pointer hover:shadow-lg'
+                                                    : 'border-gray-300 cursor-pointer hover:shadow-lg'
                                     ]" v-loading="ticket.id != null && loadingTickets.includes(ticket.id)"
                                     element-loading-text="Đang cập nhật...">
-                                    <svg v-if="isMoveTickets && isSelectedForMove(ticket)"
+
+                                    <svg v-if="isSelectedForMove(ticket)"
                                         viewBox="0 0 calc(100% + 4px) calc(100% + 4px)"
                                         class="absolute -top-0.5 -left-0.5 w-[calc(100%+4px)] h-[calc(100%+4px)] pointer-events-none z-21">
                                         <rect x="2" y="2" width="calc(100% - 4px)" height="calc(100% - 4px)" rx="6"
@@ -689,10 +830,10 @@ const handleCancelCopyTickets = () => {
                                         class="absolute bottom-0 left-0 w-full h-[70%] bg-gray-200 bg-opacity-50 flex flex-col items-center justify-center text-gray-700 text-sm font-semibold z-20 pointer-events-none rounded-t">
 
                                         <div>{{ getTicketSelectedBy(ticket) || 'N/A' }}</div>
-                                        <div v-if="ticket.id != null && countdowns[ ticket.id ] !== undefined"
+                                        <div v-if="ticket.id != null && countdowns[ticket.id] !== undefined"
                                             class="mt-1">
-                                            {{ Math.floor(countdowns[ ticket.id ] / 60) }}:
-                                            {{ String(countdowns[ ticket.id ] % 60).padStart(2, '0') }}
+                                            {{ Math.floor(countdowns[ticket.id] / 60) }}:
+                                            {{ String(countdowns[ticket.id] % 60).padStart(2, '0') }}
                                         </div>
 
                                     </div>
@@ -710,8 +851,8 @@ const handleCancelCopyTickets = () => {
                                             <div v-if="ticket.booked_status">
                                                 <el-tooltip :content="getContactStatusInfo(ticket.contact_status).label"
                                                     placement="top" effect="dark">
-                                                    <div :class="[ 'border-1 rounded px-1 border-gray-300 transition-colors cursor-help',
-                                                        getContactStatusInfo(ticket.contact_status).color ]">
+                                                    <div :class="['border-1 rounded px-1 border-gray-300 transition-colors cursor-help',
+                                                        getContactStatusInfo(ticket.contact_status).color]">
                                                         {{ ticket.phone }}
                                                     </div>
                                                 </el-tooltip>
@@ -781,39 +922,46 @@ const handleCancelCopyTickets = () => {
 
         <div v-if="selectedTickets.length > 0" class="fixed left-1/2 transform -translate-x-1/2 w-[90%] max-w-5xl z-50"
             style="bottom: 8px;">
-            <div v-if="isMoveTickets"
+
+            <!-- ================== MODE MOVE ================== -->
+            <div v-if="activeMode === 'move'"
                 class="absolute -top-[70px] left-0 bg-white border border-gray-300 shadow-lg transition-all duration-300 rounded-xl min-w-[300px] max-w-[600px]">
-                <!-- Header với close button -->
+                <!-- Header -->
                 <div
                     class="flex items-center justify-between px-4 py-1 bg-blue-50 rounded-t-xl border-b border-gray-200">
                     <div class="flex items-center gap-2">
                         <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                         <span class="text-sm font-semibold text-gray-700">Di chuyển vé</span>
-                        <span class="text-xs text-gray-500">({{ listMoveTickets.length }} vé)</span>
+                        <span class="text-xs text-gray-500">({{ actionTickets.length }} vé)</span>
                     </div>
-                    <el-icon @click="handleCancelMoveTickets"
+
+                    <el-icon @click="resetSelection"
                         class="cursor-pointer hover:text-red-500 hover:bg-red-50 p-1 rounded transition-all">
                         <CloseBold />
                     </el-icon>
                 </div>
 
-                <!-- Selected tickets -->
+                <!-- List tickets -->
                 <div class="px-4 py-2">
                     <div class="flex flex-wrap gap-2 max-h-20 overflow-y-auto">
-                        <el-tag v-for="ticket in listMoveTickets" :key="ticket.id" type="warning" effect="dark"
+                        <el-tag v-for="ticket in actionTickets" :key="ticket.id" type="warning" effect="dark"
                             size="small" class="animate-fade-in">
                             <span class="text-sm font-medium">{{ ticket.seat_name }}</span>
                         </el-tag>
                     </div>
                 </div>
             </div>
+
+
+            <!-- ================== MAIN BOTTOM BAR ================== -->
             <div class="bg-white border border-gray-300 shadow-md transition-transform duration-300 rounded-xl">
                 <div class="flex items-stretch justify-between gap-4 h-full">
-                    <!-- Left section - Selected count -->
+
+                    <!-- LEFT: Count -->
                     <div
                         class="bg-gray-100 px-4 py-2 rounded-l-xl text-sm font-medium text-gray-700 flex items-center justify-center flex-shrink-0">
                         <div class="flex items-center gap-x-2">
-                            <el-icon class="cursor-pointer hover:text-red-500 transition" @click="handleClearAll">
+                            <el-icon class="cursor-pointer hover:text-red-500 transition" @click="resetSelection">
                                 <CloseBold />
                             </el-icon>
                             <span class="text-[16px]">
@@ -823,7 +971,7 @@ const handleCancelCopyTickets = () => {
                         </div>
                     </div>
 
-                    <!-- Middle section - Selected tickets -->
+                    <!-- MIDDLE: Selected tickets -->
                     <div
                         class="px-4 py-3 text-sm text-blue-800 flex-1 flex flex-wrap gap-2 items-center rounded-none overflow-hidden">
                         <el-tag v-for="ticket in selectedTickets" :key="ticket.id" type="warning" effect="dark">
@@ -831,51 +979,60 @@ const handleCancelCopyTickets = () => {
                         </el-tag>
                     </div>
 
-                    <!-- Right section - Action buttons -->
+                    <!-- RIGHT: ACTION BUTTONS -->
                     <div
                         class="bg-purple-50 px-4 py-2 rounded-r-xl flex gap-2 items-center justify-center flex-shrink-0">
 
-                        <!-- Edit button -->
-                        <div>
-                            <el-tooltip content="Cập nhật thông tin vé" placement="top">
-                                <el-button type="warning" :icon="Edit" circle @click="handleOpenDialogEditTicket" />
-                            </el-tooltip>
-                        </div>
+                        <!-- Edit -->
+                        <el-tooltip content="Cập nhật thông tin vé" placement="top">
+                            <el-button type="warning" :icon="Edit" circle @click="handleOpenDialogEditTicket" />
+                        </el-tooltip>
 
-                        <div v-if="bookedTicketsCount > 0 && isCopyTickets">
-                            <el-tooltip content="Huỷ sao chép vé" placement="top">
-                                <el-button type="info" :icon="CloseBold" circle @click="handleCancelCopyTickets" />
-                            </el-tooltip>
-                        </div>
-                        <!-- Copy button -->
-                        <div v-if="bookedTicketsCount > 0">
-                            <el-tooltip content="Sao chép vé" placement="top">
-                                <el-button color="#626aef" :icon="CopyDocument" circle @click="handleCopyTickets" />
-                            </el-tooltip>
-                        </div>
+                        <!-- ========== COPY MODE ========== -->
+                        <template v-if="bookedTicketsCount > 0">
 
-                        <!-- Move button -->
-                        <div v-if="bookedTicketsCount > 0 && isMoveTickets">
-                            <el-tooltip content="Huỷ di chuyển vé" placement="top">
-                                <el-button type="info" :icon="CloseBold" circle @click="handleCancelMoveTickets" />
-                            </el-tooltip>
-                        </div>
-                        <div v-if="bookedTicketsCount > 0">
-                            <el-tooltip content="Di chuyển vé" placement="top">
-                                <el-button type="primary" :icon="Rank" circle @click="handleMoveTickets" />
-                            </el-tooltip>
-                        </div>
+                            <!-- Cancel Copy -->
+                            <div v-if="activeMode === 'copy'">
+                                <el-tooltip content="Huỷ sao chép vé" placement="top">
+                                    <el-button type="info" :icon="CloseBold" circle @click="resetSelection" />
+                                </el-tooltip>
+                            </div>
 
-                        <!-- Cancel button -->
-                        <div v-if="bookedTicketsCount > 0">
-                            <el-tooltip content="Hủy vé" placement="top">
-                                <el-button type="danger" :icon="Delete" circle @click="handleCancelTickets" />
-                            </el-tooltip>
-                        </div>
+                            <!-- Copy -->
+                            <div>
+                                <el-tooltip content="Sao chép vé" placement="top">
+                                    <el-button color="#626aef" :icon="CopyDocument" circle
+                                        @click="() => startAction('copy')" />
+                                </el-tooltip>
+                            </div>
+
+                            <!-- ========== MOVE MODE ========== -->
+                            <div v-if="activeMode === 'move'">
+                                <el-tooltip content="Huỷ di chuyển vé" placement="top">
+                                    <el-button type="info" :icon="CloseBold" circle @click="resetSelection" />
+                                </el-tooltip>
+                            </div>
+
+                            <div>
+                                <el-tooltip content="Di chuyển vé" placement="top">
+                                    <el-button type="primary" :icon="Rank" circle @click="() => startAction('move')" />
+                                </el-tooltip>
+                            </div>
+
+                            <!-- Cancel ticket -->
+                            <div>
+                                <el-tooltip content="Hủy vé" placement="top">
+                                    <el-button type="danger" :icon="Delete" circle @click="handleCancelTickets" />
+                                </el-tooltip>
+                            </div>
+                        </template>
+
                     </div>
                 </div>
             </div>
+
         </div>
+
 
 
     </div>

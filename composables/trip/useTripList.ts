@@ -4,7 +4,7 @@ import { listItemTrip } from "./useTripGlobal";
 
 export const useTripList = () => {
     const loadingListItemTrip = ref(false);
-    const fetchListItemTripByRouteAndDate = async (company_id: string, route_id: number, date: string | Date) => {
+    const fetchListItemTripByRouteAndDate = async (company_id: string, route_id: string, date: string | Date) => {
         loadingListItemTrip.value = true;
         try {
             const normalizedDate = format(startOfDay(date as Date), "yyyy-MM-dd");

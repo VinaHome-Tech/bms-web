@@ -108,7 +108,7 @@ const menuItems = [
     label: 'Đặt vé',
     index: '2',
     icon: 'Ticket',
-    to: '/ticket',
+    to: '/DatVe',
   },
   {
     type: 'submenu',
@@ -116,14 +116,14 @@ const menuItems = [
     index: '3',
     icon: 'Finished',
     children: [
-      { label: 'Văn phòng', index: '3-1', to: '/declare/office' },
-      { label: 'Phương tiện', index: '3-2', to: '/declare/vehicle' },
-      { label: 'Tuyến', index: '3-3', to: '/declare/route' },
-      { label: 'Nhân viên', index: '3-5', to: '/declare/account' },
-      { label: 'Đại lý', index: '3-6', to: '/declare/agent' },
-      { label: 'Lịch chạy', index: '3-7', to: '/declare/schedule' },
-      { label: 'Mã giảm giá', index: '3-8', to: '/declare/discount' },
-      { label: 'Sơ đồ ghế', index: '13-9', to: '/declare/seat' },
+      { label: 'Văn phòng', index: '3-1', to: '/KhaiBao/VanPhong' },
+      { label: 'Phương tiện', index: '3-2', to: '/KhaiBao/PhuongTien' },
+      { label: 'Tuyến', index: '3-3', to: '/KhaiBao/Tuyen' },
+      { label: 'Nhân viên', index: '3-5', to: '/KhaiBao/NhanVien' },
+      { label: 'Đại lý', index: '3-6', to: '/KhaiBao/DaiLy' },
+      { label: 'Lịch chạy', index: '3-7', to: '/KhaiBao/LichChay' },
+      { label: 'Mã giảm giá', index: '3-8', to: '/KhaiBao/MaGiamGia' },
+      { label: 'Sơ đồ ghế', index: '13-9', to: '/KhaiBao/SoDoGhe' },
 
     ],
   },
@@ -572,11 +572,11 @@ onMounted(async () => {
               </div>
             </div>
 
-            <el-dropdown-item command="settings" @click="navigateTo('/account-setting')">
+            <el-dropdown-item command="settings" @click="navigateTo('/ThongTinTaiKhoan')">
               <el-icon>
                 <Setting />
               </el-icon>
-              <span class="ml-2">Cài đặt tài khoản</span>
+              <span class="ml-2">Thông tin tài khoản</span>
             </el-dropdown-item>
 
             <el-dropdown-item command="settings" @click="navigateTo('/account-setting')">
@@ -584,13 +584,6 @@ onMounted(async () => {
                 <Postcard />
               </el-icon>
               <span class="ml-2">Cài đặt hiển thị</span>
-            </el-dropdown-item>
-
-            <el-dropdown-item command="system" @click="handleOpenChangePasswordDialog">
-              <el-icon>
-                <Lock />
-              </el-icon>
-              <span class="ml-2">Đổi mật khẩu</span>
             </el-dropdown-item>
 
             <el-dropdown-item divided command="logout" class="text-red-600" @click="handleManualLogout">
@@ -603,8 +596,8 @@ onMounted(async () => {
         </template>
       </el-dropdown>
     </div>
-    <ChangePasswordDialog v-model="dialogFormChangePassword" :loading="loadingChangePassword"
-      @closed="handleClosedChangePasswordDialog" @save="handleSaveChangePasswordDialog" />
+    <!-- <ChangePasswordDialog v-model="dialogFormChangePassword" :loading="loadingChangePassword"
+      @closed="handleClosedChangePasswordDialog" @save="handleSaveChangePasswordDialog" /> -->
 
     <SendCommentDialog v-model="dialogFormSendComment" />
   </header>

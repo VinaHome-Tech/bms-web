@@ -62,6 +62,20 @@ const rules = reactive<FormRules>({
       trigger: "blur",
     },
   ],
+  e_ticket_price: [
+    {
+      required: true,
+      message: "Vui lòng nhập giá vé điện tử",
+      trigger: "blur",
+    },
+  ],
+  route_name_e_ticket: [
+    {
+      required: true,
+      message: "Vui lòng nhập tên tuyến xuất vé điện tử",
+      trigger: "blur",
+    },
+  ],
 });
 
 const search = ref("");

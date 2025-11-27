@@ -45,3 +45,10 @@ export const API_MoveTickets = async (tripID: number, oldTicketId: number, newTi
         },
     })
 }
+export const API_GetTicketByTripId = async (tripID: number): Promise<ApiResponse<TicketItem[]>> => {
+    const { $apiFetch } = useNuxtApp()
+    const config = useRuntimeConfig()   
+    return await $apiFetch<ApiResponse<TicketItem[]>>(`${config.public.apiGateWay}/v3/bms-ticket/trip/${tripID}/tickets`, {
+        method: "GET",
+    })
+}

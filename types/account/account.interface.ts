@@ -31,3 +31,18 @@ export interface Assistant {
     phone: string;
 }
 
+export interface AccountInfo {
+    id?: string;
+    username?: string;
+    phone?: string;
+    email?: string;
+    name?: string;
+    address?: string;
+    date_of_birth?: Date;
+    gender?: number;
+}
+export interface ChangePassword {
+    old_password?: string;
+    new_password?: string;
+}
+

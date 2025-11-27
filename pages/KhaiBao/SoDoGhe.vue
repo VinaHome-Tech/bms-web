@@ -165,9 +165,6 @@ onMounted(async () => {
             <el-row :gutter="24" class="mb-6">
                 <el-col :xs="24" :sm="24" :md="8" :lg="8">
                     <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-                        <div class="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
-                            <h3 class="text-white font-bold text-lg">Danh sách sơ đồ</h3>
-                        </div>
 
                         <el-table v-loading="loadingData" :data="seatCharts" element-loading-text="Đang tải dữ liệu..."
                             style="width: 100%" @row-click="handleRowClick"

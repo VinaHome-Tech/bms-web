@@ -1,5 +1,5 @@
 import type { ApiResponse } from "~/api/APIResponse"
-import type { Account, Assistant, Driver } from "~/types/account/account.interface"
+import type { Account, AccountInfo, Assistant, ChangePassword, Driver } from "~/types/account/account.interface"
 
 // M2_v1.F2
 export const API_CreateAccount = async (company_id: string, data: Account): Promise<ApiResponse<Account>> => {
@@ -52,5 +52,28 @@ export const API_GetAssistantListByCompanyId = async (companyID: string): Promis
     const config = useRuntimeConfig()
     return await $apiFetch<ApiResponse<Assistant[]>>(`${config.public.apiGateWay}/v1/bms-account/companies/${companyID}/assistants`, {
         method: "GET",
+    })
+}
+export const API_GetInfoAccountById = async (accountID: string): Promise<ApiResponse<AccountInfo>> => {
+    const { $apiFetch } = useNuxtApp()
+    const config = useRuntimeConfig()
+    return await $apiFetch<ApiResponse<AccountInfo>>(`${config.public.apiGateWay}/v1/bms-account/${accountID}/info`, {
+        method: "GET",
+    })
+}
+export const API_UpdateInfoAccountById = async (accountID: string, data: AccountInfo): Promise<ApiResponse<AccountInfo>> => {
+    const { $apiFetch } = useNuxtApp()
+    const config = useRuntimeConfig() 
+    return await $apiFetch<ApiResponse<AccountInfo>>(`${config.public.apiGateWay}/v1/bms-account/${accountID}/info`, {
+      method: "PUT",
+      body: data,
+    })
+}
+export const API_ChangePasswordAccountById = async (accountID: string, data: ChangePassword): Promise<ApiResponse<null>> => {
+    const { $apiFetch } = useNuxtApp()
+    const config = useRuntimeConfig()
+    return await $apiFetch<ApiResponse<null>>(`${config.public.apiGateWay}/v1/bms-account/${accountID}/change-password`, {
+      method: "POST",
+      body: data,
     })
 }

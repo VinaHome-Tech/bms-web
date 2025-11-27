@@ -25,7 +25,7 @@ const handleClickItemTrip = (trip: TripItem) => {
 }
 watch([ valueSelectedDate, valueSelectedRoute ], async ([ newDate, newRoute ]) => {
   if (newDate && newRoute) {
-    await fetchListItemTripByRouteAndDate(useUserStore.company_id ?? '', newRoute as number, newDate);
+    await fetchListItemTripByRouteAndDate(useUserStore.company_id ?? '', newRoute as string, newDate);
     valueSelectedTrip.value = null;
     // selectedTrip.value = null;
     // if (!queryTripID.value) {
@@ -37,7 +37,7 @@ onMounted(async () => {
   await fetchListRoutesNameAction(useUserStore.company_id || "")
   const savedRoute = localStorage.getItem('selectedRoute')
   if (savedRoute) {
-    valueSelectedRoute.value = parseInt(savedRoute)
+    valueSelectedRoute.value = savedRoute
   }
 })
 </script>

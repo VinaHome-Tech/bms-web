@@ -1,8 +1,8 @@
 export interface CommissionAgent {
-    ticket_type?: '%' | 'VND';
-    ticket_value?: number;
-    goods_type?: '%' | 'VND';
-    goods_value?: number;
+    ticket_type: '%' | 'VND';
+    ticket_value: number;
+    goods_type: '%' | 'VND';
+    goods_value: number;
 }
 export interface Agent {
     id?: number;
@@ -13,5 +13,5 @@ export interface Agent {
     name?: string;
     address?: string;
     status?: boolean;
-    commission?: CommissionAgent;
+    commission: CommissionAgent;
 }

@@ -34,6 +34,9 @@ const rules = ref<FormRules>({
     license_plate: [
         { required: true, message: 'Vui lòng nhập biển số xe', trigger: 'blur' },
     ],
+    brand: [
+        { required: true, message: 'Vui lòng chọn hãng xe', trigger: 'blur' },
+    ],
 })
 
 const search = ref('')

@@ -131,7 +131,7 @@ onMounted(async () => {
                         <el-col :span="12" class="pl-5">
                             <h2 class="text-gray-500 font-medium mb-5">CHÍNH SÁCH CHIẾT KHẤU</h2>
                             <div class="mb-6">
-                                <InputNumber v-model="ruleForm.commission.ticket_value" prop="discount_ticket_value"
+                                <InputNumber v-model="ruleForm.commissiom.ticket_value" prop="discount_ticket_value"
                                     label="Chiết khấu vé" class="w-full" />
                                 <form-item prop="discount_ticket_type" label-position="top" class="space-y-3">
                                     <template #label>

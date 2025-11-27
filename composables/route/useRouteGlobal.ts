@@ -1,2 +1,2 @@
-export const valueSelectedRoute = ref<number | null>(null);
+export const valueSelectedRoute = ref<string | null>(null);
 export const valueSelectedDate = ref<string | Date | undefined>(undefined);
