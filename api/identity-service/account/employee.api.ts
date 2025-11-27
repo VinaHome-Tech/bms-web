@@ -77,3 +77,10 @@ export const API_ChangePasswordAccountById = async (accountID: string, data: Cha
       body: data,
     })
 }
+export const API_GetHistoryLoginByAccountId = async (accountID: string): Promise<ApiResponse<any>> => {
+    const { $apiFetch } = useNuxtApp()
+    const config = useRuntimeConfig()
+    return await $apiFetch<ApiResponse<any>>(`${config.public.apiGateWay}/v1/bms-account/${accountID}/history-login`, {
+      method: "GET",
+    })
+}

@@ -2,8 +2,9 @@
 import { reactive, ref, onMounted } from 'vue'
 import { Checked } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
-import { API_ChangePasswordAccountById, API_GetInfoAccountById, API_UpdateInfoAccountById } from '@/api/identity-service/account/employee.api'
+import { API_ChangePasswordAccountById, API_GetHistoryLoginByAccountId, API_GetInfoAccountById, API_UpdateInfoAccountById } from '@/api/identity-service/account/employee.api'
 import type { AccountInfo, ChangePassword } from '~/types/account/account.interface'
+import type { HistoryLogin } from '~/types/account/history-login.interface'
 const useUserStore = userStore()
 
 const loadingUser = ref(false)
@@ -78,6 +79,24 @@ const fetchUserInfo = async () => {
     loadingUser.value = false
   }
 }
+const loadingHistoryLogin = ref(false)
+const tableData = ref<HistoryLogin[]>([])
+const fetchHistoryLogin = async () => {
+  loadingHistoryLogin.value = true
+  try {
+    const response = await API_GetHistoryLoginByAccountId(useUserStore.id ?? '')
+    if (response.success) {
+      tableData.value = response.result
+    } else {
+      notifyError(response.message || 'Không thể tải lịch sử đăng nhập')
+    }
+  } catch (error) {
+    console.error(error)
+    notifyError('Không thể tải lịch sử đăng nhập')
+  } finally {
+    loadingHistoryLogin.value = false
+  }
+}
 
 // ===== Submit cập nhật =====
 const submitForm = async () => {
@@ -131,8 +150,10 @@ const activeMenu = ref('profile')
 const handleSelect = (key: string) => {
   activeMenu.value = key
 }
+
 onMounted(() => {
   fetchUserInfo()
+  fetchHistoryLogin()
 })
 </script>
 
@@ -215,32 +236,34 @@ onMounted(() => {
         <section v-if="activeMenu === 'security'">
           <h2 class="text-xl font-semibold mb-6">Thay đổi mật khẩu</h2>
 
-          <el-card>
+          <el-form ref="ruleFormRefPassword" :model="passwordForm" :rules="rulesPassword" label-width="140px"
+            style="max-width: 600px">
+            <el-form-item label="Mật khẩu hiện tại" prop="old_password">
+              <el-input type="password" v-model="passwordForm.old_password" />
+            </el-form-item>
 
-            <el-form ref="ruleFormRefPassword" :model="passwordForm" :rules="rulesPassword" label-width="140px"
-              style="max-width: 600px">
-              <el-form-item label="Mật khẩu hiện tại" prop="old_password">
-                <el-input type="password" v-model="passwordForm.old_password" />
-              </el-form-item>
+            <el-form-item label="Mật khẩu mới" prop="new_password">
+              <el-input type="password" v-model="passwordForm.new_password" />
+            </el-form-item>
 
-              <el-form-item label="Mật khẩu mới" prop="new_password">
-                <el-input type="password" v-model="passwordForm.new_password" />
-              </el-form-item>
+            <el-form-item>
+              <el-button type="primary" :loading="loadingPassword" :icon="Checked" @click="submitFormPassword">Đổi mật
+                khẩu</el-button>
+            </el-form-item>
 
-              <el-form-item>
-                <el-button type="primary" :loading="loadingPassword" :icon="Checked" @click="submitFormPassword">Đổi mật
-                  khẩu</el-button>
-              </el-form-item>
+          </el-form>
 
-            </el-form>
-          </el-card>
         </section>
 
         <!-- TAB 3: Lịch sử đăng nhập -->
         <section v-if="activeMenu === 'activity'">
           <h2 class="text-xl font-semibold mb-6">Lịch sử đăng nhập</h2>
 
-          <el-empty description="Tính năng đang phát triển" />
+          <el-table v-loading="loadingHistoryLogin" :data="tableData"  style="width: 100%">
+            <el-table-column prop="user_agent" label="Thiết bị"  />
+            <el-table-column prop="ip_address" label="IP" />
+            <el-table-column prop="created_at" label="Thời gian" />
+          </el-table>
         </section>
 
       </el-col>
