@@ -2,14 +2,19 @@
 <script setup lang="ts">
 import { Plus, More, Calendar } from '@element-plus/icons-vue';
 import type { FormInstance, CheckboxValueType, FormRules } from 'element-plus'
+import { API_GetListRouteNameToConfigByCompanyId } from '~/api/bms-service/route/bms_route.api';
+import { API_GetListSeatChartNameByCompanyId } from '~/api/bms-service/seat/bms_seat.api';
+
 import { API_CreateFareConfig, API_DeleteFareConfig, API_GetListConfigFareByCompany, API_UpdateFareConfig } from '~/api/configFareAPI';
 import { API_GetListPointNameByRoute } from '~/api/pointAPI';
-import { API_GetListRouteNameToConfigByCompany } from '~/api/routeAPI';
+// import { API_GetListRouteNameToConfigByCompany } from '~/api/routeAPI';
 import { getSeatChartNameByCompany } from '~/api/seatAPI';
 import { formatCurrency_2, parseCurrency } from '~/lib/formatCurrency';
 import { formatDate2 } from '~/lib/formatDate';
+import type { DTO_RouteNameToConfig } from '~/types/config/config_point.interface';
 import type { ConfigPointInRoute, DTO_RP_ConfigFare_3 } from '~/types/configFareType';
 import type { DTO_RP_GroupPointName } from '~/types/pointType';
+import type { RouteName } from '~/types/route/route.interface';
 import type { DTO_RP_ListRouteNameToConfig } from '~/types/routeType';
 import type { SeatChartNameType } from '~/types/seatType';
 const ruleFormRef = ref<FormInstance>()
@@ -19,8 +24,8 @@ const modelEdit = ref(false)
 const handleOpenDialog = async () => {
     modelEdit.value = false
     dialogVisible.value = true
-    await fetchListRoute();
-    await fetchListSeatChart();
+    await fetchListRoute(useUserStore.company_id || '');
+    await fetchListSeatChart(useUserStore.company_id || '');
 }
 const handleClose = () => {
     ruleFormRef.value?.resetFields()
@@ -73,8 +78,8 @@ const handleEditConfig = async (config: any) => {
         }))
     }
     dialogVisible.value = true
-    await fetchListRoute();
-    await fetchListSeatChart();
+    await fetchListRoute(useUserStore.company_id || '');
+    await fetchListSeatChart(useUserStore.company_id || '');
     await fetchListPoint();
 }
 
@@ -195,12 +200,12 @@ const opinionsTripType = [
     { value: 2, label: 'Chuyến chở khách cố định' },
     { value: 3, label: 'Chuyến hợp đồng' },
 ]
-const listRoute = ref<DTO_RP_ListRouteNameToConfig[]>([])
+const listRoute = ref<DTO_RouteNameToConfig[]>([])
 const loadingListRoute = ref(false)
-const fetchListRoute = async () => {
+const fetchListRoute = async (company_id: string) => {
     loadingListRoute.value = true
     try {
-        const res = await API_GetListRouteNameToConfigByCompany(useUserStore.company_id || '')
+        const res = await API_GetListRouteNameToConfigByCompanyId(company_id)
         if (res.success && res.result) {
             listRoute.value = res.result
         } else {
@@ -215,10 +220,10 @@ const fetchListRoute = async () => {
 }
 const listSeatChart = ref<SeatChartNameType[]>([])
 const loadingListSeatChart = ref(false)
-const fetchListSeatChart = async () => {
+const fetchListSeatChart = async (company_id: string) => {
     loadingListSeatChart.value = true
     try {
-        const res = await getSeatChartNameByCompany(useUserStore.company_id || '')
+        const res = await API_GetListSeatChartNameByCompanyId(company_id)
         if (res.success && res.result) {
             listSeatChart.value = res.result
         } else {
@@ -425,7 +430,7 @@ onMounted(async () => {
 <template>
     <section>
         <div class="flex justify-between items-center mb-2">
-            <h3 class="text-xl font-semibold">Cấu hình giá vé</h3>
+            <h3 class="text-xl font-semibold">Cấu hình điểm dừng</h3>
             <el-button type="primary" :icon="Plus" @click="handleOpenDialog">Thêm cấu hình</el-button>
         </div>
         <div v-loading="loadingListConfigFare">
@@ -565,7 +570,7 @@ onMounted(async () => {
                 </div>
             </template>
             <div class="p-2 pb-4">
-                <el-form ref="ruleFormRef" style="max-width: 1000px" :model="ruleForm" status-icon :rules="rules"
+                <el-form ref="ruleFormRef"  :model="ruleForm" status-icon :rules="rules"
                     label-width="auto" class="demo-ruleForm">
                     <el-form-item label-position="top" prop="config_name">
                         <template #label>

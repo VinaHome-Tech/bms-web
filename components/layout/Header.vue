@@ -145,8 +145,8 @@ const menuItems = [
     index: '5',
     icon: 'Operation',
     children: [
-      { label: 'Giá vé', index: '14-1', to: '/config/fare' },
-      { label: 'Thời gian', index: '14-2', to: '/config/point-time' },
+      { label: 'Điểm dừng', index: '14-1', to: '/CauHinh/DiemDung' },
+      { label: 'Thời gian', index: '14-2', to: '/CauHinh/ThoiGian' },
 
     ],
   },

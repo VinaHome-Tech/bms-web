@@ -1,5 +1,5 @@
 import type { ApiResponse } from "~/api/APIResponse";
-import type { Route, RouteName } from "~/types/route/route.interface";
+import type { DTO_RouteNameToConfig, Route, RouteName } from "~/types/route/route.interface";
 
 // M2_v2.F1
 export const API_GetListRouteByCompanyId = async (company_id: string): Promise<ApiResponse<Route[]>> => {
@@ -66,3 +66,11 @@ export const API_GetListRouteNameActionByCompanyId = async (company_id: string):
         method: "GET",
     })
 }
+
+export const API_GetListRouteNameToConfigByCompanyId = async (company_id: string): Promise<ApiResponse<DTO_RouteNameToConfig[]>> => {
+    const { $apiFetch } = useNuxtApp()
+    const config = useRuntimeConfig()
+    return await $apiFetch<ApiResponse<DTO_RouteNameToConfig[]>>(`${config.public.apiGateWay}/v2/bms-route/companies/${company_id}/route-name-to-config`, {
+        method: "GET",
+    })
+}  
