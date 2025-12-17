@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import Header from '~/components/layout/Header.vue';
+definePageMeta({
+  middleware: ['auth'],
+})
 const useUserStore = userStore();
 const officeStore = useOfficeStore();
 onMounted(async () => {

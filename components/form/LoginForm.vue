@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { FormInstance, FormRules } from 'element-plus';
 import type { LoginFormType } from '~/types/authType';
+import { Search } from '@element-plus/icons-vue';
 defineProps<{
   loading?: boolean
 }>()

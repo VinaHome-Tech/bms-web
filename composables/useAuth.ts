@@ -1,4 +1,5 @@
-import { logout } from "~/api/identity-service/auth/bms_auth";
+import { API_LogoutBMS } from "~/api/identity-service/auth/bms_auth.api";
+
 
 
 export const useAuth = () => {
@@ -7,7 +8,7 @@ export const useAuth = () => {
     const handleManualLogout = async (): Promise<void> => {
         try {
             const cookie_access_token = useCookie('access_token');
-            const response = await logout(cookie_access_token.value ?? '');
+            const response = await API_LogoutBMS(useUserStore.id || '');
             if (response.success) {
                 notifySuccess('Đăng xuất thành công!');
             }

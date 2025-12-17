@@ -3,11 +3,12 @@ import { ref, computed } from 'vue'
 import { SwitchButton } from '@element-plus/icons-vue'
 import { API_GetListOfficeRoomWorkByCompanyId } from '~/api/bms-service/office/bms_office.api'
 import type { OfficeRoomWork } from '~/types/office/office.interface'
+import { API_LogoutBMS } from '~/api/identity-service/auth/bms_auth.api'
 definePageMeta({
   middleware: ['auth'],
   layout: false,
 })
-const { handleManualLogout } = useAuth();
+// const { handleManualLogout } = useAuth();
 const useUserStore = userStore();
 const officeStore = useOfficeStore();
 
@@ -69,7 +70,21 @@ const fetchOfficeList = async () => {
     isLoading.value = false;
   }
 };
-
+const handleManualLogout = async (): Promise<void> => {
+  try {
+    const response = await API_LogoutBMS(useUserStore.id || '');
+    if (response.success) {
+      notifySuccess('Đăng xuất thành công!');
+    }
+  } catch (error) {
+    console.error('Logout API error:', error);
+    notifyWarning('Đăng xuất thành công!');
+  } finally {
+    useUserStore.resetUserInfo();
+    officeStore.resetOfficeStore();
+    await navigateTo('/');
+  }
+};
 onMounted(async () => {
   await useUserStore.loadUserInfo();
   await fetchOfficeList();
@@ -93,7 +108,8 @@ onMounted(async () => {
           <div class="flex flex-col sm:flex-row sm:items-center gap-3 lg:text-right">
             <ClientOnly>
               <div class="flex-1 sm:flex-none">
-                <p class="text-base md:text-lg font-semibold text-blue-600">Nhân viên: {{ useUserStore.full_name || '' }}</p>
+                <p class="text-base md:text-lg font-semibold text-blue-600">Nhân viên: {{ useUserStore.full_name || ''
+                  }}</p>
                 <p class="text-sm text-gray-500">{{ useUserStore.username || '' }}</p>
               </div>
               <template #fallback>
@@ -121,28 +137,18 @@ onMounted(async () => {
         <div class="flex flex-col gap-4">
           <!-- Search Input -->
           <div class="w-full">
-            <input 
-              v-model="searchQuery" 
-              type="text" 
-              placeholder="Tìm kiếm theo tên hoặc địa chỉ văn phòng..."
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
-            >
+            <input v-model="searchQuery" type="text" placeholder="Tìm kiếm theo tên hoặc địa chỉ văn phòng..."
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base">
           </div>
-          
+
           <!-- Filter Controls -->
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <label class="flex items-center cursor-pointer">
-              <input 
-                v-model="filterByAvailability" 
-                type="checkbox"
-                class="mr-3 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              >
+              <input v-model="filterByAvailability" type="checkbox"
+                class="mr-3 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
               <span class="text-sm md:text-base text-gray-700">Chỉ văn phòng đang hoạt động</span>
             </label>
-            <el-button 
-              class="w-full sm:w-auto"
-              @click="() => { searchQuery = ''; filterByAvailability = false }"
-            >
+            <el-button class="w-full sm:w-auto" @click="() => { searchQuery = ''; filterByAvailability = false }">
               Xóa bộ lọc
             </el-button>
           </div>
@@ -171,7 +177,7 @@ onMounted(async () => {
           <div class="p-4">
             <h3 class="text-base font-semibold text-gray-800 mb-2">{{ office.name }}</h3>
             <div class="text-gray-600 mb-1">
-              <span class="text-sm font-medium text-gray-700">Địa chỉ: {{ office.address }}</span> 
+              <span class="text-sm font-medium text-gray-700">Địa chỉ: {{ office.address }}</span>
             </div>
             <div class="mb-1">
               <h4 class="text-sm font-medium text-gray-700">Số điện thoại:</h4>

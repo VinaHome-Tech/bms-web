@@ -4,7 +4,7 @@ import LoginForm from '~/components/form/LoginForm.vue';
 import type { LoginFormType } from '~/types/authType';
 import { ecosystemModules } from '~/mock/ecosystemModules';
 import { scheduleTokenRefresh } from '~/lib/auth';
-import { API_LoginBMS } from '~/api/identity-service/auth/bms_auth';
+import { API_LoginBMS } from '~/api/identity-service/auth/bms_auth.api';
 definePageMeta({
     middleware: [ 'guest' ],
     layout: false,
@@ -33,6 +33,7 @@ const handleLogin = async (payload: LoginFormType) => {
                 refresh_token,
                 expires_in,
             })
+            console.log('Login response:', response.result)
             scheduleTokenRefresh(expires_in ?? 0)
             navigateTo('/room-work')
         } else {

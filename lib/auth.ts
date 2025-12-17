@@ -1,18 +1,14 @@
-import { API_RefreshToken } from "~/api/identity-service/auth/bms_auth";
+import { API_RefreshToken } from "~/api/identity-service/auth/bms_auth.api";
 
+let refreshTimer: NodeJS.Timeout | null = null;
 
-
-let refreshTimer: NodeJS.Timeout | null = null
-
-/**
- * Đặt lịch refresh token
- */
 export function scheduleTokenRefresh(expiresIn: number) {
-  if (refreshTimer) clearTimeout(refreshTimer)
+  if (refreshTimer) clearTimeout(refreshTimer);
 
-  // Tránh refresh liên tục nếu expiresIn quá nhỏ
-  if (!expiresIn || expiresIn <= 30) {
-    console.warn("⚠️ expiresIn quá nhỏ, bỏ qua scheduleTokenRefresh");
+  expiresIn = Number(expiresIn);
+
+  if (!expiresIn || isNaN(expiresIn) || expiresIn <= 30) {
+    console.warn("⚠ expiresIn quá nhỏ hoặc không hợp lệ:", expiresIn);
     return;
   }
 
@@ -22,17 +18,22 @@ export function scheduleTokenRefresh(expiresIn: number) {
     refreshNow();
   }, refreshTime);
 
-  console.log(`🔄 Token sẽ được refresh sau ${Math.floor(refreshTime / 1000)} giây`);
+  console.log(`🔁 Refresh sẽ chạy sau ${Math.floor(refreshTime / 1000)} giây`);
 }
 
-/**
- * Refresh token ngay lập tức
- */
 export async function refreshNow(): Promise<boolean> {
+  // Multi-tab lock
+  if (localStorage.getItem("refresh_lock") === "true") {
+    console.log("⛔ Tab khác đang refresh → bỏ qua");
+    return false;
+  }
+  localStorage.setItem("refresh_lock", "true");
+
   try {
     const cookie_refresh_token = useCookie("refresh_token");
     if (!cookie_refresh_token.value) {
-      console.warn("⚠️ Không có refresh_token, không thể refresh");
+      console.warn("⚠ Không có refresh_token");
+      localStorage.setItem("refresh_lock", "false");
       return false;
     }
 
@@ -40,6 +41,10 @@ export async function refreshNow(): Promise<boolean> {
 
     if (response.success && response.result?.access_token) {
       const store = userStore();
+
+      const cookie_access = useCookie("access_token");
+      cookie_access.value = response.result.access_token;
+
       store.setUserInfo({
         ...store.$state,
         access_token: response.result.access_token,
@@ -47,18 +52,20 @@ export async function refreshNow(): Promise<boolean> {
       });
 
       scheduleTokenRefresh(response.result.expires_in);
+
       console.log("✅ Refresh token thành công");
+      localStorage.setItem("refresh_lock", "false");
       return true;
     }
   } catch (err) {
-    console.error("❌ Refresh token thất bại:", err);
+    console.error("❌ Refresh token lỗi:", err);
   }
 
-  // ⛔ refresh fail → clear timer + logout
-  if (refreshTimer) {
-    clearTimeout(refreshTimer);
-    refreshTimer = null;
-  }
+  // Unlock trước khi logout
+  localStorage.setItem("refresh_lock", "false");
+
+  if (refreshTimer) clearTimeout(refreshTimer);
+
   const store = userStore();
   store.resetUserInfo();
   navigateTo("/");
