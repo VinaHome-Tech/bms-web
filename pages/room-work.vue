@@ -95,7 +95,7 @@ onMounted(async () => {
   <div class="min-h-screen bg-gray-50 py-2">
     <div class="max-w-6xl mx-auto px-2">
       <!-- Header -->
-      <div class="bg-white rounded-lg shadow-md p-4 md:p-6 mb-8">
+      <div class="bg-white rounded-lg shadow-md p-4 md:p-6 mb-3">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4 gap-4">
           <div class="flex-1">
             <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
@@ -105,24 +105,32 @@ onMounted(async () => {
               Vui lòng chọn văn phòng mà bạn sẽ làm việc
             </p>
           </div>
-          <div class="flex flex-col sm:flex-row sm:items-center gap-3 lg:text-right">
+          <div class="flex items-center justify-between gap-3 lg:text-right">
             <ClientOnly>
-              <div class="flex-1 sm:flex-none">
-                <p class="text-base md:text-lg font-semibold text-blue-600">Nhân viên: {{ useUserStore.full_name || ''
-                  }}</p>
-                <p class="text-sm text-gray-500">{{ useUserStore.username || '' }}</p>
+              <div class="flex-1">
+                <p class="text-base md:text-lg font-semibold text-blue-600">
+                  Nhân viên: {{ useUserStore.full_name || '' }}
+                </p>
+                <p class="text-sm text-gray-500">
+                  {{ useUserStore.username || '' }}
+                </p>
               </div>
+
               <template #fallback>
-                <div class="flex-1 sm:flex-none">
-                  <p class="text-base md:text-lg font-semibold text-blue-600">Nhân viên: </p>
-                  <p class="text-sm text-gray-500" />
+                <div class="flex-1">
+                  <p class="text-base md:text-lg font-semibold text-blue-600">
+                    Nhân viên:
+                  </p>
+                  <p class="text-sm text-gray-500"></p>
                 </div>
               </template>
             </ClientOnly>
-            <el-button class="w-full sm:w-auto" type="danger" :icon="SwitchButton" @click="handleManualLogout">
+
+            <el-button class="shrink-0" type="danger" :icon="SwitchButton" @click="handleManualLogout">
               Đăng xuất
             </el-button>
           </div>
+
         </div>
         <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
           <p class="text-blue-700">
@@ -137,8 +145,8 @@ onMounted(async () => {
         <div class="flex flex-col gap-4">
           <!-- Search Input -->
           <div class="w-full">
-            <input v-model="searchQuery" type="text" placeholder="Tìm kiếm theo tên hoặc địa chỉ văn phòng..."
-              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base">
+            <el-input v-model="searchQuery" type="text" placeholder="Tìm kiếm theo tên hoặc địa chỉ văn phòng..."
+              />
           </div>
 
           <!-- Filter Controls -->
