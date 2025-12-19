@@ -1,11 +1,11 @@
 import type { DTO_RQ_Office, Office } from "~/types/office/office.interface";
 import type { FormInstance } from 'element-plus'
-import { API_CreateOffice, API_DeleteOffice, API_GetListOfficeByCompanyId, API_UpdateOffice } from "~/api/bms-service/office/bms_office.api";
+import { API_CreateOffice, API_DeleteOffice, API_GetListOfficeByCompanyId, API_UpdateOffice } from "~/api/resource-service/office/bms_office.api";
 export const useOfficeManagement = () => {
     const useUserStore = userStore();
     const drawer = ref(false);
     const isEditMode = ref(false);
-    const currentEditId = ref<number | null>(null);
+    const currentEditId = ref<string | null>(null);
     const offices = ref<Office[]>([]);
     const loadingData = ref(false);
     const loadingSubmit = ref(false);

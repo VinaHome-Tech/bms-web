@@ -29,6 +29,6 @@ export interface TripItem {
 }
 
 export interface DTO_RQ_ChangeTimeTrip {
-  id: number;
+  id: string;
   start_time: string;
 }

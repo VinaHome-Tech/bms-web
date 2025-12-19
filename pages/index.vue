@@ -4,7 +4,7 @@ import LoginForm from '~/components/form/LoginForm.vue';
 import type { LoginFormType } from '~/types/authType';
 import { ecosystemModules } from '~/mock/ecosystemModules';
 import { scheduleTokenRefresh } from '~/lib/auth';
-import { API_LoginBMS } from '~/api/identity-service/auth/bms_auth.api';
+import { API_LoginBMS } from '~/api/identity-service/auth/bms-auth.api';
 definePageMeta({
     middleware: [ 'guest' ],
     layout: false,

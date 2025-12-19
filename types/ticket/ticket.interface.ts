@@ -40,6 +40,7 @@ export interface TicketItem {
 
     selected?: boolean;
     selectedBy?: string;
+    selected_by_id?: string;
 }
 
 export interface DTO_RQ_Ticket {

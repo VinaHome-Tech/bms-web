@@ -1,7 +1,7 @@
 import { valueSelectedRoute } from "./useRouteGlobal"
 
 export const useRouteActions = () => {
-    const handleChangeRoute = (value: number) => {
+    const handleChangeRoute = (value: string) => {
         valueSelectedRoute.value = value
         localStorage.setItem('selectedRoute', value.toString()) 
     }

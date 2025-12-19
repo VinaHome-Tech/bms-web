@@ -1,4 +1,4 @@
-import { API_GetListLicensePlateVehicleByCompanyId } from "~/api/bms-service/vehicle/bms_vehicle.api";
+import { API_GetListLicensePlateVehicleByCompanyId } from "~/api/resource-service/vehicle/bms_vehicle.api";
 import type { LicensePlateVehicle } from "~/types/vehicle/vehicle.interface";
 
 export const useVehicleList = () => {

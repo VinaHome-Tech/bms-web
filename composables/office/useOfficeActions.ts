@@ -1,7 +1,7 @@
 import type { FormInstance } from "element-plus";
 import type { DTO_RQ_Office } from "~/types/office/office.interface";
 import { officeList } from "./useOfficeGlobal";
-import { API_CreateOffice, API_DeleteOffice, API_UpdateOffice } from "~/api/bms-service/office/bms_office.api";
+import { API_CreateOffice, API_DeleteOffice, API_UpdateOffice } from "~/api/resource-service/office/bms_office.api";
 
 export const useOfficeActions = () => {
     const useUserStore = userStore();

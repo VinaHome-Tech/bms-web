@@ -1,8 +1,7 @@
 
 import { API_GetListTicketByTripId } from "~/api/booking-service/ticket/bms_ticket.api";
-import type { TicketItem } from "~/types/ticket/ticket.interface";
 import type { TripItem } from "~/types/trip/trip.interface";
-export const listItemTicket = ref<TicketItem[]>([]);
+import { listItemTicket } from "./useTicketGlobal";
 export const useTicketList = () => {
     const loadingListTicket = ref(false);
     
