@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { format } from 'date-fns';
-import { getListRegistrationExpiry } from '~/api/vehicleAPI';
+// import { getListRegistrationExpiry } from '~/api/vehicleAPI';
 import type { DTO_RP_RegistrationExpiry } from '~/types/vehicleType';
 
 definePageMeta({
@@ -12,12 +12,12 @@ const listVehicle = ref<DTO_RP_RegistrationExpiry[]>([]);
 const fetchListRegistrationExpiry = async () => {
     loadingVehicle.value = true;
     try {
-        const response = await getListRegistrationExpiry(useUserStore.company_id ?? '');
-        if (response.success) {
-            listVehicle.value = response.result || [];
-        } else {
-            console.error('Failed to fetch maintenance due vehicles:', response.message);
-        }
+        // const response = await getListRegistrationExpiry(useUserStore.company_id ?? '');
+        // if (response.success) {
+        //     listVehicle.value = response.result || [];
+        // } else {
+        //     console.error('Failed to fetch maintenance due vehicles:', response.message);
+        // }
     } catch (error) {
         console.error('Error fetching maintenance due vehicles:', error);
     } finally {
