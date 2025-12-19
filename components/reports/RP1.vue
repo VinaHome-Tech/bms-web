@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getListRouteNameActionByCompany } from '~/api/routeAPI';
+// import { getListRouteNameActionByCompany } from '~/api/routeAPI';
 import type { DTO_RP_ListRouteName } from '~/types/routeType';
 import type { DTO_RP_ListTripItem } from '~/types/tripType';
 const props = defineProps<{
@@ -15,10 +15,10 @@ const valueTrip = ref<number | undefined>(undefined);
 
 const fetchListRoute = async () => {
   try {
-    const response = await getListRouteNameActionByCompany(props.companyId);
-    if (response && response.result) {
-      listRoute.value = response.result;
-    }
+    // const response = await getListRouteNameActionByCompany(props.companyId);
+    // if (response && response.result) {
+    //   listRoute.value = response.result;
+    // }
   } catch (error) {
     console.error('Error fetching route names:', error);
   }
