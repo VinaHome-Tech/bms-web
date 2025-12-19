@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { changeTimeTrip, confirmationDepart, deleteTrip, updateNote } from "~/api/tripAPI";
-import type { DTO_RQ_ChangeTimeTrip } from "~/types/tripType";
+import {  confirmationDepart, deleteTrip, updateNote } from "~/api/tripAPI";
+// import type { DTO_RQ_ChangeTimeTrip } from "~/types/tripType";
 import { ElMessageBox } from 'element-plus'
 import { selectedTrip, tripList } from './useTripManagement';
 import { getTicketsByTripToPrint } from "~/api/ticketAPI";
 import type { DTO_RP_TicketsToPrint } from "~/types/ticketType";
+import type { DTO_RQ_ChangeTimeTrip } from "~/types/trip/trip.interface";
 
 export const useTripOperations = () => {
   const dialogChangeTimeTrip = ref(false);
@@ -16,26 +17,26 @@ export const useTripOperations = () => {
     console.log("Data to update:", data);
     loadingFormChangeTimeTrip.value = true;
     try {
-      const response = await changeTimeTrip(data);
-      if (response.success) {
-        notifySuccess("Cập nhật thời gian chuyến đi thành công");
-        if (response.result) {
-          if (selectedTrip.value) {
-            selectedTrip.value = {
-              ...selectedTrip.value,
-              departure_time: response.result.departure_time,
-            };
-            tripList.value = tripList.value.map((t) =>
-              t.trip_id === selectedTrip.value?.trip_id
-                ? { ...t, departure_time: response.result?.departure_time ?? t.departure_time }
-                : t
-            );
-          }
-        }
-        dialogChangeTimeTrip.value = false;
-      } else {
-        notifyError("Cập nhật thời gian chuyến đi thất bại");
-      }
+      // const response = await changeTimeTrip(data);
+      // if (response.success) {
+      //   notifySuccess("Cập nhật thời gian chuyến đi thành công");
+      //   if (response.result) {
+      //     if (selectedTrip.value) {
+      //       selectedTrip.value = {
+      //         ...selectedTrip.value,
+      //         departure_time: response.result.departure_time,
+      //       };
+      //       tripList.value = tripList.value.map((t) =>
+      //         t.trip_id === selectedTrip.value?.trip_id
+      //           ? { ...t, departure_time: response.result?.departure_time ?? t.departure_time }
+      //           : t
+      //       );
+      //     }
+      //   }
+      //   dialogChangeTimeTrip.value = false;
+      // } else {
+      //   notifyError("Cập nhật thời gian chuyến đi thất bại");
+      // }
     } catch (error) {
       console.log(error);
       notifyError("Cập nhật thời gian chuyến đi thất bại");

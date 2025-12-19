@@ -1,19 +1,18 @@
 import { ref } from "vue";
 import { API_UpdateTickets } from "~/api/booking-service/ticket/bms_ticket.api";
-import { localSelectedTickets } from "./useTicketGlobal";
+import { listItemTicket, localSelectedTickets } from "./useTicketGlobal";
 import { valueSelectedTrip } from "../trip/useTripGlobal";
-import { useTicketList } from "./useTicketList";
-import { useTicketLocal } from "./useTicketLocal";
+// import { useTicketLocal } from "./useTicketLocal";
 import type { TicketItem } from "~/types/ticket/ticket.interface";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const useTicketActions = () => {
-    const {
-        listItemTicket
-    } = useTicketList();
-    const {
-        handleClearLocalSelectedTickets
-    } = useTicketLocal();
+    // const {
+    //     listItemTicket
+    // } = useTicketList();
+    // const {
+    //     handleClearLocalSelectedTickets
+    // } = useTicketLocal();
     const useUserStore = userStore();
     const useOffice = useOfficeStore();
     const dialogEditTicket = ref(false);

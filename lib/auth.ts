@@ -1,4 +1,4 @@
-import { API_RefreshToken } from "~/api/identity-service/auth/bms_auth.api";
+import { API_RefreshToken } from "~/api/identity-service/auth/bms-auth.api";
 
 let refreshTimer: NodeJS.Timeout | null = null;
 

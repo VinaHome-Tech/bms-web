@@ -1,7 +1,7 @@
-import type { DTO_RP_ListRouteName, DTO_RP_ListRouteNameToConfig, DTO_RQ_Route, RouteType } from "~/types/routeType";
+import type { DTO_RP_ListRouteName, DTO_RQ_Route, RouteType } from "~/types/routeType";
 import type { ApiResponse } from "./APIResponse";
 import type { UserActionType } from "~/types/userType";
-import type { DTO_RouteName } from "~/types/config/config_point.interface";
+// import type { DTO_RouteName } from "~/types/config/config_point.interface";
 
 export const createRoute = async (user: UserActionType, data_create: DTO_RQ_Route): Promise<ApiResponse<RouteType>> => {
   const config = useRuntimeConfig();
@@ -117,12 +117,12 @@ export const getListRouteNameByCompany = async (id: string): Promise<ApiResponse
   }
 }
 
-export const API_GetListRouteNameToConfigByCompanyId = async (id: string): Promise<ApiResponse<DTO_RouteName[]>> => {
+export const API_GetListRouteNameToConfigByCompanyId = async (id: string): Promise<ApiResponse<any[]>> => {
   const config = useRuntimeConfig();
   const apiGateWay = config.public.apiGateWay;
   const cookie = useCookie('access_token');
   try {
-    return await $fetch<ApiResponse<DTO_RouteName[]>>(`${apiGateWay}/v2/bms-route/get-list-route-name-to-config-by-company/${id}`, {
+    return await $fetch<ApiResponse<any[]>>(`${apiGateWay}/v2/bms-route/get-list-route-name-to-config-by-company/${id}`, {
       method: "GET",
       headers: {
         'Authorization': `Bearer ${cookie.value}`

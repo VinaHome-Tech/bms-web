@@ -1,5 +1,5 @@
 import type { FormInstance } from "element-plus";
-import { API_CreateRoute, API_DeleteRoute, API_GetListRouteByCompanyId, API_GetListRouteNameActionByCompanyId, API_GetListRouteNameByCompanyId, API_UpdateRoute, API_UpdateRouteOrder } from "~/api/bms-service/route/bms_route.api";
+import { API_CreateRoute, API_DeleteRoute, API_GetListRouteByCompanyId, API_GetListRouteNameActionByCompanyId, API_GetListRouteNameByCompanyId, API_UpdateRoute, API_UpdateRouteOrder } from "~/api/resource-service/route/bms_route.api";
 import type { Route, RouteName } from "~/types/route/route.interface";
 
 export const useRouteManagement = () => {

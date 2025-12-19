@@ -2,8 +2,8 @@
 <script setup lang="ts">
 import { Plus, More, Calendar } from '@element-plus/icons-vue';
 import type { FormInstance, CheckboxValueType, FormRules } from 'element-plus'
-import { API_GetListRouteNameToConfigByCompanyId } from '~/api/bms-service/route/bms_route.api';
-import { API_GetListSeatChartNameByCompanyId } from '~/api/bms-service/seat/bms_seat.api';
+import { API_GetListRouteNameToConfigByCompanyId } from '~/api/resource-service/route/bms_route.api';
+import { API_GetListSeatChartNameByCompanyId } from '~/api/resource-service/seat/bms_seat.api';
 
 import { API_CreateFareConfig, API_DeleteFareConfig, API_GetListConfigFareByCompany, API_UpdateFareConfig } from '~/api/configFareAPI';
 import { API_GetListPointNameByRoute } from '~/api/pointAPI';
