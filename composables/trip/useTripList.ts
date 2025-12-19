@@ -1,5 +1,5 @@
 import { format, startOfDay } from "date-fns";
-import { API_GetListTripByRouteAndDate } from "~/api/booking-service/trip/bms_trip.api";
+import { API_GetListTripByRouteAndDate } from "~/services/booking-service/trip/bms_trip.api";
 import { listItemTrip } from "./useTripGlobal";
 
 export const useTripList = () => {

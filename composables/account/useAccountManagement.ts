@@ -1,5 +1,5 @@
 import type { FormInstance } from "element-plus";
-import { API_CreateAccount, API_DeleteAccount, API_GetListAccountByCompanyId, API_UpdateAccount } from "~/api/identity-service/account/employee.api";
+import { API_CreateAccount, API_DeleteAccount, API_GetListAccountByCompanyId, API_UpdateAccount } from "~/services/identity-service/account/employee.api";
 import type { Account } from "~/types/account/account.interface";
 
 export const useAccountManagement = () => {

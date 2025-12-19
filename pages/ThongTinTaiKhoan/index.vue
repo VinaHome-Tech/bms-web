@@ -2,7 +2,7 @@
 import { reactive, ref, onMounted } from 'vue'
 import { Checked } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
-import { API_ChangePasswordAccountById, API_GetHistoryLoginByAccountId, API_GetInfoAccountById, API_UpdateInfoAccountById } from '@/api/identity-service/account/employee.api'
+import { API_ChangePasswordAccountById, API_GetHistoryLoginByAccountId, API_GetInfoAccountById, API_UpdateInfoAccountById } from '~/services/identity-service/account/employee.api'
 import type { AccountInfo, ChangePassword } from '~/types/account/account.interface'
 import type { HistoryLogin } from '~/types/account/history-login.interface'
 const useUserStore = userStore()

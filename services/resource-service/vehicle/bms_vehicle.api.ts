@@ -1,4 +1,4 @@
-import type { ApiResponse } from "~/api/api-response";
+import type { ApiResponse } from "~/services/api-response";
 import type { LicensePlateVehicle, Vehicle } from "~/types/vehicle/vehicle.interface";
 
 // M2_v2.F1

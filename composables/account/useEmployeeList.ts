@@ -1,4 +1,4 @@
-import { API_GetAssistantListByCompanyId, API_GetDriverListByCompanyId } from "~/api/identity-service/account/employee.api";
+import { API_GetAssistantListByCompanyId, API_GetDriverListByCompanyId } from "~/services/identity-service/account/employee.api";
 import type { Assistant, Driver } from "~/types/account/account.interface";
 
 export const useEmployeeList = () => {

@@ -1,18 +1,4 @@
 {
   "extends": "./.nuxt/tsconfig.json",
-  "compilerOptions": {
-    "moduleResolution": "bundler",   // 🔥 QUAN TRỌNG NHẤT
-    "baseUrl": ".",
-    "paths": {
-      "~/*": ["./*"],
-      "@/*": ["./*"]
-    },
-    "types": ["@types/node"]
-  },
-  "include": [
-    "types",
-    ".nuxt",
-    "**/*.ts",
-    "**/*.vue"
-  ]
+  
 }

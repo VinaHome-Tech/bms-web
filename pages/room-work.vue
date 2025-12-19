@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { SwitchButton } from '@element-plus/icons-vue'
-import { API_GetListOfficeRoomWorkByCompanyId } from '~/api/resource-service/office/bms-office.api'
+import { API_GetListOfficeRoomWorkByCompanyId } from '~/services/resource-service/office/bms-office.api'
 import type { OfficeRoomWork } from '~/types/office/office.interface'
-import { API_LogoutBMS } from '~/api/identity-service/auth/bms-auth.api'
+import { API_LogoutBMS } from '~/services/identity-service/auth/bms-auth.api'
 definePageMeta({
   middleware: ['auth'],
   layout: false,

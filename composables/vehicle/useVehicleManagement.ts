@@ -1,5 +1,5 @@
 import type { FormInstance } from "element-plus";
-import { API_CreateVehicle, API_DeleteVehicle, API_GetListVehicleByCompanyId, API_UpdateVehicle } from "~/api/resource-service/vehicle/bms_vehicle.api";
+import { API_CreateVehicle, API_DeleteVehicle, API_GetListVehicleByCompanyId, API_UpdateVehicle } from "~/services/resource-service/vehicle/bms_vehicle.api";
 import type { Vehicle } from "~/types/vehicle/vehicle.interface";
 
 export const useVehicleManagement = () => {

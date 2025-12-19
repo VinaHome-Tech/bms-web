@@ -1,4 +1,4 @@
-import type { ApiResponse } from "~/api/api-response"
+import type { ApiResponse } from "~/services/api-response"
 import type { Schedule } from "~/types/schedule/schedule.interface"
 
 // M5_v2.F1

@@ -1,4 +1,4 @@
-import { API_LogoutBMS } from "~/api/identity-service/auth/bms-auth.api";
+import { API_LogoutBMS } from "~/services/identity-service/auth/bms-auth.api";
 
 
 

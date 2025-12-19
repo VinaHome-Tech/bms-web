@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import { CloseBold } from '@element-plus/icons-vue'
 import { ref, watch, computed } from 'vue'
-import { API_GetListRoutePointNameByRoute } from '~/api/pointAPI'
+import { API_GetListRoutePointNameByRoute } from '~/services/pointAPI'
 import type { DTO_RP_RoutePointName } from '~/types/pointType'
 
 interface Props {

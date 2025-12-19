@@ -1,5 +1,5 @@
 
-import { API_GetListTicketByTripId } from "~/api/booking-service/ticket/bms_ticket.api";
+import { API_GetListTicketByTripId } from "~/services/booking-service/ticket/bms_ticket.api";
 import type { TripItem } from "~/types/trip/trip.interface";
 import { listItemTicket } from "./useTicketGlobal";
 export const useTicketList = () => {

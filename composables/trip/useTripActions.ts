@@ -1,6 +1,6 @@
 import type { TripItem } from "~/types/trip/trip.interface"
 import { listItemTrip, valueSelectedTrip } from "./useTripGlobal";
-import { API_UpdateTripInformation } from "~/api/booking-service/trip/bms_trip.api";
+import { API_UpdateTripInformation } from "~/services/booking-service/trip/bms_trip.api";
 
 export const useTripActions = () => {
     const loadingUpdateTrip = ref(false);

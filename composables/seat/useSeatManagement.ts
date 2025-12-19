@@ -1,7 +1,7 @@
 import type { SeatChart, SeatChartName } from "~/types/seat/seat.interface";
 import type { FormInstance } from 'element-plus'
 import type { Ref } from 'vue'
-import { API_CreateSeatChart, API_DeleteSeatChart, API_GetListSeatChartByCompanyId, API_GetListSeatChartNameByCompanyId, API_UpdateSeatChart } from "~/api/resource-service/seat/bms_seat.api";
+import { API_CreateSeatChart, API_DeleteSeatChart, API_GetListSeatChartByCompanyId, API_GetListSeatChartNameByCompanyId, API_UpdateSeatChart } from "~/services/resource-service/seat/bms_seat.api";
 export const useSeatManagement = () => {
     const useUserStore = userStore();
     const loadingData = ref(false);
