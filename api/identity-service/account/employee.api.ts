@@ -1,4 +1,4 @@
-import type { ApiResponse } from "~/api/APIResponse"
+import type { ApiResponse } from "~/api/api-response"
 import type { Account, AccountInfo, Assistant, ChangePassword, Driver } from "~/types/account/account.interface"
 
 // M2_v1.F2

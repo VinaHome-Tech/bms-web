@@ -1,6 +1,6 @@
 import type { DTO_RQ_Office, Office } from "~/types/office/office.interface";
 import type { FormInstance } from 'element-plus'
-import { API_CreateOffice, API_DeleteOffice, API_GetListOfficeByCompanyId, API_UpdateOffice } from "~/api/resource-service/office/bms_office.api";
+import { API_CreateOffice, API_DeleteOffice, API_GetListOfficeByCompanyId, API_UpdateOffice } from "~/api/resource-service/office/bms-office.api";
 export const useOfficeManagement = () => {
     const useUserStore = userStore();
     const drawer = ref(false);

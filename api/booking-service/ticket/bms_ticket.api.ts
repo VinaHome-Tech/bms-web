@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ApiResponse } from "~/api/APIResponse"
+import type { ApiResponse } from "~/api/api-response"
 import type { DTO_RQ_Ticket, TicketItem } from "~/types/ticket/ticket.interface"
 
 export const API_GetListTicketByTripId = async (tripID: number, data: {seat_chart_id: number}): Promise<ApiResponse<TicketItem[]>> => {

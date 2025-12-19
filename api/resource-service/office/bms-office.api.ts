@@ -1,5 +1,5 @@
-import type { ApiResponse } from "~/api/APIResponse";
-import type { DTO_RQ_Office, Office, OfficeRoomWork } from "~/types/office/office.interface";
+import type { ApiResponse } from "@/api/api-response";
+import type { DTO_RQ_Office, Office, OfficeRoomWork } from "@/types/office/office.interface";
 
 // M1_v2.F1
 export const API_GetListOfficeRoomWorkByCompanyId = async (company_id: string): Promise<ApiResponse<OfficeRoomWork[]>> => {
