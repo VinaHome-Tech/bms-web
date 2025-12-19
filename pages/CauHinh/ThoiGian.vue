@@ -2,7 +2,6 @@
 <script setup lang="ts">
 import { Plus, InfoFilled, Location, DCaret } from '@element-plus/icons-vue'
 import { API_GetListPointToConfigTimeByRoute, API_UpdatePointConfigTime } from '~/api/pointAPI';
-import { API_GetListRouteNameToConfigByCompany } from '~/api/routeAPI';
 import type { DTO_RP_ItemPointConfigTime } from '~/types/pointType';
 import type { DTO_RP_ListRouteName, DTO_RP_ListRouteNameToConfig } from '~/types/routeType';
 const useUserStore = userStore()
@@ -11,12 +10,12 @@ const loadingListRoute = ref(false)
 const fetchListRoute = async () => {
     try {
         loadingListRoute.value = true
-        const response = await API_GetListRouteNameToConfigByCompany(useUserStore.company_id || '')
-        if (response.success) {
-            listRoute.value = response.result || []
-        } else {
-            notifyError('Lỗi khi tải danh sách tuyến đường')
-        }
+        // const response = await API_GetListRouteNameToConfigByCompany(useUserStore.company_id || '')
+        // if (response.success) {
+        //     listRoute.value = response.result || []
+        // } else {
+        //     notifyError('Lỗi khi tải danh sách tuyến đường')
+        // }
     } catch (error) {
         console.error('Error fetching routes:', error)
         notifyError('Lỗi khi tải danh sách tuyến đường')
