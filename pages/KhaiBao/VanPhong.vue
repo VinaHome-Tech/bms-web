@@ -5,27 +5,49 @@ import {
 import type { DrawerProps, FormRules } from 'element-plus'
 import { format } from 'date-fns'
 import { useOfficeManagement } from '~/composables/office/useOfficeManagement';
+import { useOfficeList } from '~/composables/office/useOfficeList';
+import { officeList } from '~/composables/office/useOfficeGlobal';
+import { useOfficeActions } from '~/composables/office/useOfficeActions';
 definePageMeta({
     layout: 'default',
 })
 const {
-    drawer,
+    // drawer,
     offices,
     loadingData,
-    ruleFormRef,
-    isEditMode,
+    // ruleFormRef,
+    // isEditMode,
+    // ruleForm,
+    // resetForm,
+    // cancelClick,
+    // addPhone,
+    // removePhone,
+    // handleDelete,
+    // handleAdd,
+    // handleEdit,
+    submitForm,
+    // loadingSubmit,
+    // fetchListOffice,
+} = useOfficeManagement();
+const {
+    loadingOfficeList,
+    fetchListOffice,
+} = useOfficeList();
+const {
+    handleSubmitOffice,
     ruleForm,
-    resetForm,
-    cancelClick,
-    addPhone,
-    removePhone,
-    handleDelete,
+    ruleFormRef,
+    drawer,
+    isEditMode,
     handleAdd,
     handleEdit,
-    submitForm,
+    removePhone,
+    addPhone,
+    resetForm,
+    cancelClick,
+    handleDelete,
     loadingSubmit,
-    fetchListOffice,
-} = useOfficeManagement();
+} = useOfficeActions();
 const useUserStore = userStore();
 const direction = ref<DrawerProps['direction']>('rtl')
 
@@ -51,7 +73,7 @@ const phoneRules = [
 
 const search = ref('')
 const filterTableData = computed(() =>
-    offices.value.filter(
+    officeList.value.filter(
         (data) =>
             !search.value ||
             (data.name ?? '').toLowerCase().includes(search.value.toLowerCase()) ||
@@ -71,11 +93,24 @@ onMounted(async () => {
             <el-button :icon="Plus" type="primary" @click="handleAdd">Thêm văn phòng</el-button>
         </div>
 
-        <el-table v-loading="loadingData" element-loading-text="Đang tải dữ liệu..." :data="filterTableData"
+        <el-table v-loading="loadingOfficeList" element-loading-text="Đang tải dữ liệu..." :data="filterTableData"
             style="width: 100%">
             <el-table-column type="index" label="STT" width="50" />
-            <el-table-column label="Tên văn phòng" prop="name" />
-            <el-table-column label="Mã văn phòng" prop="code" />
+            <el-table-column label="Văn phòng">
+                <template #default="{ row }">
+                    <el-tooltip :content="row.name" placement="top">
+                        <div class="flex flex-col leading-tight cursor-pointer">
+                            <span class="font-semibold text-gray-800 truncate max-w-[200px]">
+                                {{ row.name }}
+                            </span>
+                            <span class="text-xs text-gray-500">
+                                {{ row.code }}
+                            </span>
+                        </div>
+                    </el-tooltip>
+                </template>
+            </el-table-column>
+
             <el-table-column label="Địa chỉ" prop="address" />
             <el-table-column label="Trạng thái" prop="status">
                 <template #default="scope">
@@ -84,25 +119,39 @@ onMounted(async () => {
                     </el-tag>
                 </template>
             </el-table-column>
-            <el-table-column label="Số điện thoại" prop="phones">
-                <template #default="scope">
-                    <div v-for="(phone, index) in scope.row.phones" :key="index" class="mb-1">
-                        <el-tag :type="phone.type === 'mobile' ? 'success'
-                            : phone.type === 'landline' ? 'info'
-                                : phone.type === 'fax' ? 'warning'
-                                    : 'danger'" effect="dark">
+            <el-table-column label="Số điện thoại">
+                <template #default="{ row }">
+                    <el-space direction="vertical" size="small">
+                        <el-tag v-for="(phone, index) in row.phones" :key="index" size="small" :type="phone.type === 'mobile'
+                            ? 'success'
+                            : phone.type === 'landline'
+                                ? 'info'
+                                : phone.type === 'fax'
+                                    ? 'warning'
+                                    : 'danger'">
                             {{ phone.phone }}
                         </el-tag>
+                    </el-space>
+                </template>
+            </el-table-column>
+
+
+            <el-table-column label="Ghi chú" prop="note" />
+            <el-table-column>
+                <template #default="{ row }">
+                    <div class="flex flex-col text-xs text-gray-600 leading-tight">
+                        <span>
+                            <span class="font-medium text-gray-700">Tạo:</span>
+                            {{ format(new Date(row.created_at), 'dd/MM/yyyy') }}
+                        </span>
+                        <span>
+                            <span class="font-medium text-gray-700">Sửa:</span>
+                            {{ format(new Date(row.updated_at), 'dd/MM/yyyy') }}
+                        </span>
                     </div>
                 </template>
             </el-table-column>
 
-            <el-table-column label="Ghi chú" prop="note" />
-            <el-table-column label="Ngày tạo" prop="created_at">
-                <template #default="scope">
-                    {{ format(new Date(scope.row.created_at), 'dd/MM/yyyy') }}
-                </template>
-            </el-table-column>
             <el-table-column align="right">
                 <template #header>
                     <el-input v-model="search" placeholder="Tìm văn phòng" />
@@ -198,7 +247,7 @@ onMounted(async () => {
             <template #footer>
                 <div style="flex: auto">
                     <el-button @click="resetForm(ruleFormRef)">Thoát</el-button>
-                    <el-button type="primary" :icon="Checked" :loading="loadingSubmit" @click="submitForm(ruleFormRef)" >
+                    <el-button type="primary" :icon="Checked" :loading="loadingSubmit" @click="handleSubmitOffice(ruleFormRef)">
                         {{ loadingSubmit ? 'Đang lưu...' : 'Lưu thông tin' }}
                     </el-button>
                 </div>

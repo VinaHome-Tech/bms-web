@@ -31,7 +31,7 @@ export const API_CreateOffice = async (company_id: string, data: DTO_RQ_Office):
 }
 
 // M1_v2.F4
-export const API_UpdateOffice = async (office_id: number, data: DTO_RQ_Office): Promise<ApiResponse<Office>> => {
+export const API_UpdateOffice = async (office_id: string, data: DTO_RQ_Office): Promise<ApiResponse<Office>> => {
   const { $apiFetch } = useNuxtApp()
   const config = useRuntimeConfig()
   return await $apiFetch<ApiResponse<Office>>(`${config.public.apiGateWay}/v2/bms-office/${office_id}`, {
@@ -41,7 +41,7 @@ export const API_UpdateOffice = async (office_id: number, data: DTO_RQ_Office): 
 }
 
 // M1_v2.F5
-export const API_DeleteOffice = async (office_id: number): Promise<ApiResponse<null>> => {
+export const API_DeleteOffice = async (office_id: string): Promise<ApiResponse<null>> => {
   const { $apiFetch } = useNuxtApp()
   const config = useRuntimeConfig()
   return await $apiFetch<ApiResponse<null>>(`${config.public.apiGateWay}/v2/bms-office/${office_id}`, {

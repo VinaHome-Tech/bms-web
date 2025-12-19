@@ -1,29 +1,30 @@
 export interface OfficeRoomWork {
-    id: number | null;
+    id: string | null;
     name: string | null;
     address: string | null;
     status: boolean;
     phones: OfficePhoneType[];
 }
 export interface OfficePhoneType {
-    id?: number;
+    id?: string;
     phone?: string;
     type?: string;
 }
 
 export interface Office {
-    id?: number;
+    id?: string;
     name?: string;
     code?: string;
     address?: string;
     note?: string;
     status?: boolean;
     created_at?: Date;
+    updated_at?: Date;
     phones?: OfficePhoneType[];
 }
 
 export interface DTO_RQ_Office {
-    id?: number;
+    id?: string;
     name?: string;
     code?: string;
     address?: string;
