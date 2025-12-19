@@ -7,10 +7,10 @@ import { formatCurrencyWithoutSymbol } from '~/lib/formatCurrency'
 import { listItemTrip, valueSelectedTrip } from '~/composables/trip/useTripGlobal';
 import EditTicketDialog from '~/components/dialog/EditTicketDialog.vue'
 import { API_CancelTickets, API_GetTicketByTripId, API_MoveTickets, API_UpdateTickets } from '~/api/booking-service/ticket/bms_ticket.api';
-import { listItemTicket } from '~/composables/ticket/useTicketList';
-import { useTripList } from '~/composables/trip/useTripList';
-import { valueSelectedDate, valueSelectedRoute } from '~/composables/route/useRouteGlobal';
+
+
 import { API_GetTripSummaryById } from '~/api/booking-service/trip/bms_trip.api';
+import { listItemTicket } from '~/composables/ticket/useTicketGlobal';
 
 
 const CONTACT_STATUSES = [
