@@ -1,4 +1,4 @@
-import type { ApiResponse } from "~/api/api-response";
+import type { ApiResponse } from "~/services/api-response";
 import type { DTO_RouteNameToConfig, Route, RouteName } from "~/types/route/route.interface";
 
 // M2_v2.F1

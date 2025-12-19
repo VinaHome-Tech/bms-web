@@ -1,4 +1,4 @@
-import { API_GetListOfficeByCompanyId } from "~/api/resource-service/office/bms-office.api";
+import { API_GetListOfficeByCompanyId } from "~/services/resource-service/office/bms-office.api";
 import { officeList } from "./useOfficeGlobal";
 
 export const useOfficeList = () => {

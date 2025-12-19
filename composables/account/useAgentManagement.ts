@@ -1,5 +1,5 @@
 import type { FormInstance } from "element-plus";
-import { API_CreateAgentAccount, API_DeleteAgent, API_GetListAgentByCompanyId, API_UpdateAgentAccount } from "~/api/identity-service/account/agent.api";
+import { API_CreateAgentAccount, API_DeleteAgent, API_GetListAgentByCompanyId, API_UpdateAgentAccount } from "~/services/identity-service/account/agent.api";
 import type { Agent } from "~/types/account/agent.interface";
 
 export const useAgentManagement = () => {

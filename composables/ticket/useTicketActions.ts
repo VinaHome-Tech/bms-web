@@ -1,5 +1,5 @@
 import { ref } from "vue";
-import { API_UpdateTickets } from "~/api/booking-service/ticket/bms_ticket.api";
+import { API_UpdateTickets } from "~/services/booking-service/ticket/bms_ticket.api";
 import { listItemTicket, localSelectedTickets } from "./useTicketGlobal";
 import { valueSelectedTrip } from "../trip/useTripGlobal";
 // import { useTicketLocal } from "./useTicketLocal";

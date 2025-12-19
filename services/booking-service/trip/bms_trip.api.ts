@@ -1,4 +1,4 @@
-import type { ApiResponse } from "~/api/api-response"
+import type { ApiResponse } from "~/services/api-response"
 import type { DTO_RQ_ChangeTimeTrip, TripItem } from "~/types/trip/trip.interface"
 
 export const API_GetListTripByRouteAndDate = async (company_id: string, data: {route_id: string, date: string | Date}): Promise<ApiResponse<TripItem[]>> => {

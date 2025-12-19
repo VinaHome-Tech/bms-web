@@ -1,4 +1,4 @@
-import { API_GetListRouteNameActionByCompanyId } from "~/api/resource-service/route/bms_route.api";
+import { API_GetListRouteNameActionByCompanyId } from "~/services/resource-service/route/bms_route.api";
 import type { RouteName } from "~/types/route/route.interface";
 
 export const useRouteList = () => {

@@ -1,4 +1,4 @@
-import type { ApiResponse } from "~/api/api-response"
+import type { ApiResponse } from "~/services/api-response"
 import type { Agent } from "~/types/account/agent.interface"
 
 // M2_v1.F6

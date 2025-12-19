@@ -1,5 +1,5 @@
 import type { FormInstance } from "element-plus";
-import { API_CreateSchedule, API_DeleteSchedule, API_GetListScheduleByCompanyId, API_UpdateSchedule } from "~/api/resource-service/schedule/bms_schedule.api";
+import { API_CreateSchedule, API_DeleteSchedule, API_GetListScheduleByCompanyId, API_UpdateSchedule } from "~/services/resource-service/schedule/bms_schedule.api";
 import type { Schedule } from "~/types/schedule/schedule.interface";
 
 export const useScheduleManagement = () => {

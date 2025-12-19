@@ -1,4 +1,4 @@
-import type { ApiResponse } from "~/api/api-response"
+import type { ApiResponse } from "~/services/api-response"
 import type { SeatChart, SeatChartName } from "~/types/seat/seat.interface"
 
 // M4_v2.F1
