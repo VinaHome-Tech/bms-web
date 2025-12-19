@@ -47,7 +47,7 @@ onMounted(async () => {
     <!-- Route Selection -->
     <div>
       <el-select 
-        v-model="valueSelectedRoute!"
+        v-model="valueSelectedRoute"
         :loading="loadingRouteNameAction"
         placeholder="Chọn tuyến"
         @change="handleChangeRoute"
