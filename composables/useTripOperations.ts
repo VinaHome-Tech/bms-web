@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {  confirmationDepart, deleteTrip, updateNote } from "~/api/tripAPI";
+// import {  confirmationDepart, deleteTrip, updateNote } from "~/api/tripAPI";
 // import type { DTO_RQ_ChangeTimeTrip } from "~/types/tripType";
 import { ElMessageBox } from 'element-plus'
 import { selectedTrip, tripList } from './useTripManagement';
-import { getTicketsByTripToPrint } from "~/api/ticketAPI";
+// import { getTicketsByTripToPrint } from "~/api/ticketAPI";
 import type { DTO_RP_TicketsToPrint } from "~/types/ticketType";
 import type { DTO_RQ_ChangeTimeTrip } from "~/types/trip/trip.interface";
 
@@ -62,17 +62,17 @@ export const useTripOperations = () => {
           type: 'warning',
         }
       );
-      const response = await deleteTrip(selectedTrip.value.trip_id);
+      // const response = await deleteTrip(selectedTrip.value.trip_id);
 
-      if (response.success) {
-        tripList.value = tripList.value.filter(
-          (trip) => trip.trip_id !== selectedTrip.value?.trip_id
-        );
-        selectedTrip.value = null;
-        notifySuccess('Xoá chuyến thành công');
-      } else {
-        notifyError('Xoá chuyến thất bại');
-      }
+      // if (response.success) {
+      //   tripList.value = tripList.value.filter(
+      //     (trip) => trip.trip_id !== selectedTrip.value?.trip_id
+      //   );
+      //   selectedTrip.value = null;
+      //   notifySuccess('Xoá chuyến thành công');
+      // } else {
+      //   notifyError('Xoá chuyến thất bại');
+      // }
     } catch (error) {
       if (error === 'cancel') {
         notifyInfo('Đã huỷ thao tác xoá');
@@ -98,18 +98,18 @@ export const useTripOperations = () => {
           type: 'info',
         }
       );
-      const response = await confirmationDepart(selectedTrip.value.trip_id);
+      // const response = await confirmationDepart(selectedTrip.value.trip_id);
 
-      if (response.success) {
-        tripList.value = tripList.value.map((trip) =>
-          trip.trip_id === selectedTrip.value?.trip_id
-            ? { ...trip, confirmation_depart: true }
-            : trip
-        );
-        notifySuccess('Xác nhận xuất bến thành công');
-      } else {
-        notifyError('Xác nhận xuất bến thất bại');
-      }
+      // if (response.success) {
+      //   tripList.value = tripList.value.map((trip) =>
+      //     trip.trip_id === selectedTrip.value?.trip_id
+      //       ? { ...trip, confirmation_depart: true }
+      //       : trip
+      //   );
+      //   notifySuccess('Xác nhận xuất bến thành công');
+      // } else {
+      //   notifyError('Xác nhận xuất bến thất bại');
+      // }
     } catch (error) {
       if (error === 'cancel') {
         notifyInfo('Đã huỷ thao tác xuất bến');
@@ -199,53 +199,53 @@ export const useTripOperations = () => {
       return;
     }
     try {
-      const response = await getTicketsByTripToPrint(selectedTrip.value.trip_id);
-      if (response.success) {
-        const tickets = response.result || [];
-        console.log(tickets);
-        const html = `
-        <html>
-          <head>
-            <title>Sơ đồ vé chuyến ${selectedTrip.value.route_name}</title>
-          </head>
-          <body>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-              <div>
-                <h2 style="font-size: 14px;">${selectedTrip.value.route_name}</h2>
-                <h2 style="font-size: 14px;">
-                  ${selectedTrip.value.departure_date
-            ? new Date(String(selectedTrip.value.departure_date)).toLocaleDateString('vi-VN')
-            : ''} 
-                  | ${selectedTrip.value.departure_time}
-                </h2>
-                <h2 style="font-size: 14px;">${selectedTrip.value.license_plate || ''}</h2>
-              </div>
-              <div>
-                <h2 style="font-size: 14px;">Tài xế: ${selectedTrip.value.driver?.map(d => d.name).join(', ') || ''}</h2>
-                <h2 style="font-size: 14px;">Phụ xe: ${selectedTrip.value.assistant?.map(a => a.name).join(', ') || ''}</h2>
-              </div>
-            </div>
-            ${buildSeatMapHtml(tickets)}
+      // const response = await getTicketsByTripToPrint(selectedTrip.value.trip_id);
+      // if (response.success) {
+      //   const tickets = response.result || [];
+      //   console.log(tickets);
+      //   const html = `
+      //   <html>
+      //     <head>
+      //       <title>Sơ đồ vé chuyến ${selectedTrip.value.route_name}</title>
+      //     </head>
+      //     <body>
+      //       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      //         <div>
+      //           <h2 style="font-size: 14px;">${selectedTrip.value.route_name}</h2>
+      //           <h2 style="font-size: 14px;">
+      //             ${selectedTrip.value.departure_date
+      //       ? new Date(String(selectedTrip.value.departure_date)).toLocaleDateString('vi-VN')
+      //       : ''} 
+      //             | ${selectedTrip.value.departure_time}
+      //           </h2>
+      //           <h2 style="font-size: 14px;">${selectedTrip.value.license_plate || ''}</h2>
+      //         </div>
+      //         <div>
+      //           <h2 style="font-size: 14px;">Tài xế: ${selectedTrip.value.driver?.map(d => d.name).join(', ') || ''}</h2>
+      //           <h2 style="font-size: 14px;">Phụ xe: ${selectedTrip.value.assistant?.map(a => a.name).join(', ') || ''}</h2>
+      //         </div>
+      //       </div>
+      //       ${buildSeatMapHtml(tickets)}
 
-            <script>
-              window.onafterprint = function() {
-                window.close();
-              };
-            </script>
-          </body>
-        </html>
-      `;
+      //       <script>
+      //         window.onafterprint = function() {
+      //           window.close();
+      //         };
+      //       </script>
+      //     </body>
+      //   </html>
+      // `;
 
-        const printWindow = window.open('', '', 'width=900,height=700');
-        if (printWindow) {
-          printWindow.document.write(html);
-          printWindow.document.close();
-          printWindow.focus();
-          printWindow.print();
-        }
-      } else {
-        notifyError(response.message || 'Lấy dữ liệu in phơi thất bại');
-      }
+      //   const printWindow = window.open('', '', 'width=900,height=700');
+      //   if (printWindow) {
+      //     printWindow.document.write(html);
+      //     printWindow.document.close();
+      //     printWindow.focus();
+      //     printWindow.print();
+      //   }
+      // } else {
+      //   notifyError(response.message || 'Lấy dữ liệu in phơi thất bại');
+      // }
     } catch (error) {
       console.error(error);
       notifyError('Lấy dữ liệu in phơi thất bại');
@@ -259,23 +259,23 @@ export const useTripOperations = () => {
       return;
     }
     try {
-      const response = await updateNote(selectedTrip.value.trip_id, newNote);
-      if (response.success) {
-        notifySuccess("Cập nhật ghi chú thành công");
-        if(response.result) {
-          selectedTrip.value = {
-            ...selectedTrip.value,
-            note: response.result,
-          };
-          tripList.value = tripList.value.map((t) =>
-            t.trip_id === selectedTrip.value?.trip_id
-              ? { ...t, note: response.result ?? t.note }
-              : t
-          );
-        }
-      } else {
-        notifyError(response.message || "Cập nhật ghi chú thất bại");
-      }
+      // const response = await updateNote(selectedTrip.value.trip_id, newNote);
+      // if (response.success) {
+      //   notifySuccess("Cập nhật ghi chú thành công");
+      //   if(response.result) {
+      //     selectedTrip.value = {
+      //       ...selectedTrip.value,
+      //       note: response.result,
+      //     };
+      //     tripList.value = tripList.value.map((t) =>
+      //       t.trip_id === selectedTrip.value?.trip_id
+      //         ? { ...t, note: response.result ?? t.note }
+      //         : t
+      //     );
+      //   }
+      // } else {
+      //   notifyError(response.message || "Cập nhật ghi chú thất bại");
+      // }
     } catch (error) {
       console.log(error)
       notifyError("Cập nhật ghi chú thất bại");

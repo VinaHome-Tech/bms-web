@@ -1,9 +1,9 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
-<script setup lang="ts">
+<!-- <script setup lang="ts">
 import { Plus, More, Calendar } from '@element-plus/icons-vue';
 import type { FormInstance, CheckboxValueType, FormRules } from 'element-plus'
-import { API_GetListRouteNameToConfigByCompanyId } from '~/api/resource-service/route/bms_route.api';
-import { API_GetListSeatChartNameByCompanyId } from '~/api/resource-service/seat/bms_seat.api';
+import { API_GetListRouteNameToConfigByCompanyId } from '~/api/bms-service/route/bms_route.api';
+import { API_GetListSeatChartNameByCompanyId } from '~/api/bms-service/seat/bms_seat.api';
 
 import { API_CreateFareConfig, API_DeleteFareConfig, API_GetListConfigFareByCompany, API_UpdateFareConfig } from '~/api/configFareAPI';
 import { API_GetListPointNameByRoute } from '~/api/pointAPI';
@@ -426,8 +426,8 @@ onMounted(async () => {
     await useUserStore.loadUserInfo()
     await fetchListConfigFare()
 })
-</script>
-<template>
+</script> -->
+<!-- <template>
     <section>
         <div class="flex justify-between items-center mb-2">
             <h3 class="text-xl font-semibold">Cấu hình điểm dừng</h3>
@@ -547,7 +547,7 @@ onMounted(async () => {
                     </div>
                 </div>
 
-                <!-- Empty state nếu không có tuyến -->
+ 
                 <div v-if="listConfigFare.length === 0 && !loadingListConfigFare" class="bg-white rounded-2xl shadow-xl p-12 text-center">
                     <svg class="mx-auto text-gray-400 mb-4" width="80" height="80" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="1.5">
@@ -627,7 +627,7 @@ onMounted(async () => {
                     </el-form-item>
 
                     <el-table :data="ruleForm.fare_configs" style="width: 100%" border>
-                        <!-- NƠI ĐI -->
+        
                         <el-table-column label="NƠI ĐI" width="250">
                             <template #default="scope">
                                 <el-popover placement="bottom" :width="400" trigger="click">
@@ -676,7 +676,7 @@ onMounted(async () => {
                             </template>
                         </el-table-column>
 
-                        <!-- NƠI ĐẾN -->
+               
                         <el-table-column label="NƠI ĐẾN" width="250">
                             <template #default="scope">
                                 <el-popover placement="bottom" :width="400" trigger="click">
@@ -726,8 +726,6 @@ onMounted(async () => {
                                 </el-popover>
                             </template>
                         </el-table-column>
-
-                        <!-- GIÁ PHÒNG ĐƠN -->
                         <el-table-column :label="ruleForm.double_room ? 'GIÁ PHÒNG ĐƠN' : 'GIÁ CHẶNG'">
                             <template #default="scope">
                                 <el-input v-model="scope.row.singleRoomPriceDisplay"
@@ -736,8 +734,6 @@ onMounted(async () => {
                                     @input="val => onSingleRoomPriceInput(val, scope.row)" />
                             </template>
                         </el-table-column>
-
-                        <!-- GIÁ PHÒNG ĐÔI - Chỉ hiển thị khi bán phòng đôi -->
                         <el-table-column v-if="ruleForm.double_room" label="GIÁ PHÒNG ĐÔI">
                             <template #default="scope">
                                 <el-input v-model="scope.row.doubleRoomPriceDisplay" placeholder="Giá phòng đôi"
@@ -746,7 +742,6 @@ onMounted(async () => {
                             </template>
                         </el-table-column>
 
-                        <!-- THAO TÁC -->
                         <el-table-column width="70">
                             <template #default="scope">
                                 <el-button type="danger" size="small" @click="removeFareConfigRow(scope.$index)">
@@ -755,7 +750,6 @@ onMounted(async () => {
                             </template>
                         </el-table-column>
 
-                        <!-- Hàng thêm mới -->
                         <template #append>
                             <div style="text-align: center; padding: 12px; background-color: #fafafa;">
                                 <el-button type="primary" size="small" :disabled="!listPoint.length"
@@ -782,8 +776,8 @@ onMounted(async () => {
             </template>
         </el-dialog>
     </section>
-</template>
-<style>
+</template> -->
+<!-- <style>
 .el-dialog__header {
     background-color: #0072bc;
     padding-bottom: 10px;
@@ -801,4 +795,4 @@ onMounted(async () => {
 .no-border-input :deep(.el-input__wrapper) {
     @apply border-none shadow-none focus:ring-0 hover:shadow-none;
 }
-</style>
+</style> -->
