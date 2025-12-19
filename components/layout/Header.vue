@@ -24,11 +24,11 @@ import IconPhone from '~/assets/icon/static/icon-phone.png'
 import IconDesk from '~/assets/icon/static/icon-desk.png'
 import IconSend from '~/assets/icon/static/icon-send.png'
 import type { Component } from 'vue'
-import { querySearchTickets } from '~/api/ticketAPI';
+// import { querySearchTickets } from '~/api/ticketAPI';
 import type { DTO_RP_SearchTicket } from '~/types/ticketType';
 import { formatDate } from '~/lib/formatDate';
 import { formatCurrency } from '~/lib/formatCurrency';
-import ChangePasswordDialog from '../dialog/ChangePasswordDialog.vue';
+// import ChangePasswordDialog from '../dialog/ChangePasswordDialog.vue';
 import SendCommentDialog from '../dialog/SendCommentDialog.vue';
 
 const Icons: Record<string, Component> = {
@@ -47,7 +47,7 @@ const Icons: Record<string, Component> = {
   DataAnalysis,
   Operation,
 };
-const { handleQueryTicket } = useTicketManagement();
+// const { handleQueryTicket } = useTicketManagement();
 // const { handleLogout } = useLogout();
 const { handleManualLogout } = useAuth();
 
@@ -222,13 +222,13 @@ const querySearch = (queryString: string, callback: (results: DTO_RP_SearchTicke
     try {
       console.log('Searching for:', queryString)
 
-      const response = await querySearchTickets(queryString, String(useUserStore.company_id ?? ''))
-      console.log('Search results:', response)
+      // const response = await querySearchTickets(queryString, String(useUserStore.company_id ?? ''))
+      // console.log('Search results:', response)
 
-      // ✅ THÊM: Gộp các vé có cùng phone và trip_id
-      const groupedResults = groupTicketsByPhoneAndTrip(response.result || [])
+      // // ✅ THÊM: Gộp các vé có cùng phone và trip_id
+      // const groupedResults = groupTicketsByPhoneAndTrip(response.result || [])
 
-      callback(groupedResults)
+      // callback(groupedResults)
 
     } catch (error) {
       console.error('Lỗi tìm kiếm vé:', error)
@@ -247,7 +247,7 @@ const querySearch = (queryString: string, callback: (results: DTO_RP_SearchTicke
 
 const handleSelectTicket = (item: Record<string, any>): void => {
   const ticket = item as DTO_RP_SearchTicket;
-  handleQueryTicket(ticket);
+  // handleQueryTicket(ticket);
 }
 
 
@@ -281,13 +281,13 @@ const handleMenuItemClick = async (routePath: string | undefined) => {
     window.location.href = routePath
   }
 }
-const {
-  dialogFormChangePassword,
-  loadingChangePassword,
-  handleOpenChangePasswordDialog,
-  handleClosedChangePasswordDialog,
-  handleSaveChangePasswordDialog
-} = useAccountManagement();
+// const {
+//   dialogFormChangePassword,
+//   loadingChangePassword,
+//   handleOpenChangePasswordDialog,
+//   handleClosedChangePasswordDialog,
+//   handleSaveChangePasswordDialog
+// } = useAccountManagement();
 const dialogFormSendComment = ref(false)
 onMounted(async () => {
   await useUserStore.loadUserInfo();
