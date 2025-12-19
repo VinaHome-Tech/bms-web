@@ -777,7 +777,15 @@ onMounted(async () => {
         </el-dialog>
     </section>
 </template> -->
-<!-- <style>
+<script setup lang="ts">
+
+</script>
+<template>
+    <section>
+        
+    </section>
+</template>
+<style>
 .el-dialog__header {
     background-color: #0072bc;
     padding-bottom: 10px;
@@ -795,4 +803,4 @@ onMounted(async () => {
 .no-border-input :deep(.el-input__wrapper) {
     @apply border-none shadow-none focus:ring-0 hover:shadow-none;
 }
-</style> -->
+</style>
