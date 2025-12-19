@@ -1,4 +1,4 @@
-import type { ApiResponse } from "~/api/APIResponse";
+import type { ApiResponse } from "~/api/api-response";
 import type { DTO_RP_LoginBMS } from "~/types/auth/auth.interface";
 import type { LoginFormType } from "~/types/authType";
 
