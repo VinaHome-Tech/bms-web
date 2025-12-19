@@ -6,8 +6,9 @@ import TripTabFinance from '../tabs/TripTabFinance.vue'
 import TripTabSeats from '../tabs/TripTabSeats.vue'
 import TripTabTransit from '../tabs/TripTabTransit.vue'
 import TripTabCargo from '../tabs/TripTabCargo.vue'
-import { useTicketList, listItemTicket } from '~/composables/ticket/useTicketList'
+import { useTicketList } from '~/composables/ticket/useTicketList'
 import type { TripItem } from '~/types/trip/trip.interface'
+import { listItemTicket } from '~/composables/ticket/useTicketGlobal'
 const {
     loadingListTicket,
     fetchListTicketByTripId
