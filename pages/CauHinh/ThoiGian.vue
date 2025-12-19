@@ -1,7 +1,7 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
 import { Plus, InfoFilled, Location, DCaret } from '@element-plus/icons-vue'
-import { API_GetListPointToConfigTimeByRoute, API_UpdatePointConfigTime } from '~/api/pointAPI';
+// import { API_GetListPointToConfigTimeByRoute, API_UpdatePointConfigTime } from '~/api/pointAPI';
 import type { DTO_RP_ItemPointConfigTime } from '~/types/pointType';
 import type { DTO_RP_ListRouteName, DTO_RP_ListRouteNameToConfig } from '~/types/routeType';
 const useUserStore = userStore()
@@ -28,16 +28,16 @@ const listPointConfigTime = ref<DTO_RP_ItemPointConfigTime[]>([])
 const loadingListPointConfigTime = ref(false)
 const fetchListPointToConfigTime = async (route_id: number) => {
     try {
-        loadingListPointConfigTime.value = true
-        const response = await API_GetListPointToConfigTimeByRoute(route_id);
-        if (response.success) {
-            listPointConfigTime.value = (response.result || []).map(point => ({
-                ...point,
-                time_gap: point.time_gap || '00:00'
-            }));
-        } else {
-            notifyError('Lỗi khi tải danh sách điểm');
-        }
+        // loadingListPointConfigTime.value = true
+        // const response = await API_GetListPointToConfigTimeByRoute(route_id);
+        // if (response.success) {
+        //     listPointConfigTime.value = (response.result || []).map(point => ({
+        //         ...point,
+        //         time_gap: point.time_gap || '00:00'
+        //     }));
+        // } else {
+        //     notifyError('Lỗi khi tải danh sách điểm');
+        // }
     } catch (error) {
         console.error('Error fetching point config times:', error)
         notifyError('Lỗi khi tải danh sách điểm')
@@ -106,14 +106,14 @@ const handleClose = () => {
 const handleSave = async () => {
     try {
         if (currentRoute.value && typeof currentRoute.value.id === 'number') {
-            const response = await API_UpdatePointConfigTime(currentRoute.value.id, listPointConfigTime.value)
-            if (response.success) {
-                // console.log('Saved data:', listPointConfigTime.value)
-                notifySuccess('Lưu cấu hình thành công')
-                handleClose()
-            } else {
-                notifyError(response.message || 'Lỗi khi lưu cấu hình')
-            }
+            // const response = await API_UpdatePointConfigTime(currentRoute.value.id, listPointConfigTime.value)
+            // if (response.success) {
+            //     // console.log('Saved data:', listPointConfigTime.value)
+            //     notifySuccess('Lưu cấu hình thành công')
+            //     handleClose()
+            // } else {
+            //     notifyError(response.message || 'Lỗi khi lưu cấu hình')
+            // }
         } else {
             notifyError('Không xác định được tuyến đường để lưu cấu hình')
         }
