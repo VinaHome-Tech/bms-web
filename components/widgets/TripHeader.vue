@@ -6,9 +6,10 @@ import { format, formatDate } from 'date-fns';
 import InputNote from '~/components/inputs/inputNote.vue';
 import ChangeTimeTrip from '~/components/dialog/ChangeTimeTrip.vue';
 import EditTripInformationDialog from '~/components/dialog/EditTripInformationDialog.vue';
-import { listItemTicket, useTicketList } from '~/composables/ticket/useTicketList';
+import { useTicketList } from '~/composables/ticket/useTicketList';
 import type { DTO_RQ_ChangeTimeTrip, TripItem } from '~/types/trip/trip.interface';
 import { API_CancelTrip, API_ChangeTimeTrip, API_UpdateTripNote } from '~/api/booking-service/trip/bms_trip.api';
+import { listItemTicket } from '~/composables/ticket/useTicketGlobal';
 const showRouteInfo = ref(false);
 const dialogEditTrip = ref(false);
 const handleViewRoute = () => {
