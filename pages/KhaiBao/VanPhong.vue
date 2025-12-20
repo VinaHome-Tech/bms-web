@@ -8,6 +8,7 @@ import { useOfficeManagement } from '~/composables/office/useOfficeManagement';
 import { useOfficeList } from '~/composables/office/useOfficeList';
 import { officeList } from '~/composables/office/useOfficeGlobal';
 import { useOfficeActions } from '~/composables/office/useOfficeActions';
+import InputText from '~/components/inputs/inputText.vue';
 definePageMeta({
     layout: 'default',
 })
@@ -49,7 +50,7 @@ const {
     loadingSubmit,
 } = useOfficeActions();
 const useUserStore = userStore();
-const direction = ref<DrawerProps['direction']>('rtl')
+const direction = ref<DrawerProps[ 'direction' ]>('rtl')
 
 const rules = reactive<FormRules>({
     name: [
@@ -167,40 +168,17 @@ onMounted(async () => {
         <el-drawer v-model="drawer" :direction="direction" :before-close="cancelClick">
             <template #header>
                 <div class="font-semibold text-lg text-black">{{ isEditMode ? 'Chỉnh sửa văn phòng' : 'Thêm văn phòng'
-                    }}</div>
+                }}</div>
             </template>
             <template #default>
 
                 <el-form ref="ruleFormRef" :model="ruleForm" :rules="rules" label-width="auto">
                     <div>
                         <h2 class="text-gray-500 font-medium mb-5">THÔNG TIN VĂN PHÒNG</h2>
-
-                        <el-form-item prop="name" label-position="top">
-                            <template #label>
-                                <label class="text-sm font-medium text-gray-700">Tên văn phòng</label>
-                            </template>
-                            <el-input v-model="ruleForm.name" />
-                        </el-form-item>
-
-                        <el-form-item prop="code" label-position="top">
-                            <template #label>
-                                <label class="text-sm font-medium text-gray-700">Mã văn phòng</label>
-                            </template>
-                            <el-input v-model="ruleForm.code" />
-                        </el-form-item>
-
-                        <el-form-item prop="address" label-position="top">
-                            <template #label>
-                                <label class="text-sm font-medium text-gray-700">Địa chỉ</label>
-                            </template>
-                            <el-input v-model="ruleForm.address" />
-                        </el-form-item>
-                        <el-form-item prop="note" label-position="top">
-                            <template #label>
-                                <label class="text-sm font-medium text-gray-700">Ghi chú</label>
-                            </template>
-                            <el-input v-model="ruleForm.note" />
-                        </el-form-item>
+                        <InputText v-model="ruleForm.name" label="Tên văn phòng" prop="name" />
+                        <InputText v-model="ruleForm.code" label="Mã văn phòng" prop="code" />
+                        <InputText v-model="ruleForm.address" label="Địa chỉ văn phòng" prop="address" />
+                        <InputText v-model="ruleForm.note" label="Ghi chú" prop="note" type="textarea" />
 
                         <el-form-item prop="status" label-position="top">
                             <template #label>
@@ -227,7 +205,7 @@ onMounted(async () => {
                                     <el-input v-model="phone.phone" :placeholder="`Số điện thoại ${index + 1}`" />
                                 </el-form-item>
 
-                                <el-form-item :prop="`phones.${index}.type`" class="w-40 mb-0">
+                                <el-form-item :prop="`phones.${index}.type`" class="w-[30%] mb-0">
                                     <el-select v-model="phone.type" placeholder="Loại">
                                         <el-option label="Di động" value="mobile" />
                                         <el-option label="Cố định" value="landline" />
@@ -247,7 +225,8 @@ onMounted(async () => {
             <template #footer>
                 <div style="flex: auto">
                     <el-button @click="resetForm(ruleFormRef)">Thoát</el-button>
-                    <el-button type="primary" :icon="Checked" :loading="loadingSubmit" @click="handleSubmitOffice(ruleFormRef)">
+                    <el-button type="primary" :icon="Checked" :loading="loadingSubmit"
+                        @click="handleSubmitOffice(ruleFormRef)">
                         {{ loadingSubmit ? 'Đang lưu...' : 'Lưu thông tin' }}
                     </el-button>
                 </div>
