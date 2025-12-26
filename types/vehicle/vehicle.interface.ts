@@ -1,5 +1,5 @@
 export interface Vehicle {
-    id?: number;
+    id?: string;
     license_plate?: string;
     engine_number?: string;
     frame_number?: string;
@@ -7,11 +7,14 @@ export interface Vehicle {
     color?: string;
     brand?: string;
     phone?: string;
-    registration_expiry?: Date;
-    maintenance_due?: Date;
+    registration_expiry?: string;
+    maintenance_due?: string;
+    note?: string;
+    created_at?: string;
+    updated_at?: string;
 }
 export interface DTO_RQ_Vehicle {
-    id?: number;
+    id?: string;
     license_plate?: string;
     engine_number?: string;
     frame_number?: string;
@@ -19,8 +22,9 @@ export interface DTO_RQ_Vehicle {
     color?: string;
     brand?: string;
     phone?: string;
-    registration_expiry?: Date;
-    maintenance_due?: Date;
+    registration_expiry?: string;
+    maintenance_due?: string;
+    note?: string;
 }
 
 export interface LicensePlateVehicle {

@@ -4,7 +4,6 @@ import {
 } from '@element-plus/icons-vue'
 import type { DrawerProps, FormRules } from 'element-plus'
 import { format } from 'date-fns'
-import { useOfficeManagement } from '~/composables/office/useOfficeManagement';
 import { useOfficeList } from '~/composables/office/useOfficeList';
 import { officeList } from '~/composables/office/useOfficeGlobal';
 import { useOfficeActions } from '~/composables/office/useOfficeActions';
@@ -12,24 +11,7 @@ import InputText from '~/components/inputs/inputText.vue';
 definePageMeta({
     layout: 'default',
 })
-const {
-    // drawer,
-    offices,
-    loadingData,
-    // ruleFormRef,
-    // isEditMode,
-    // ruleForm,
-    // resetForm,
-    // cancelClick,
-    // addPhone,
-    // removePhone,
-    // handleDelete,
-    // handleAdd,
-    // handleEdit,
-    submitForm,
-    // loadingSubmit,
-    // fetchListOffice,
-} = useOfficeManagement();
+
 const {
     loadingOfficeList,
     fetchListOffice,

@@ -1,5 +1,21 @@
 export interface Route {
-    id?: number;
+    id?: string;
+    base_price?: number;
+    distance?: number;
+    e_ticket_price?: number;
+    journey?: string;
+    note?: string;
+    route_name?: string;
+    route_name_e_ticket?: string;
+    short_name?: string;
+    status?: boolean;
+    display_order?: number;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface DTO_RQ_Route {
+    id?: string;
     base_price?: number;
     distance?: number;
     e_ticket_price?: number;

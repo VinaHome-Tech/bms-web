@@ -100,7 +100,7 @@ export const useOfficeActions = () => {
                 notifySuccess('Xóa văn phòng thành công!');
                 officeList.value.splice(index, 1);
             } else {
-                notifyError(response.message || 'Xóa văn phòng thất bại!');
+                notifyWarning(response.message || 'Xóa văn phòng thất bại!');
             }
         } catch (error) {
             if (error !== 'cancel' && error !== 'close') {

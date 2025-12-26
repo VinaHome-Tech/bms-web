@@ -7,29 +7,49 @@ import Select from '~/components/inputs/select.vue';
 import InputDate from '~/components/inputs/inputDate.vue';
 import type { DrawerProps, FormRules } from 'element-plus'
 import { format } from 'date-fns'
-import { useVehicleManagement } from '~/composables/vehicle/useVehicleManagement';
+import { useVehicleActions } from '~/composables/vehicle/useVehicleActions';
+import { vehicleList } from '~/composables/vehicle/useVehicleGlobal';
+import { useVehicleList } from '~/composables/vehicle/useVehicleList';
 definePageMeta({
     layout: 'default',
 })
+// const {
+//     drawer,
+//     isEditMode,
+//     vehicles,
+//     loadingData,
+//     loadingSubmit,
+//     ruleFormRef,
+//     ruleForm,
+//     handleAdd,
+//     handleEdit,
+//     handleDelete,
+//     submitForm,
+//     resetForm,
+//     cancelClick,
+//     fetchListVehicles,
+// } = useVehicleManagement();
 const {
+    handleSubmitVehicle,
+    ruleForm,
+    ruleFormRef,
     drawer,
     isEditMode,
-    vehicles,
-    loadingData,
-    loadingSubmit,
-    ruleFormRef,
-    ruleForm,
     handleAdd,
     handleEdit,
-    handleDelete,
-    submitForm,
     resetForm,
     cancelClick,
-    fetchListVehicles,
-} = useVehicleManagement();
-const useUserStore = userStore();
+    handleDelete,
+    loadingSubmit,
+} = useVehicleActions();
+const {
+    loadingData,
+    fetchListVehicle,
+} = useVehicleList();
 
-const direction = ref<DrawerProps['direction']>('rtl')
+const useUserStore = userStore();
+const direction = ref<DrawerProps[ 'direction' ]>('rtl')
+
 const rules = ref<FormRules>({
     license_plate: [
         { required: true, message: 'Vui lòng nhập biển số xe', trigger: 'blur' },
@@ -41,7 +61,7 @@ const rules = ref<FormRules>({
 
 const search = ref('')
 const filterTableData = computed(() =>
-    vehicles.value.filter(
+    vehicleList.value.filter(
         (data) =>
             !search.value ||
             (data.license_plate ?? '').toLowerCase().includes(search.value.toLowerCase()) ||
@@ -86,7 +106,7 @@ const optionsBrand = [
 ];
 onMounted(async () => {
     await useUserStore.loadUserInfo();
-    await fetchListVehicles(useUserStore.company_id ?? '');
+    await fetchListVehicle(useUserStore.company_id ?? '');
 });
 </script>
 <template>
@@ -104,16 +124,11 @@ onMounted(async () => {
             <el-table-column label="Trạng thái" prop="status">
                 <template #default="{ row }">
                     <el-tag :type="getStatusTagType(row.status)" effect="light">
-                        {{optionsStatus.find(option => option.value === row.status)?.label || 'Không rõ'}}
+                        {{optionsStatus.find(option => option.value === row.status)?.label || 'N/A'}}
                     </el-tag>
                 </template>
             </el-table-column>
 
-            <el-table-column label="Màu xe" prop="color">
-                <template #default="scope">
-                    {{ scope.row.color }}
-                </template>
-            </el-table-column>
             <el-table-column label="Hãng xe" prop="brand">
                 <template #default="scope">
                     <span v-if="scope.row.brand">
@@ -122,23 +137,40 @@ onMounted(async () => {
                 </template>
             </el-table-column>
 
-            <el-table-column label="Hạn bảo dưỡng" prop="maintenance_due">
+            <el-table-column label="Hạn bảo dưỡng">
                 <template #default="{ row }">
                     {{
                         row.maintenance_due
-                            ? format(new Date(row.maintenance_due), 'dd/MM/yyyy')
-                            : ''
+                            ? format(row.maintenance_due, 'dd/MM/yyyy')
+                        : ''
                     }}
                 </template>
             </el-table-column>
 
+
+
+
             <el-table-column label="Hạn đăng kiểm" prop="registration_expiry">
                 <template #default="{ row }">
                     {{
-                        row.registration_expiry
+                        row.maintenance_due
                             ? format(new Date(row.registration_expiry), 'dd/MM/yyyy')
                             : ''
                     }}
+                </template>
+            </el-table-column>
+            <el-table-column>
+                <template #default="{ row }">
+                    <div class="flex flex-col text-xs text-gray-600 leading-tight">
+                        <span>
+                            <span class="font-medium text-gray-700">Tạo:</span>
+                            {{ format(new Date(row.created_at), 'dd/MM/yyyy') }}
+                        </span>
+                        <span>
+                            <span class="font-medium text-gray-700">Sửa:</span>
+                            {{ format(new Date(row.updated_at), 'dd/MM/yyyy') }}
+                        </span>
+                    </div>
                 </template>
             </el-table-column>
 
@@ -184,7 +216,8 @@ onMounted(async () => {
             <template #footer>
                 <div style="flex: auto">
                     <el-button @click="resetForm(ruleFormRef)">Thoát</el-button>
-                    <el-button type="primary" :icon="Checked" :loading="loadingSubmit" @click="submitForm(ruleFormRef)">
+                    <el-button type="primary" :icon="Checked" :loading="loadingSubmit"
+                        @click="handleSubmitVehicle(ruleFormRef)">
                         {{ loadingSubmit ? 'Đang lưu...' : 'Lưu thông tin' }}
                     </el-button>
                 </div>
