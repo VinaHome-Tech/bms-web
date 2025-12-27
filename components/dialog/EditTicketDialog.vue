@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import type { CancelTicketType } from '~/types/ticketType'
+// import type { CancelTicketType } from '~/types/ticketType'
 import { Checked, Printer, Delete } from '@element-plus/icons-vue'
-import type { AgentNameType } from '~/types/agentType';
-import { getAgencyListByCompany } from '~/services/agentAPI';
-import { formatCurrency, formatCurrencyWithoutSymbol } from '~/lib/formatCurrency';
-import type { TabsPaneContext } from 'element-plus'
-import { API_GetHistoryTicket } from '~/services/historyTicketAPI';
-import type { DTO_RP_HistoryTicket } from '~/types/historyTicketType';
+// import type { AgentNameType } from '~/types/agentType';
+// import { getAgencyListByCompany } from '~/services/agentAPI';
+import { formatCurrency } from '~/lib/formatCurrency';
+// import type { TabsPaneContext } from 'element-plus'
+// import { API_GetHistoryTicket } from '~/services/historyTicketAPI';
+// import type { DTO_RP_HistoryTicket } from '~/types/historyTicketType';
 import { format } from 'date-fns';
 import type { DTO_RQ_Ticket, TicketItem } from '~/types/ticket/ticket.interface';
-import { useTicketActions } from '~/composables/ticket/useTicketActions';
+// import { useTicketActions } from '~/composables/ticket/useTicketActions';
 function getActLabel(act: string): string {
     switch (act) {
         case 'UPDATE':

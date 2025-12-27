@@ -28,6 +28,7 @@ export const useVehicleActions = () => {
         isEditMode.value = false;
         currentEditId.value = null;
         ruleForm.value = {
+            
             license_plate: undefined,
             engine_number: undefined,
             frame_number: undefined,

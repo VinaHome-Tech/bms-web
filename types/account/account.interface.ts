@@ -5,9 +5,8 @@ export interface AcceptApp {
     driver?: boolean;
 }
 export interface Account {
-    id?: number;
+    id?: string;
     username?: string;
-    password?: string;
     phone?: string;
     email?: string;
     name?: string;
@@ -16,7 +15,30 @@ export interface Account {
     gender?: number;
     role?: string;
     status?: boolean;
-    accept_app?: AcceptApp;
+    created_at?: string;
+    updated_at?: string;
+    accept_bms?: boolean;
+    accept_cms?: boolean;
+    accept_ams?: boolean;
+    accept_driver?: boolean;
+}
+
+export interface DTO_RQ_Account {
+    id?: string;
+    username?: string;
+    phone?: string;
+    email?: string;
+    name?: string;
+    address?: string;
+    date_of_birth?: Date;
+    gender?: number;
+    role?: string;
+    status?: boolean;
+    password?: string;
+    accept_bms?: boolean;
+    accept_cms?: boolean;
+    accept_ams?: boolean;
+    accept_driver?: boolean;
 }
 
 export interface Driver {
@@ -44,5 +66,9 @@ export interface AccountInfo {
 export interface ChangePassword {
     old_password?: string;
     new_password?: string;
+}
+export interface DTO_RQ_ChangePassword {
+    new_password?: string;
+    confirm_password?: string;
 }
 

@@ -29,13 +29,13 @@ const handleClick = async (tab: TabsPaneContext, event: Event) => {
     if (tab.props.name === '1') {
         await fetchListTicketByTripId(valueSelectedTrip.value as TripItem)
     } else if (tab.props.name === '2') {
-
+        console.log('Hành khách tab clicked')
     } else if (tab.props.name === '3') {
-
+        console.log('Trung chuyển tab clicked')
     } else if (tab.props.name === '4') {
-
+        console.log('Hàng hoá tab clicked')
     } else if (tab.props.name === '5') {
-
+        console.log('Thu chi chuyến tab clicked')
     }
 }
 </script>

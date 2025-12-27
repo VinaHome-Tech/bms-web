@@ -1,6 +1,5 @@
-<!-- pages/trip-layout-structure.vue -->
+
 <script setup lang="ts">
-import { ref } from 'vue'
 import SidebarFilter from '~/components/widgets/SidebarFilter.vue'
 import TripHeader from '~/components/widgets/TripHeader.vue'
 import TripContent from '~/components/widgets/TripContent.vue'

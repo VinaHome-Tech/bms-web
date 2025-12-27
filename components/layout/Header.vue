@@ -118,7 +118,7 @@ const menuItems = [
     children: [
       { label: 'Văn phòng', index: '3-1', to: '/KhaiBao/VanPhong' },
       { label: 'Phương tiện', index: '3-2', to: '/KhaiBao/PhuongTien' },
-      { label: 'Tuyến', index: '3-3', to: '/KhaiBao/Tuyen' },
+      // { label: 'Tuyến', index: '3-3', to: '/KhaiBao/Tuyen' },
       { label: 'Nhân viên', index: '3-5', to: '/KhaiBao/NhanVien' },
       { label: 'Đại lý', index: '3-6', to: '/KhaiBao/DaiLy' },
       { label: 'Lịch chạy', index: '3-7', to: '/KhaiBao/LichChay' },

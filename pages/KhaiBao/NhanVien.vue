@@ -3,33 +3,43 @@ import {
     Plus, Operation, Checked
 } from '@element-plus/icons-vue'
 import type { DrawerProps, FormRules } from 'element-plus'
-import type { EmployeeType } from '~/types/employeeType';
 import InputText from '~/components/inputs/inputText.vue';
 import InputDate from '~/components/inputs/inputDate.vue';
 import Select from '~/components/inputs/select.vue';
-// import { changePasswordStaff } from '~/api/employeeAPI';
 import { format } from 'date-fns'
-import type { ChangePasswordStaffType } from '~/types/accountType';
-import { useAccountManagement } from "~/composables/account/useAccountManagement";
+import { useAccountList } from '~/composables/account/useAccountList';
+import { accountList } from '~/composables/account/useAccountGlobal';
+import { useAccountActions } from '~/composables/account/useAccountActions';
+import DialogChangePasswordAccount from '~/components/dialog/DialogChangePasswordAccount.vue';
 definePageMeta({
     layout: 'default',
 })
+
 const {
+    isEditMode,
+    ruleFormRef,
+    drawer,
+    loadingSubmit,
+    ruleForm,
     handleAdd,
     handleEdit,
-    handleDelete,
-    submitForm,
-    resetForm,
+    handleSubmitAccount,
     cancelClick,
-    drawer,
-    isEditMode,
-    accounts,
+    resetForm,
+    handleDelete,
+    handleUnlock,
+    handleLock,
+
+    dialogChangePasswordAccount,
+    selectedAccountId,
+    loadingSubmitChangePassword,
+    handleChangePassword,
+    handleSubmitChangePassword,
+} = useAccountActions();
+const {
     loadingData,
-    loadingSubmit,
-    ruleFormRef,
-    ruleForm,
-    fetchListAccounts,
-} = useAccountManagement();
+    fetchListAccount,
+} = useAccountList();
 const useUserStore = userStore();
 const direction = ref<DrawerProps[ 'direction' ]>('rtl')
 const rules = reactive<FormRules>({
@@ -49,53 +59,19 @@ const rules = reactive<FormRules>({
         { required: true, message: 'Vui lòng nhập số điện thoại', trigger: 'blur' },
         { pattern: /^0[0-9]{9}$/, message: 'Số điện thoại không hợp lệ', trigger: [ 'blur', 'change' ] }
     ],
+    role: [
+        { required: true, message: 'Vui lòng chọn vai trò', trigger: 'change' },
+    ],
 });
 const search = ref("");
 const filterTableData = computed(() =>
-  accounts.value.filter(
-    (data) =>
-      !search.value ||
-      (data.name ?? "").toLowerCase().includes(search.value.toLowerCase()) ||
-      (data.phone ?? "").toLowerCase().includes(search.value.toLowerCase()))
+    accountList.value.filter(
+        (data) =>
+            !search.value ||
+            (data.name ?? "").toLowerCase().includes(search.value.toLowerCase()) ||
+            (data.phone ?? "").toLowerCase().includes(search.value.toLowerCase()))
 );
 
-
-
-const dialogChangePasswordStaff = ref(false);
-const selectedUserId = ref<string | null>(null);
-const loadingChangePassword = ref(false);
-const handleChangePassword = (index: number, row: EmployeeType) => {
-    console.log(row);
-    dialogChangePasswordStaff.value = true;
-    selectedUserId.value = row.id;
-};
-const handleSavePassword = async (data: ChangePasswordStaffType) => {
-    loadingChangePassword.value = true;
-    try {
-        // const response = await changePasswordStaff(data);
-        // if (response.success) {
-        //     ElNotification({
-        //         message: h('p', { style: 'color: teal' }, 'Đổi mật khẩu thành công!'),
-        //         type: 'success',
-        //     });
-        // } else {
-        //     ElNotification({
-        //         message: h('p', { style: 'color: red' }, response.message || 'Đổi mật khẩu thất bại!'),
-        //         type: 'error',
-        //     });
-        // }
-    } catch (error) {
-        console.error('Error changing password:', error);
-        ElNotification({
-            message: h('p', { style: 'color: red' }, 'Đã xảy ra lỗi khi đổi mật khẩu!'),
-            type: 'error',
-        });
-    } finally {
-        loadingChangePassword.value = false;
-        dialogChangePasswordStaff.value = false;
-        selectedUserId.value = null;
-    }
-}
 const categoryGenderOptions = [
     { label: 'Nam', value: 1 },
     { label: 'Nữ', value: 2 },
@@ -109,7 +85,7 @@ const categoryRoleOptions = [
 ];
 onMounted(async () => {
     await useUserStore.loadUserInfo();
-    await fetchListAccounts(useUserStore.company_id ?? '');
+    await fetchListAccount(useUserStore.company_id ?? '');
 });
 
 </script>
@@ -127,19 +103,31 @@ onMounted(async () => {
                     <span class="font-semibold">{{ scope.row.name }}</span>
                     <br />
                     <span class="text-gray-500 text-sm">{{ scope.row.username }}</span>
+                    <br />
+                    <el-tag :type="scope.row.role === 'ADMIN' ? 'danger'
+                        : scope.row.role === 'STAFF' ? 'warning'
+                            : scope.row.role === 'DRIVER' ? 'success'
+                                : scope.row.role === 'ASSISTANT' ? 'info'
+                                    : undefined">
+                        {{ scope.row.role === 'ADMIN' ? 'Quản trị viên'
+                            : scope.row.role === 'STAFF' ? 'Nhân viên'
+                                : scope.row.role === 'DRIVER' ? 'Tài xế'
+                                    : scope.row.role === 'ASSISTANT' ? 'Phụ xe'
+                                        : 'Khác' }}
+                    </el-tag>
                 </template>
             </el-table-column>
-            <el-table-column label="Thông tin liên hệ" width="250">
+            <el-table-column label="Thông tin liên hệ">
                 <template #default="scope">
                     <span class="text-gray-500">{{ scope.row.phone }}</span>
                     <br />
                     <span class="text-gray-500">{{ scope.row.email }}</span>
+
                 </template>
             </el-table-column>
             <el-table-column label="Thông tin cá nhân">
                 <template #default="scope">
-                    <el-tag
-                        :type="scope.row.gender === 1 ? 'success' : scope.row.gender === 2 ? 'danger' : 'info'"
+                    <el-tag :type="scope.row.gender === 1 ? 'success' : scope.row.gender === 2 ? 'danger' : 'info'"
                         disable-transitions>
                         {{
                             scope.row.gender === 1
@@ -154,6 +142,8 @@ onMounted(async () => {
                     <el-tag class="text-gray-500" v-if="scope.row.date_of_birth">{{ scope.row.date_of_birth ? format(new
                         Date(scope.row.date_of_birth),
                         'dd/MM/yyyy') : '' }}</el-tag>
+                    <br />
+                    <span class="text-gray-500">{{ scope.row.address }}</span>
                 </template>
             </el-table-column>
 
@@ -164,39 +154,34 @@ onMounted(async () => {
                     </el-tag>
                 </template>
             </el-table-column>
-            <el-table-column label="Vai trò">
+            <el-table-column label="Quyền truy cập">
                 <template #default="scope">
-                    <el-tag :type="scope.row.role === 'ADMIN' ? 'danger'
-                        : scope.row.role === 'STAFF' ? 'warning'
-                            : scope.row.role === 'DRIVER' ? 'success'
-                                : scope.row.role === 'ASSISTANT' ? 'info'
-                                    : undefined">
-                        {{ scope.row.role === 'ADMIN' ? 'Quản trị viên'
-                            : scope.row.role === 'STAFF' ? 'Nhân viên'
-                                : scope.row.role === 'DRIVER' ? 'Tài xế'
-                                    : scope.row.role === 'ASSISTANT' ? 'Phụ xe'
-                                        : 'Khác' }}
-                    </el-tag>
-
-                </template>
-            </el-table-column>
-
-
-            <el-table-column label="Quyền truy cập" align="center">
-                <template #default="scope">
-                    <div class="flex flex-wrap gap-1 justify-center">
-                        <el-tag v-if="scope.row.accept_app?.bms" type="success" size="small">BMS</el-tag>
-                        <el-tag v-if="scope.row.accept_app?.cms" type="success" size="small">CMS</el-tag>
-                        <el-tag v-if="scope.row.accept_app?.ams" type="success" size="small">AMS</el-tag>
-                        <el-tag v-if="scope.row.accept_app?.driver" type="success" size="small">Driver</el-tag>
-                        <span v-if="!scope.row.accept_app?.bms && !scope.row.accept_app?.cms &&
-                            !scope.row.accept_app?.ams && !scope.row.accept_app?.driver" class="text-gray-400 text-xs">
+                    <div class="flex flex-wrap gap-1 ">
+                        <el-tag v-if="scope.row.accept_bms" type="success" size="small">BMS</el-tag>
+                        <el-tag v-if="scope.row.accept_cms" type="success" size="small">CMS</el-tag>
+                        <el-tag v-if="scope.row.accept_ams" type="success" size="small">AMS</el-tag>
+                        <el-tag v-if="scope.row.accept_driver" type="success" size="small">Driver</el-tag>
+                        <span v-if="!scope.row.accept_bms && !scope.row.accept_cms &&
+                            !scope.row.accept_ams && !scope.row.accept_driver" class="text-gray-400 text-xs">
                             Không có quyền
                         </span>
                     </div>
                 </template>
             </el-table-column>
-            <el-table-column label="Địa chỉ" prop="address" />
+            <el-table-column>
+                <template #default="{ row }">
+                    <div class="flex flex-col text-xs text-gray-600 leading-tight">
+                        <span>
+                            <span class="font-medium text-gray-700">Tạo:</span>
+                            {{ format(new Date(row.created_at), 'dd/MM/yyyy') }}
+                        </span>
+                        <span>
+                            <span class="font-medium text-gray-700">Sửa:</span>
+                            {{ format(new Date(row.updated_at), 'dd/MM/yyyy') }}
+                        </span>
+                    </div>
+                </template>
+            </el-table-column>
 
             <el-table-column align="right">
 
@@ -264,23 +249,23 @@ onMounted(async () => {
                                     inactive-text="Ngưng kích hoạt" size="large" />
                             </el-form-item>
                             <h2 class="text-gray-500 font-medium mb-5">CÁC ỨNG DỤNG CẦN TRUY CẬP</h2>
-                            <el-form-item prop="accept_app.bms" label-position="top">
+                            <el-form-item prop="accept_bms" label-position="top">
                                 <template #label>
                                     <span class="text-sm font-medium text-gray-700">Phần mềm Quản lý bán vé</span>
                                 </template>
-                                <el-switch :model-value="Boolean(ruleForm.accept_app?.bms)" @change="val => (ruleForm.accept_app = { ...(ruleForm.accept_app || {}), bms: Boolean(val) })" size="large" />
+                                <el-switch v-model="ruleForm.accept_bms" size="large" />
                             </el-form-item>
-                            <el-form-item prop="accept_app.cms" label-position="top">
+                            <el-form-item prop="accept_cms" label-position="top">
                                 <template #label>
                                     <span class="text-sm font-medium text-gray-700">Phần mềm Quản lý hàng hóa</span>
                                 </template>
-                                <el-switch :model-value="Boolean(ruleForm.accept_app?.cms)" @change="val => (ruleForm.accept_app = { ...(ruleForm.accept_app || {}), cms: Boolean(val) })" size="large" />
+                                <el-switch v-model="ruleForm.accept_cms" size="large" />
                             </el-form-item>
-                            <el-form-item prop="accept_app.driver" label-position="top">
+                            <el-form-item prop="accept_driver" label-position="top">
                                 <template #label>
                                     <span class="text-sm font-medium text-gray-700">Ứng dụng Tài xế đón trả khách</span>
                                 </template>
-                                <el-switch :model-value="Boolean(ruleForm.accept_app?.driver)" @change="val => (ruleForm.accept_app = { ...(ruleForm.accept_app || {}), driver: Boolean(val) })" size="large" />
+                                <el-switch v-model="ruleForm.accept_driver" size="large" />
                             </el-form-item>
                         </el-col>
                     </el-row>
@@ -289,15 +274,16 @@ onMounted(async () => {
             <template #footer>
                 <div style="flex: auto">
                     <el-button @click="resetForm(ruleFormRef)">Thoát</el-button>
-                    <el-button type="primary" :icon="Checked" :loading="loadingSubmit" @click="submitForm(ruleFormRef)" >
+                    <el-button type="primary" :icon="Checked" :loading="loadingSubmit"
+                        @click="handleSubmitAccount(ruleFormRef)">
                         {{ loadingSubmit ? 'Đang lưu...' : 'Lưu thông tin' }}
                     </el-button>
                 </div>
             </template>
         </el-drawer>
 
-        <DialogChangePasswordStaffDialog v-model="dialogChangePasswordStaff" :loading="loadingChangePassword"
-            :user-id="selectedUserId" @save="handleSavePassword" />
+        <DialogChangePasswordAccount v-model="dialogChangePasswordAccount" :loading="loadingSubmitChangePassword"
+            :user-id="selectedAccountId" @save="handleSubmitChangePassword" />
     </section>
 </template>
 <style scoped>
