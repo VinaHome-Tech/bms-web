@@ -6,26 +6,46 @@ import {
     Plus, Delete, Edit, Checked
 } from '@element-plus/icons-vue'
 import { useAgentManagement } from '~/composables/account/useAgentManagement';
+import { useAgentActions } from '~/composables/agent/useAgentActions';
+import { useAgentList } from '~/composables/agent/useAgentList';
+import { agentList } from '~/composables/agent/useAgentGlobal';
 definePageMeta({
     layout: 'default',
 })
+// const {
+//     drawer,
+//     isEditMode,
+//     agents,
+//     loadingData,
+//     loadingSubmit,
+//     ruleFormRef,
+//     ruleForm,
+//     handleAdd,
+//     handleEdit,
+//     handleDelete,
+//     fetchListAgents,
+//     submitForm,
+//     cancelClick,
+//     resetForm,
+
+// } = useAgentManagement();
 const {
-    drawer,
-    isEditMode,
-    agents,
     loadingData,
-    loadingSubmit,
+    fetchListAgent,
+} = useAgentList();
+const {
+    isEditMode,
     ruleFormRef,
+    drawer,
+    loadingSubmit,
     ruleForm,
     handleAdd,
     handleEdit,
-    handleDelete,
-    fetchListAgents,
-    submitForm,
-    cancelClick,
     resetForm,
-
-} = useAgentManagement();
+    cancelClick,
+    handleDelete,
+    handleSubmitAgent,
+} = useAgentActions();
 const useUserStore = userStore();
 const direction = ref<DrawerProps[ 'direction' ]>('rtl')
 
@@ -47,7 +67,7 @@ const rules: FormRules = {
 
 const search = ref('')
 const filterTableData = computed(() =>
-    agents.value.filter(
+    agentList.value.filter(
         (data) =>
             !search.value ||
             (data.name ?? '').toLowerCase().includes(search.value.toLowerCase())
@@ -58,7 +78,7 @@ const filterTableData = computed(() =>
 
 onMounted(async () => {
     await useUserStore.loadUserInfo();
-    await fetchListAgents(useUserStore.company_id ?? '');
+    await fetchListAgent(useUserStore.company_id ?? '');
 });
 </script>
 <template>
@@ -70,9 +90,27 @@ onMounted(async () => {
         <el-table v-loading="loadingData" element-loading-text="Đang tải dữ liệu..." :data="filterTableData"
             style="width: 100%">
             <el-table-column type="index" label="STT" width="50" />
-            <el-table-column label="Tên đại lý" prop="name" />
-            <el-table-column label="Tài khoản" prop="username" />
-            <el-table-column label="Số điện thoại" prop="phone" />
+            <el-table-column label="Đại lý">
+                <template #default="scope">
+                    <span class="font-medium">{{ scope.row.name }}</span>
+                    <br/>
+                    <span class="text-sm text-gray-500">{{ scope.row.username }}</span>
+                </template>
+            </el-table-column>
+            
+            <el-table-column label="Thông tin liên hệ">
+                <template #default="scope">
+                    <div class="flex flex-col space-y-1">
+                        <div>
+                            <span>{{ scope.row.phone }}</span>
+                        </div>
+                        <div>
+                            <span>{{ scope.row.email }}</span>
+                        </div>
+                    </div>
+                </template>
+            </el-table-column>
+            <el-table-column label="Địa chỉ" prop="address" />
             <el-table-column label="Trạng thái" prop="status">
                 <template #default="scope">
                     <el-tag :type="scope.row.status ? 'success' : 'danger'">
@@ -81,16 +119,32 @@ onMounted(async () => {
                 </template>
             </el-table-column>
             <el-table-column label="Chiết khấu vé">
-                <template #default="scope">
-                    <span>{{ scope.row.commission?.ticket_value }} ({{ scope.row.commission?.ticket_type }})</span>
-                </template>
-            </el-table-column>
-            <el-table-column label="Chiết khấu hàng hóa">
-                <template #default="scope">
-                    <span>{{ scope.row.commission?.goods_value }} ({{ scope.row.commission?.goods_type }})</span>
-                </template>
-            </el-table-column>
-            <el-table-column label="Ghi chú" prop="note" />
+  <template #default="{ row }">
+    <span class="font-medium">
+      {{
+        row.ticket_type
+          ? row.ticket_value
+          : row.ticket_value?.toLocaleString('vi-VN')
+      }}
+      ({{ row.ticket_type ? '%' : 'VNĐ' }})
+    </span>
+  </template>
+</el-table-column>
+
+           <el-table-column label="Chiết khấu hàng hóa">
+  <template #default="{ row }">
+    <span class="font-medium">
+      {{
+        row.goods_type
+          ? row.goods_value
+          : row.goods_value?.toLocaleString('vi-VN')
+      }}
+      ({{ row.goods_type ? '%' : 'VNĐ' }})
+    </span>
+  </template>
+</el-table-column>
+
+
             <el-table-column align="right">
                 <template #header>
                     <el-input v-model="search" placeholder="Tìm đại lý" />
@@ -102,7 +156,7 @@ onMounted(async () => {
             </el-table-column>
         </el-table>
 
-        <el-drawer v-model="drawer" :direction="direction" :before-close="cancelClick" size="55%">
+        <el-drawer v-model="drawer" :direction="direction" :before-close="cancelClick" size="50%">
             <template #header>
                 <div class="font-semibold text-lg text-black">{{ isEditMode ? 'Chỉnh sửa đại lý' : 'Thêm đại lý'
                     }}</div>
@@ -128,62 +182,76 @@ onMounted(async () => {
                                     inactive-text="Ngưng kích hoạt" />
                             </el-form-item>
                         </el-col>
-                        <el-col :span="12" class="pl-5">
-                            <h2 class="text-gray-500 font-medium mb-5">CHÍNH SÁCH CHIẾT KHẤU</h2>
-                            <div class="mb-6">
-                                <InputNumber v-model="ruleForm.commissiom.ticket_value" prop="discount_ticket_value"
-                                    label="Chiết khấu vé" class="w-full" />
-                                <form-item prop="discount_ticket_type" label-position="top" class="space-y-3">
+                        <el-col :span="12" class="pl-5 space-y-8">
+                            <h2 class="text-gray-500 font-medium mb-5">
+                                CHÍNH SÁCH CHIẾT KHẤU
+                            </h2>
+
+                            <!-- ================= CHIẾT KHẤU VÉ ================= -->
+                            <div class="p-4 border rounded-lg space-y-4 bg-white">
+                                <h3 class="text-sm font-medium text-gray-700">
+                                    Chiết khấu vé
+                                </h3>
+
+                                <InputNumber v-model="ruleForm.ticket_value" prop="discount_ticket_value"
+                                    label="Giá trị chiết khấu" class="w-full" />
+
+                                <form-item prop="discount_ticket_type" label-position="top">
                                     <template #label>
-                                        <label class="block text-sm font-medium text-gray-700 mb-3">
-                                            Loại chiết khấu vé
-                                        </label>
+                                        <span class="text-sm font-medium text-gray-600">
+                                            Loại chiết khấu
+                                        </span>
                                     </template>
 
-                                    <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                                        <span class="text-sm font-medium text-gray-700 min-w-[80px]">
-                                            Theo số tiền (VNĐ)
-                                        </span>
-                                        <el-switch v-model="ruleForm.commission.ticket_type" size="large" active-value="%"
-                                            inactive-value="VND" active-text="Theo %" inactive-text="VNĐ" class="ml-4"
-                                            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949" />
-                                        <span class="text-sm font-medium text-gray-700 min-w-[60px]">
-                                            Theo phần trăm (%)
-                                        </span>
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+
+
+                                        <el-switch v-model="ruleForm.ticket_type" size="large"  active-text="%" inactive-text="VNĐ" style="
+            --el-switch-on-color: #13ce66;
+            --el-switch-off-color: #409eff;
+          " />
+
                                     </div>
                                 </form-item>
                             </div>
 
-                            <div class="mb-6">
-                                <InputNumber v-model="ruleForm.commission.goods_value" prop="discount_goods_value"
-                                    label="Chiết khấu hàng hóa theo đơn" />
-                                <form-item prop="discount_goods_type" label-position="top" class="space-y-3">
+                            <!-- ================= CHIẾT KHẤU HÀNG HÓA ================= -->
+                            <div class="p-4 border rounded-lg space-y-4 bg-white">
+                                <h3 class="text-sm font-medium text-gray-700">
+                                    Chiết khấu hàng hóa theo đơn
+                                </h3>
+
+                                <InputNumber v-model="ruleForm.goods_value" prop="discount_goods_value"
+                                    label="Giá trị chiết khấu" class="w-full" />
+
+                                <form-item prop="discount_goods_type" label-position="top">
                                     <template #label>
-                                        <label class="block text-sm font-medium text-gray-700 mb-3">
-                                            Loại chiết khấu hàng hóa
-                                        </label>
+                                        <span class="text-sm font-medium text-gray-600">
+                                            Loại chiết khấu
+                                        </span>
                                     </template>
-                                    <div class="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                                        <span class="text-sm font-medium text-gray-700 min-w-[80px]">
-                                            Theo số tiền (VNĐ)
-                                        </span>
-                                        <el-switch v-model="ruleForm.commission.goods_type" size="large" active-value="%"
-                                            inactive-value="VND" active-text="Theo %" inactive-text="VNĐ" class="ml-4"
-                                            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949" />
-                                        <span class="text-sm font-medium text-gray-700 min-w-[60px]">
-                                            Theo phần trăm (%)
-                                        </span>
+
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+
+
+                                        <el-switch v-model="ruleForm.goods_type" size="large"  active-text="%" inactive-text="VNĐ" style="
+            --el-switch-on-color: #13ce66;
+            --el-switch-off-color: #409eff;
+          "/>
+
                                     </div>
                                 </form-item>
                             </div>
                         </el-col>
+
                     </el-row>
                 </el-form>
             </template>
             <template #footer>
                 <div style="flex: auto">
                     <el-button @click="resetForm(ruleFormRef)">Thoát</el-button>
-                    <el-button type="primary" :icon="Checked" :loading="loadingSubmit" @click="submitForm(ruleFormRef)" >
+                    <el-button type="primary" :icon="Checked" :loading="loadingSubmit"
+                        @click="handleSubmitAgent(ruleFormRef)">
                         {{ loadingSubmit ? 'Đang lưu...' : 'Lưu thông tin' }}
                     </el-button>
                 </div>
@@ -191,3 +259,17 @@ onMounted(async () => {
         </el-drawer>
     </section>
 </template>
+<style scoped>
+:deep(.el-drawer__footer) {
+    padding-bottom: 10px !important;
+    background-color: whitesmoke !important;
+    border-top: 1px solid rgb(240, 240, 240) !important;
+}
+
+:deep(.el-drawer__header) {
+    background-color: whitesmoke !important;
+    border-bottom: 1px solid rgb(240, 240, 240) !important;
+    padding-bottom: 20px;
+    margin-bottom: 0 !important;
+}
+</style>
