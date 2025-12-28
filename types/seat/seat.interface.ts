@@ -1,5 +1,5 @@
 export interface Seat {
-    id?: number;
+    id?: string;
     name?: string;
     code?: string;
     status?: boolean;
@@ -8,7 +8,7 @@ export interface Seat {
     column?: number;
 }
 export interface SeatChart {
-    id?: number;
+    id?: string;
     seat_chart_name?: string;
     seat_chart_type?: number;
     total_floor?: number;  
@@ -18,6 +18,26 @@ export interface SeatChart {
     seats?: Seat[];
 }
 export interface SeatChartName {
-    id: number;
+    id: string;
     seat_chart_name: string;
+}
+
+export interface DTO_RQ_SeatChart {
+    id?: string;
+    seat_chart_name?: string;
+    seat_chart_type?: number;
+    total_floor?: number;  
+    total_row?: number;
+    total_column?: number;
+    seats?: DTO_RQ_Seat[];
+}
+
+export interface DTO_RQ_Seat {
+    id?: string;
+    name?: string;
+    code?: string;
+    status?: boolean;
+    floor?: number;
+    row?: number;
+    column?: number;
 }

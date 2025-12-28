@@ -2,25 +2,30 @@
 import {
     Checked,
 } from '@element-plus/icons-vue';
-import { useSeatManagement } from '~/composables/seat/useSeatManagement';
+import { format } from 'date-fns';
+import { useSeatActions } from '~/composables/seat/useSeatActions';
+import { seatChartList } from '~/composables/seat/useSeatGlobal';
+import { useSeatList } from '~/composables/seat/useSeatList';
 import type { Seat } from '~/types/seat/seat.interface';
 definePageMeta({
     layout: 'default',
 })
+
 const {
     loadingData,
-    loadingSubmit,
-    seatCharts,
+    fetchListSeatCharts
+} = useSeatList();
+const {
+    handleSubmitSeatChart,
     isEditMode,
-    loadingDelete,
-    ruleFormRef,
-    fetchListSeatCharts,
-    submitForm,
     ruleForm,
-    handleDelete,
+    ruleFormRef,
+    loadingSubmit,
+    handleClickRowSeatChart,
     handleExit,
-    handleRowClick,
-} = useSeatManagement();
+    handleDelete,
+    loadingDelete,
+} = useSeatActions();
 const useUserStore = userStore();
 
 const rules = {
@@ -56,7 +61,14 @@ const optionsRow = Array.from({ length: 10 }, (_, i) => ({
     value: i + 1,
 }))
 
-
+const optionsCategorySeatChart = [
+    { label: 'Ghế ngồi', value: 1 },
+    { label: 'Ghế ngồi limousine', value: 2 },
+    { label: 'Giường nằm', value: 3 },
+    { label: 'Giường nằm limousine', value: 4 },
+    { label: 'Phòng VIP (Cabin đơn)', value: 5 },
+    { label: 'Phòng VIP (Cabin đôi)', value: 6 },
+]
 
 const showSeatChart = computed(() => {
     return ruleForm.value.total_floor && ruleForm.value.total_row && ruleForm.value.total_column
@@ -139,14 +151,7 @@ const generateSeats = () => {
 }
 
 
-const optionsCategorySeatChart = [
-    { label: 'Ghế ngồi', value: 1 },
-    { label: 'Ghế ngồi limousine', value: 2 },
-    { label: 'Giường nằm', value: 3 },
-    { label: 'Giường nằm limousine', value: 4 },
-    { label: 'Phòng VIP (Cabin đơn)', value: 5 },
-    { label: 'Phòng VIP (Cabin đôi)', value: 6 },
-]
+
 
 onMounted(async () => {
     await useUserStore.loadUserInfo();
@@ -156,54 +161,78 @@ onMounted(async () => {
 
 <template>
     <section>
-        <div class=" mx-auto">
+        <div class="mx-auto">
+            <!-- HEADER -->
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-semibold">DANH SÁCH SƠ ĐỒ GHẾ</h3>
-
             </div>
 
-            <el-row :gutter="24" class="mb-6">
-                <el-col :xs="24" :sm="24" :md="8" :lg="8">
-                    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-
-                        <el-table v-loading="loadingData" :data="seatCharts" element-loading-text="Đang tải dữ liệu..."
-                            style="width: 100%" @row-click="handleRowClick"
-                            :default-sort="{ prop: 'id', order: 'descending' }" class="seat-chart-table">
+            <!-- MAIN GRID -->
+            <el-row :gutter="10">
+                <!-- ============ LEFT COLUMN ============ -->
+                <el-col :xs="24" :sm="24" :md="8" :lg="8" class="mb-2 md:mb-2">
+                    <div class="bg-white shadow-lg overflow-hidden rounded-lg">
+                        <el-table v-loading="loadingData" :data="seatChartList"
+                            element-loading-text="Đang tải dữ liệu..." style="width: 100%"
+                            @row-click="handleClickRowSeatChart" :default-sort="{ prop: 'id', order: 'descending' }"
+                            class="seat-chart-table">
                             <el-table-column type="index" label="STT" width="50" align="center" />
+
                             <el-table-column label="Tên sơ đồ" show-overflow-tooltip>
                                 <template #default="scope">
                                     <div class="cursor-pointer hover:text-blue-600 transition">
-                                        <div class="font-semibold text-gray-800">{{ scope.row.seat_chart_name }}</div>
-                                        
+                                        <div class="font-semibold text-gray-800">
+                                            {{ scope.row.seat_chart_name }}
+                                        </div>
+                                        <span>SG: {{ scope.row.total_seat }}</span>
                                     </div>
                                 </template>
                             </el-table-column>
-                            <el-table-column label="Loại sơ đồ" >
+
+                            <el-table-column label="Loại sơ đồ">
                                 <template #default="scope">
-                                    <div>{{optionsCategorySeatChart.find(item => item.value ===
-                                                scope.row.seat_chart_type)?.label}}</div>
+                                    {{
+                                        optionsCategorySeatChart.find(
+                                            item => item.value === scope.row.seat_chart_type
+                                        )?.label
+                                    }}
+                                </template>
+                            </el-table-column>
+                            <el-table-column>
+                                <template #default="{ row }">
+                                    <div class="flex flex-col text-xs text-gray-600 leading-tight">
+                                        <span>
+                                            <span class="font-medium text-gray-700">Tạo:</span>
+                                            {{ format(new Date(row.created_at), 'dd/MM/yyyy') }}
+                                        </span>
+                                        <span>
+                                            <span class="font-medium text-gray-700">Sửa:</span>
+                                            {{ format(new Date(row.updated_at), 'dd/MM/yyyy') }}
+                                        </span>
+                                    </div>
                                 </template>
                             </el-table-column>
                         </el-table>
                     </div>
                 </el-col>
 
-                <!-- Form tạo/chỉnh sửa -->
+                <!-- ============ RIGHT COLUMN ============ -->
                 <el-col :xs="24" :sm="24" :md="16" :lg="16">
-                    <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="bg-white shadow-lg p-4 rounded-lg">
                         <el-form ref="ruleFormRef" :model="ruleForm" :rules="rules" label-width="auto"
                             class="space-y-6">
-                            <!-- Row 1: Tên và loại sơ đồ -->
+                            <!-- Row 1 -->
                             <el-row :gutter="16">
                                 <el-col :xs="24" :sm="12" :md="10">
                                     <el-form-item label="Tên sơ đồ" prop="seat_chart_name">
-                                        <el-input v-model="ruleForm.seat_chart_name" placeholder="" clearable />
+                                        <el-input v-model="ruleForm.seat_chart_name" clearable />
                                     </el-form-item>
                                 </el-col>
+
                                 <el-col :xs="24" :sm="12" :md="14">
                                     <el-form-item label="Loại sơ đồ" prop="seat_chart_type">
                                         <el-select v-model="ruleForm.seat_chart_type" placeholder="Chọn loại sơ đồ"
-                                            @change="generateSeats" clearable>
+                                            clearable @change="generateSeats">
                                             <el-option v-for="item in optionsCategorySeatChart" :key="item.value"
                                                 :label="item.label" :value="item.value" />
                                         </el-select>
@@ -211,30 +240,29 @@ onMounted(async () => {
                                 </el-col>
                             </el-row>
 
-                            <!-- Row 2: Số tầng, hàng, cột -->
+                            <!-- Row 2 -->
                             <el-row :gutter="16">
-                                <el-col :xs="24" :sm="8" :md="8">
+                                <el-col :xs="24" :sm="8">
                                     <el-form-item label="Số tầng" prop="total_floor">
-                                        <el-select v-model="ruleForm.total_floor" placeholder="Chọn số tầng"
-                                            @change="generateSeats" clearable>
+                                        <el-select v-model="ruleForm.total_floor" clearable @change="generateSeats">
                                             <el-option v-for="item in optionsFloor" :key="item.value"
                                                 :label="item.label" :value="item.value" />
                                         </el-select>
                                     </el-form-item>
                                 </el-col>
-                                <el-col :xs="24" :sm="8" :md="8">
+
+                                <el-col :xs="24" :sm="8">
                                     <el-form-item label="Số hàng" prop="total_row">
-                                        <el-select v-model="ruleForm.total_row" placeholder="Chọn số hàng"
-                                            @change="generateSeats" clearable>
+                                        <el-select v-model="ruleForm.total_row" clearable @change="generateSeats">
                                             <el-option v-for="item in optionsRow" :key="item.value" :label="item.label"
                                                 :value="item.value" />
                                         </el-select>
                                     </el-form-item>
                                 </el-col>
-                                <el-col :xs="24" :sm="8" :md="8">
+
+                                <el-col :xs="24" :sm="8">
                                     <el-form-item label="Số cột" prop="total_column">
-                                        <el-select v-model="ruleForm.total_column" placeholder="Chọn số cột"
-                                            @change="generateSeats" clearable>
+                                        <el-select v-model="ruleForm.total_column" clearable @change="generateSeats">
                                             <el-option v-for="item in optionsColumn" :key="item.value"
                                                 :label="item.label" :value="item.value" />
                                         </el-select>
@@ -243,34 +271,28 @@ onMounted(async () => {
                             </el-row>
                         </el-form>
 
-                        <!-- Seat Chart Display -->
-                        <div v-if="showSeatChart" class="mt-8 space-y-8">
+                        <!-- SEAT CHART -->
+                        <div v-if="showSeatChart" class="mt-10 space-y-8">
                             <div v-for="floor in ruleForm.total_floor" :key="floor"
-                                class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-6 border border-gray-200">
-
+                                class="bg-gray-50 rounded-lg p-6 border">
                                 <h4 v-if="ruleForm.total_floor > 1"
-                                    class="text-center mb-6 text-blue-700 font-bold text-lg bg-blue-100 px-4 py-2 rounded-lg inline-block w-full">
-                                    🏢 Tầng {{ floor }}
+                                    class="text-center mb-6 text-blue-700 font-bold text-lg">
+                                    Tầng {{ floor }}
                                 </h4>
 
-                                <div class="flex justify-center overflow-x-auto pb-4">
-                                    <div class="grid gap-2 p-4 bg-white rounded-lg shadow-md"
-                                        :style="getGridStyle(floor)">
-                                        <div v-for="seat in getSeatsForFloor(floor)"
-                                            :key="seat.id ?? `seat-${seat.code}`"
-                                            class="flex flex-col items-center gap-3 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg p-3 hover:shadow-md transition">
-
-                                            <div :class="getSeatClass(seat)"
-                                                :title="`${seat.name} - Tầng: ${seat.floor}, Hàng: ${seat.row}, Cột: ${seat.column}`"
-                                                class="w-full justify-center">
+                                <div class="flex justify-center overflow-x-auto">
+                                    <div class="grid gap-2 p-4 bg-white rounded-lg shadow" :style="getGridStyle(floor)">
+                                        <div v-for="seat in getSeatsForFloor(floor)" :key="seat.id ?? seat.code"
+                                            class="flex flex-col items-center gap-3 bg-gray-50 border rounded-lg p-3">
+                                            <div :class="getSeatClass(seat)" class="w-full text-center">
                                                 {{ seat.code }}
                                             </div>
 
-                                            <el-input v-model="seat.name" size="small"
-                                                class="w-full text-center font-semibold" placeholder="Tên ghế" />
+                                            <el-input v-model="seat.name" size="small" class="w-full text-center"
+                                                placeholder="Tên ghế" />
 
-                                            <div class="flex items-center gap-2 w-full justify-between text-sm">
-                                                <span class="text-gray-600">Sẵn có:</span>
+                                            <div class="flex items-center justify-between w-full text-sm">
+                                                <span>Sẵn có</span>
                                                 <el-switch v-model="seat.status" size="small" />
                                             </div>
                                         </div>
@@ -279,26 +301,21 @@ onMounted(async () => {
                             </div>
                         </div>
 
-                        <!-- Action Buttons -->
-                        <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
+                        <!-- ACTION BUTTONS -->
+                        <div class="flex justify-end gap-3 mt-8 pt-6 border-t">
                             <el-button v-if="isEditMode" type="warning" @click="handleExit(ruleFormRef)" size="large">
-                                ← Huỷ
-                            </el-button>
-                            <el-button v-if="isEditMode" :loading="loadingDelete" type="danger"
-                                @click="handleDelete(ruleForm.id ?? 0)" size="large">
-                                {{ loadingDelete ? 'Đang xoá ...' : 'Xoá sơ đồ' }}
-                            </el-button>
-                            <el-button :loading="loadingSubmit" :icon="Checked"
-                                :type="isEditMode ? 'success' : 'primary'" @click="submitForm(ruleFormRef)"
-                                size="large">
-                                <template v-if="loadingSubmit">
-                                    {{ isEditMode ? 'Đang lưu...' : 'Đang thêm...' }}
-                                </template>
-                                <template v-else>
-                                    {{ isEditMode ? 'Lưu sơ đồ' : 'Thêm sơ đồ' }}
-                                </template>
+                                ← Thoát
                             </el-button>
 
+                            <el-button v-if="isEditMode" type="danger" :loading="loadingDelete"
+                                @click="handleDelete(ruleFormRef)" size="large">
+                                {{ loadingDelete ? 'Đang xoá...' : 'Xoá sơ đồ' }}
+                            </el-button>
+
+                            <el-button :type="isEditMode ? 'success' : 'primary'" :loading="loadingSubmit"
+                                :icon="Checked" @click="handleSubmitSeatChart(ruleFormRef)" size="large">
+                                {{ isEditMode ? 'Lưu sơ đồ' : 'Thêm sơ đồ' }}
+                            </el-button>
                         </div>
                     </div>
                 </el-col>
@@ -306,6 +323,7 @@ onMounted(async () => {
         </div>
     </section>
 </template>
+
 
 <style scoped>
 :deep(.seat-chart-table .el-table__row) {

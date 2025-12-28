@@ -1,5 +1,5 @@
 export interface Schedule {
-    id?: number;
+    id?: string;
     start_date?: Date;
     end_date?: Date;
     route_id?: number;
@@ -13,3 +13,18 @@ export interface Schedule {
     odd_even_type?: string;
     is_known_end_date?: boolean;
 }
+
+export interface DTO_RQ_Schedule {
+    id?: string;
+    route_id?: string;
+    seat_chart_id?: string;
+    start_time?: string;
+    trip_type?: number;
+    repeat_type?: boolean;
+    weekdays?: string[];
+    odd_even_type?: boolean;
+    is_known_end_date?: boolean;
+    start_date?: Date;
+    end_date?: Date;
+}
+    

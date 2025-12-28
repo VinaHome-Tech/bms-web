@@ -1,24 +1,23 @@
-import { API_GetListRouteByCompanyId, API_GetListRouteNameActionByCompanyId } from "~/services/resource-service/route/bms-route.api";
-import type { RouteName } from "~/types/route/route.interface";
-import { routeList } from "./useRouteGlobal";
+import { API_GetListRouteByCompanyId, API_GetListRouteNameByCompanyId } from "~/services/resource-service/route/bms-route.api";
+import { routeList, routeNameList } from "./useRouteGlobal";
 
 export const useRouteList = () => {
-    const routesNameAction = ref<RouteName[]>([]);
-    const loadingRouteNameAction = ref(false);
-    const fetchListRoutesNameAction = async (company_id: string) => {
-        loadingRouteNameAction.value = true;
+    
+    const loadingRouteName = ref(false);
+    const fetchListRouteName= async (company_id: string) => {
+        loadingRouteName.value = true;
         try {
-            const response = await API_GetListRouteNameActionByCompanyId(company_id);
+            const response = await API_GetListRouteNameByCompanyId(company_id);
             if (response.success) {
-                routesNameAction.value = response.result || [];
+                routeNameList.value = response.result || [];
             } else {
-                notifyWarning(response.message || "Lấy danh sách tuyến thất bại.");
+                notifyWarning(response.message || "Tải danh sách tuyến thất bại.");
             }
         } catch (error) {
             console.error(error);
             notifyError("Lỗi khi tải danh sách tuyến.");
         } finally {
-            loadingRouteNameAction.value = false;
+            loadingRouteName.value = false;
         }
     }
     const loadingData = ref(false);
@@ -39,9 +38,8 @@ export const useRouteList = () => {
         }
     }
     return {
-        routesNameAction,
-        loadingRouteNameAction,
-        fetchListRoutesNameAction,
+        loadingRouteName,
+        fetchListRouteName,
         fetchListRoute,
         loadingData,
     }

@@ -53,9 +53,20 @@ export const API_UpdateRouteOrder = async (company_id: string, data: {route_id: 
 export const API_GetListRouteNameByCompanyId = async (company_id: string): Promise<ApiResponse<RouteName[]>> => {
     const { $apiFetch } = useNuxtApp()
     const config = useRuntimeConfig()
-    return await $apiFetch<ApiResponse<RouteName[]>>(`${config.public.apiGateWay}/v2/bms-route/companies/${company_id}/route-names`, {
-        method: "GET",
-    })
+    try {
+        return await $apiFetch<ApiResponse<RouteName[]>>(
+            `${config.public.apiGateWay}/v2/bms-route/companies/${company_id}/route-names`,
+            {
+                method: "GET",
+            }
+        )
+    } catch (error: any) {
+        return {
+            success: false,
+            message: error?.data?.message || 'Lỗi hệ thống',
+            statusCode: error?.data?.statusCode || error?.statusCode || 500,
+        } as ApiResponse<RouteName[]>
+    }
 }
 
 // M3_v2.F7

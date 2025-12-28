@@ -8,7 +8,12 @@ import InputDate from '~/components/inputs/inputDate.vue';
 import { format } from 'date-fns'
 import { useRouteManagement } from '~/composables/route/useRouteManagement';
 import { useSeatManagement } from '~/composables/seat/useSeatManagement';
-import { useScheduleManagement } from '~/composables/schedule/useScheduleManagement';
+import { useRouteList } from '~/composables/route/useRouteList';
+import { useScheduleList } from '~/composables/schedule/useScheduleList';
+import { useScheduleActions } from '~/composables/schedule/useScheduleActions';
+import { routeNameList } from '~/composables/route/useRouteGlobal';
+import { useSeatList } from '~/composables/seat/useSeatList';
+import { seatChartNameList } from '~/composables/seat/useSeatGlobal';
 definePageMeta({
     layout: 'default',
 })
@@ -17,26 +22,33 @@ const {
     fetchListRoutesName,
 } = useRouteManagement();
 const {
-    seatChartsName,
+    // seatChartsName,
     fetchListSeatChartsName,
 } = useSeatManagement();
+
 const {
-    drawer,
+    fetchListRouteName,
+} = useRouteList();
+const {
+    fetchListSeatChartName,
+} = useSeatList();
+const {
+} = useScheduleList();
+
+const {
     isEditMode,
-    schedules,
-    loadingData,
-    loadingSubmit,
     ruleFormRef,
+    loadingSubmit,
+
+    drawer,
     ruleForm,
-    fetchListSchedules,
-    handleDelete,
-    submitForm,
     handleAdd,
     handleEdit,
-    cancelClick,
     resetForm,
-
-} = useScheduleManagement();
+    cancelClick,
+    handleDelete,
+    handleSubmitSchedule,
+} = useScheduleActions();
 const useUserStore = userStore();
 
 const direction = ref<DrawerProps[ 'direction' ]>('rtl')
@@ -58,13 +70,13 @@ const rules = reactive<FormRules>({
 
 
 const routeNameOptions = computed(() =>
-    routesName.value.map(r => ({
+    routeNameList.value.map(r => ({
         label: r.route_name,
         value: r.id
     }))
 );
 const seatChartNameOptions = computed(() =>
-    seatChartsName.value.map(s => ({
+    seatChartNameList.value.map(s => ({
         label: s.seat_chart_name,
         value: s.id
     }))
@@ -83,22 +95,21 @@ watch(
         }
     }
 )
-watch(() => ruleForm.value.repeat_type, (newType, oldType) => {
-    if (newType !== oldType) {
-        if (newType === 'weekday') {
-            ruleForm.value.odd_even_type = undefined;
-            ruleForm.value.weekdays = [
-                'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
-            ]
+watch(
+  () => ruleForm.value.repeat_type,
+  (newType) => {
+    // normalize: chỉ true | false
+    const value = newType === true;
+    ruleForm.value.repeat_type = value;
 
-            // ruleForm.value.weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
-        } else if (newType === 'odd_even') {
-            // ruleForm.value.weekdays = []
-            ruleForm.value.weekdays = [];
-            ruleForm.value.odd_even_type = 'odd'
-        }
-    }
-})
+    // reset luôn mỗi lần đổi
+    ruleForm.value.weekdays = [];
+    ruleForm.value.odd_even_type = false;
+  },
+  { immediate: true }
+);
+
+
 watch(() => ruleForm.value.is_known_end_date, (val) => {
     if (!val) {
         ruleForm.value.end_date = undefined;
@@ -107,9 +118,12 @@ watch(() => ruleForm.value.is_known_end_date, (val) => {
 
 onMounted(async () => {
     await useUserStore.loadUserInfo();
-    await fetchListSchedules(useUserStore.company_id ?? '');
+    // await fetchListSchedules(useUserStore.company_id ?? '');
     await fetchListRoutesName(useUserStore.company_id ?? '');
-    await fetchListSeatChartsName(useUserStore.company_id ?? '');
+    // await fetchListSeatChartsName(useUserStore.company_id ?? '');
+
+    await fetchListRouteName(useUserStore.company_id ?? '');
+    await fetchListSeatChartName(useUserStore.company_id ?? '');
 }); 
 </script>
 <template>
@@ -164,7 +178,7 @@ onMounted(async () => {
         <el-drawer v-model="drawer" :direction="direction" :before-close="cancelClick">
             <template #header>
                 <div class="font-semibold text-lg text-black">{{ isEditMode ? 'Chỉnh sửa lịch chạy' : 'Thêm lịch chạy'
-                }}</div>
+                    }}</div>
             </template>
             <template #default>
                 <el-form ref="ruleFormRef" :model="ruleForm" :rules="rules" label-width="auto">
@@ -187,13 +201,14 @@ onMounted(async () => {
                         <div class="mb-4">
                             <span class="text-sm font-medium text-gray-700 block mb-3">Lặp lại lịch</span>
                             <el-radio-group v-model="ruleForm.repeat_type">
-                                <el-radio value="weekday">Lặp theo thứ</el-radio>
-                                <el-radio value="odd_even">Lặp theo ngày chẵn, lẻ</el-radio>
+                                <el-radio :value="false">Lặp theo thứ</el-radio>
+                                <el-radio :value="true">Lặp theo ngày chẵn, lẻ</el-radio>
                             </el-radio-group>
+
                         </div>
 
 
-                        <div v-if="ruleForm.repeat_type === 'weekday'" class="mb-4">
+                        <div v-if="ruleForm.repeat_type === false" class="mb-4">
                             <span class="text-sm font-medium text-gray-700 block mb-3">Chọn các ngày trong tuần</span>
                             <el-checkbox-group v-model="ruleForm.weekdays">
                                 <el-checkbox value="Monday">Thứ 2</el-checkbox>
@@ -207,11 +222,11 @@ onMounted(async () => {
                         </div>
 
 
-                        <div v-if="ruleForm.repeat_type === 'odd_even'" class="mb-4">
+                        <div v-if="ruleForm.repeat_type === true" class="mb-4">
                             <span class="text-sm font-medium text-gray-700 block mb-3">Chọn loại ngày</span>
                             <el-radio-group v-model="ruleForm.odd_even_type">
-                                <el-radio value="odd">Ngày lẻ</el-radio>
-                                <el-radio value="even">Ngày chẵn</el-radio>
+                                <el-radio :value="false">Ngày lẻ</el-radio>
+                                <el-radio :value="true">Ngày chẵn</el-radio>
                             </el-radio-group>
                         </div>
                         <el-checkbox v-model="ruleForm.is_known_end_date" label="Đã biết ngày dừng" />
@@ -230,7 +245,8 @@ onMounted(async () => {
             <template #footer>
                 <div style="flex: auto">
                     <el-button @click="resetForm(ruleFormRef)">Thoát</el-button>
-                    <el-button type="primary" :icon="Checked" :loading="loadingSubmit" @click="submitForm(ruleFormRef)">
+                    <el-button type="primary" :icon="Checked" :loading="loadingSubmit"
+                        @click="handleSubmitSchedule(ruleFormRef)">
                         {{ loadingSubmit ? 'Đang lưu...' : 'Lưu thông tin' }}
                     </el-button>
                 </div>
