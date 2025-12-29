@@ -1,5 +1,5 @@
 import type { FormInstance } from "element-plus";
-import type { DTO_RQ_Schedule } from "~/types/schedule/schedule.interface";
+import type { DTO_RQ_Schedule, Schedule } from "~/types/schedule/schedule.interface";
 import { scheduleList } from "./useScheduleGlobal";
 import { API_CreateSchedule, API_DeleteSchedule, API_UpdateSchedule } from "~/services/resource-service/schedule/bms-schedule.api";
 
@@ -40,13 +40,13 @@ export const useScheduleActions = () => {
         drawer.value = true;
     };
 
-    const handleEdit = (index: string, row: DTO_RQ_Schedule) => {
+    const handleEdit = (index: string, row: Schedule) => {
         isEditMode.value = true;
         currentEditId.value = row.id ?? null;
         ruleForm.value = ({
-            route_id: row.route_id?.toString(),
+            route_id: row.route.id?.toString(),
             trip_type: row.trip_type,
-            seat_chart_id: row.seat_chart_id?.toString(),
+            seat_chart_id: row.seat_chart.id?.toString(),
             start_time: row.start_time,
             repeat_type: row.repeat_type ? true : false,
             weekdays: row.weekdays || [],
@@ -56,6 +56,7 @@ export const useScheduleActions = () => {
             end_date: row.end_date,
         });
         drawer.value = true;
+        console.log('Edit schedule:', row);
     }
     const resetForm = (formEl: FormInstance | undefined) => {
         if (!formEl) return

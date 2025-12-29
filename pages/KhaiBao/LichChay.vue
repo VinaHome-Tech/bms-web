@@ -6,25 +6,16 @@ import type { DrawerProps, FormRules } from 'element-plus'
 import Select from '~/components/inputs/select.vue'
 import InputDate from '~/components/inputs/inputDate.vue';
 import { format } from 'date-fns'
-import { useRouteManagement } from '~/composables/route/useRouteManagement';
-import { useSeatManagement } from '~/composables/seat/useSeatManagement';
 import { useRouteList } from '~/composables/route/useRouteList';
 import { useScheduleList } from '~/composables/schedule/useScheduleList';
 import { useScheduleActions } from '~/composables/schedule/useScheduleActions';
 import { routeNameList } from '~/composables/route/useRouteGlobal';
 import { useSeatList } from '~/composables/seat/useSeatList';
 import { seatChartNameList } from '~/composables/seat/useSeatGlobal';
+import { scheduleList } from '~/composables/schedule/useScheduleGlobal';
 definePageMeta({
     layout: 'default',
 })
-const {
-    routesName,
-    fetchListRoutesName,
-} = useRouteManagement();
-const {
-    // seatChartsName,
-    fetchListSeatChartsName,
-} = useSeatManagement();
 
 const {
     fetchListRouteName,
@@ -33,6 +24,8 @@ const {
     fetchListSeatChartName,
 } = useSeatList();
 const {
+    loadingData,
+        fetchListSchedule,
 } = useScheduleList();
 
 const {
@@ -119,9 +112,9 @@ watch(() => ruleForm.value.is_known_end_date, (val) => {
 onMounted(async () => {
     await useUserStore.loadUserInfo();
     // await fetchListSchedules(useUserStore.company_id ?? '');
-    await fetchListRoutesName(useUserStore.company_id ?? '');
+    // await fetchListRoutesName(useUserStore.company_id ?? '');
     // await fetchListSeatChartsName(useUserStore.company_id ?? '');
-
+    await fetchListSchedule(useUserStore.company_id ?? '');
     await fetchListRouteName(useUserStore.company_id ?? '');
     await fetchListSeatChartName(useUserStore.company_id ?? '');
 }); 
@@ -132,11 +125,23 @@ onMounted(async () => {
             <h3 class="text-lg font-semibold">DANH SÁCH LỊCH CHẠY</h3>
             <el-button :icon="Plus" type="primary" @click="handleAdd">Thêm lịch chạy</el-button>
         </div>
-        <el-table v-loading="loadingData" element-loading-text="Đang tải dữ liệu..." :data="schedules"
+        <el-table v-loading="loadingData" element-loading-text="Đang tải dữ liệu..." :data="scheduleList"
             style="width: 100%">
             <el-table-column type="index" label="STT" width="50" />
-            <el-table-column label="Tuyến" prop="route_name" />
-            <el-table-column label="Sơ đồ ghế" prop="seat_chart_name" />
+            <el-table-column label="Tuyến">
+                <template #default="{ row }">
+                    {{
+                        row.route?.route_name || 'N/A'
+                    }}
+                </template>
+            </el-table-column>
+            <el-table-column label="Sơ đồ ghế">
+                <template #default="{ row }">
+                    {{
+                        row.seat_chart?.seat_chart_name || 'N/A'
+                    }}
+                </template>
+            </el-table-column>
             <el-table-column label="Thời gian khởi hành" prop="start_time">
                 <template #default="{ row }">
                     {{ row.start_time?.substring(0, 5) }}
