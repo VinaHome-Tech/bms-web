@@ -10,23 +10,24 @@ definePageMeta({
 </script>
 
 <template>
-    <section>
-        <el-container>
-            <el-aside >
-                <SidebarFilter />
-            </el-aside>
-            <el-container>
-                <el-header>
-                    <TripHeader />
-                </el-header>
-                <el-main>
-                    <TripContent/>
-                </el-main>
-            </el-container>
-        </el-container>
-    </section>
+  <section>
+    <el-container class="trip-layout">
+      <el-aside class="sidebar">
+        <SidebarFilter />
+      </el-aside>
 
+      <el-container class="content">
+        <el-header>
+          <TripHeader />
+        </el-header>
+        <el-main>
+          <TripContent />
+        </el-main>
+      </el-container>
+    </el-container>
+  </section>
 </template>
+
 
 <style scoped>
 .el-header {
@@ -51,4 +52,42 @@ definePageMeta({
 .el-collapse {
   border-top: none !important;
 }
+/* Desktop mặc định */
+.trip-layout {
+  display: flex;
+  flex-direction: row;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 300px;
+  min-width: 300px;
+}
+
+/* Content */
+.content {
+  flex: 1;
+}
+
+/* 📱 Mobile */
+@media (max-width: 768px) {
+  .trip-layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .el-aside {
+    width: 100% !important;
+  }
+
+  .content {
+    width: 100%;
+  }
+}
+
 </style>

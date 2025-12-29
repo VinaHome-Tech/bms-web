@@ -30,16 +30,32 @@ export const API_CreateSchedule = async (company_id: string, data: DTO_RQ_Schedu
 export const API_UpdateSchedule = async (schedule_id: string, data: DTO_RQ_Schedule): Promise<ApiResponse<Schedule>> => {
     const { $apiFetch } = useNuxtApp()
     const config = useRuntimeConfig()
-    return await $apiFetch<ApiResponse<Schedule>>(`${config.public.apiGateWay}/v2/bms-schedule/${schedule_id}`, {
-        method: "PUT",
-        body: data,
-    })
+    try {
+        return await $apiFetch<ApiResponse<Schedule>>(`${config.public.apiGateWay}/v2/bms-schedule/${schedule_id}`, {
+            method: "PUT",
+            body: data,
+        })
+    } catch (error: any) {
+        return {
+            success: false,
+            message: error?.data?.message || 'Lỗi hệ thống',
+            statusCode: error?.data?.statusCode || error?.statusCode || 500,
+        } as ApiResponse<Schedule>
+    }
 }
 // M5_v2.F4
 export const API_DeleteSchedule = async (schedule_id: string): Promise<ApiResponse<null>> => {
     const { $apiFetch } = useNuxtApp()
     const config = useRuntimeConfig()
-    return await $apiFetch<ApiResponse<null>>(`${config.public.apiGateWay}/v2/bms-schedule/${schedule_id}`, {
-        method: "DELETE",
-    })
+    try {
+        return await $apiFetch<ApiResponse<null>>(`${config.public.apiGateWay}/v2/bms-schedule/${schedule_id}`, {
+            method: "DELETE",
+        })
+    } catch (error: any) {
+        return {
+            success: false,
+            message: error?.data?.message || 'Lỗi hệ thống',
+            statusCode: error?.data?.statusCode || error?.statusCode || 500,
+        } as ApiResponse<null>
+    }
 }
