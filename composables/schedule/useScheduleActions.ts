@@ -41,23 +41,25 @@ export const useScheduleActions = () => {
     };
 
     const handleEdit = (index: string, row: Schedule) => {
-        isEditMode.value = true;
-        currentEditId.value = row.id ?? null;
-        ruleForm.value = ({
-            route_id: row.route.id?.toString(),
+        isEditMode.value = true
+        currentEditId.value = row.id ?? null
+
+        ruleForm.value = {
+            route_id: row.route?.id?.toString(),
             trip_type: row.trip_type,
-            seat_chart_id: row.seat_chart.id?.toString(),
+            seat_chart_id: row.seat_chart?.id?.toString(), // ⭐ FIX
             start_time: row.start_time,
-            repeat_type: row.repeat_type ? true : false,
+            repeat_type: !!row.repeat_type,
             weekdays: row.weekdays || [],
-            odd_even_type: row.odd_even_type ? true : false,
-            is_known_end_date: row.is_known_end_date || false,
+            odd_even_type: row.odd_even_type ?? false,
+            is_known_end_date: row.is_known_end_date ?? false,
             start_date: row.start_date,
             end_date: row.end_date,
-        });
+        }
+
         drawer.value = true;
-        console.log('Edit schedule:', row);
     }
+
     const resetForm = (formEl: FormInstance | undefined) => {
         if (!formEl) return
         formEl.resetFields()
