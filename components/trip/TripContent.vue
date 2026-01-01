@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { TabsPaneContext } from 'element-plus'
 import { valueSelectedTrip } from '~/composables/trip/useTripGlobal'
-import TripTabCustomers from '../tabs/TripTabCustomers.vue'
-import TripTabFinance from '../tabs/TripTabFinance.vue'
-import TripTabSeats from '../tabs/TripTabSeats.vue'
-import TripTabTransit from '../tabs/TripTabTransit.vue'
-import TripTabCargo from '../tabs/TripTabCargo.vue'
+import TripTabCustomers from '../trip/tabs/TripTabCustomers.vue'
+import TripTabFinance from '../trip/tabs/TripTabFinance.vue'
+import TripTabSeats from '../trip/tabs/TripTabSeats.vue'
+import TripTabTransit from '../trip/tabs/TripTabTransit.vue'
+import TripTabCargo from '../trip/tabs/TripTabCargo.vue'
 import { useTicketList } from '~/composables/ticket/useTicketList'
 import type { Trip } from '~/types/trip/trip.interface'
-import { listItemTicket } from '~/composables/ticket/useTicketGlobal'
+import { listTicket } from '~/composables/ticket/useTicketGlobal'
 const {
     loadingListTicket,
     fetchListTicketByTripId
@@ -19,7 +19,14 @@ watch(
     async (newTrip) => {
         if (newTrip) {
             // Luôn tải lại tickets khi trip được chọn thay đổi
-            await fetchListTicketByTripId(newTrip as Trip)
+            
+            if (valueSelectedTrip.value?.trip_type === 2) {
+                activeName.value = '4'
+            } else {
+                await fetchListTicketByTripId(newTrip as Trip)
+                activeName.value = '1'
+                
+            }
         }
     },
     { immediate: true }
@@ -42,15 +49,15 @@ const handleClick = async (tab: TabsPaneContext, event: Event) => {
 <template>
     <section v-if="valueSelectedTrip" class="bg-white px-2 rounded-lg shadow-md mt-2">
         <el-tabs v-model="activeName" class="demo-tabs" @tab-click="handleClick">
-            <el-tab-pane label="Sơ đồ ghế" name="1">
-                <TripTabSeats :tickets="listItemTicket" :loading="loadingListTicket"/>
+            <el-tab-pane v-if="valueSelectedTrip.trip_type != 2" label="Sơ đồ ghế" name="1" >
+                <TripTabSeats v-if="valueSelectedTrip.trip_type != 2" :tickets="listTicket" :loading="loadingListTicket"/>
             </el-tab-pane>
 
-            <el-tab-pane label="Hành khách" name="2">
+            <el-tab-pane v-if="valueSelectedTrip.trip_type != 2" label="Hành khách" name="2">
                 <TripTabCustomers :trip="valueSelectedTrip" />
             </el-tab-pane>
 
-            <el-tab-pane label="Trung chuyển" name="3">
+            <el-tab-pane v-if="valueSelectedTrip.trip_type != 2" label="Trung chuyển" name="3">
                 <TripTabTransit :trip="valueSelectedTrip" />
             </el-tab-pane>
 

@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import TripHeader from '~/components/trip/TripHeader.vue';
 import SidebarFilter from '~/components/widgets/SidebarFilter.vue'
-import TripContent from '~/components/widgets/TripContent.vue'
+import TripContent from '~/components/trip/TripContent.vue'
 definePageMeta({
     layout: 'default',
 })

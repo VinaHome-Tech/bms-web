@@ -9,7 +9,7 @@ import ChangeTimeTrip from '~/components/dialog/ChangeTimeTrip.vue';
 import { useTicketList } from '~/composables/ticket/useTicketList';
 import type { DTO_RQ_ChangeTimeTrip, Trip } from '~/types/trip/trip.interface';
 import { API_CancelTrip, API_ChangeTimeTrip, API_UpdateTripNote } from '~/services/booking-service/trip/bms-trip.api';
-import { listItemTicket } from '~/composables/ticket/useTicketGlobal';
+import { listTicket } from '~/composables/ticket/useTicketGlobal';
 import { useTripActions } from '~/composables/trip/useTripActions';
 import DialogEditTripInfo from './dialog/DialogEditTripInfo.vue';
 import { licensePlateList } from '~/composables/vehicle/useVehicleGlobal';
@@ -126,7 +126,7 @@ const handleCancelTrip = async () => {
 
 const handlePrintListSeatInTrip = () => {
     const trip = valueSelectedTrip.value;
-    const tickets = listItemTicket.value;
+    const tickets = listTicket.value;
 
     if (!trip || tickets.length === 0) {
         return notifyError("Không có dữ liệu để in sơ đồ ghế.");

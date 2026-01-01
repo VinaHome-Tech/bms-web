@@ -1,16 +1,16 @@
 <!-- eslint-disable @typescript-eslint/no-dynamic-delete -->
 <script setup lang="ts">
-import type { DTO_RQ_Ticket, TicketItem } from '~/types/ticket/ticket.interface'
+import type { DTO_RQ_Ticket, Ticket, TicketItem } from '~/types/ticket/ticket.interface'
 import { computed } from 'vue'
 import { Location, Unlock, Delete, Edit, Rank, CloseBold, CopyDocument } from '@element-plus/icons-vue'
 import { formatCurrencyWithoutSymbol } from '~/lib/formatCurrency'
 import { listTrip, valueSelectedTrip } from '~/composables/trip/useTripGlobal';
 import EditTicketDialog from '~/components/dialog/EditTicketDialog.vue'
-import { API_CancelTickets, API_GetTicketByTripId, API_MoveTickets, API_UpdateTickets } from '~/services/booking-service/ticket/bms_ticket.api';
+import { API_CancelTickets, API_GetTicketByTripId, API_MoveTickets, API_UpdateTickets } from '~/services/booking-service/ticket/bms-ticket.api';
 
 
 import { API_GetTripSummaryById } from '~/services/booking-service/trip/bms-trip.api';
-import { listItemTicket } from '~/composables/ticket/useTicketGlobal';
+
 
 
 const CONTACT_STATUSES = [
@@ -30,55 +30,106 @@ const CONTACT_STATUSES = [
 ] as const
 
 const props = defineProps<{
-    tickets: TicketItem[]
+    tickets: Ticket[]
     loading: boolean
 }>()
-// Nhóm vé theo tầng
-const ticketsByFloor = computed(() => {
-    const grouped = new Map<number, TicketItem[]>()
+/* ======================= STEP 1: ACTIVE TICKETS ======================= */
+const activeTickets = computed(() =>
+    props.tickets.filter(t => t.seat?.status === true)
+)
 
-    props.tickets.forEach(ticket => {
-        const floor = ticket.seat_floor ?? 0
-        if (!grouped.has(floor)) {
-            grouped.set(floor, [])
-        }
-        grouped.get(floor)!.push(ticket)
+/* ======================= STEP 2: FLOORS ======================= */
+const floors = computed(() => {
+    const set = new Set<number>()
+    activeTickets.value.forEach(t => set.add(t.seat!.floor))
+    return Array.from(set).sort((a, b) => a - b)
+})
+
+/* ======================= STEP 3: RAW ROWS BY FLOOR ======================= */
+const getRawRowsByFloor = (floor: number): Ticket[][] => {
+    const floorTickets = activeTickets.value.filter(
+        t => t.seat!.floor === floor
+    )
+
+    if (!floorTickets.length) return []
+
+    const rowsMap = new Map<number, Ticket[]>()
+
+    floorTickets.forEach(ticket => {
+        const row = ticket.seat!.row
+        if (!rowsMap.has(row)) rowsMap.set(row, [])
+        rowsMap.get(row)!.push(ticket)
     })
 
-    return Array.from(grouped.entries())
-        .sort((a, b) => a[0] - b[0])
-})
-
-const floors = computed(() => {
-    return ticketsByFloor.value.map(item => item[0])
-})
-
-// Lấy ghế theo row/column trong một tầng
-const getFloorSeats = (floor: number) => {
-    const floorTickets = props.tickets.filter(t => t.seat_floor === floor)
-
-    if (floorTickets.length === 0) return []
-
-    const maxRow = Math.max(...floorTickets.map(t => t.seat_row ?? 0))
-    const maxCol = Math.max(...floorTickets.map(t => t.seat_column ?? 0))
-
-    const seats: (TicketItem | null)[][] = []
-
-    for (let r = 1; r <= maxRow; r++) {
-        seats[r - 1] = []
-        for (let c = 1; c <= maxCol; c++) {
-            const ticket = floorTickets.find(
-                t => t.seat_row === r && t.seat_column === c
+    return Array.from(rowsMap.entries())
+        .sort((a, b) => a[ 0 ] - b[ 0 ])
+        .map(([ _, tickets ]) =>
+            [ ...tickets ].sort(
+                (a, b) => a.seat!.column - b.seat!.column
             )
-            seats[r - 1][c - 1] = ticket || null
-        }
+        )
+}
+
+/* ======================= STEP 4: SEAT COUNT LEVELS ======================= */
+const getSeatCountLevels = (rows: Ticket[][]): number[] => {
+    return Array.from(new Set(rows.map(r => r.length))).sort((a, b) => a - b)
+}
+
+/* ======================= STEP 5: PAD ROW TO NEXT LEVEL ======================= */
+const padRowToNextLevel = (
+    row: (Ticket | null)[],
+    levels: number[]
+): (Ticket | null)[] => {
+    const currentSize = row.length
+    const nextLevel = levels.find(l => l > currentSize)
+
+    if (!nextLevel) return row
+
+    const need = nextLevel - currentSize
+    const result = [ ...row ]
+
+    const insertAt = Math.floor(result.length / 2)
+
+    for (let i = 0; i < need; i++) {
+        result.splice(insertAt, 0, null)
     }
 
-    return seats
+    return result
 }
+
+/* ======================= STEP 6: FINAL API FOR TEMPLATE ======================= */
+/* ======================= STEP 6: FINAL API FOR TEMPLATE ======================= */
+const getFloorSeats = (floor: number): (Ticket | null)[][] => {
+    const rawRows = getRawRowsByFloor(floor)
+    if (!rawRows.length) return []
+
+    const levels = getSeatCountLevels(rawRows)
+
+    // 🔑 chỉ lấy bậc nhỏ nhất và bậc kế tiếp
+    const minSize = levels[ 0 ]
+    const nextSize = levels.find(l => l > minSize)
+
+    // nếu tất cả row bằng nhau → không pad gì cả
+    if (!nextSize) return rawRows
+
+    return rawRows.map(row => {
+        // 🔥 CHỈ pad row có số ghế ÍT NHẤT
+        if (row.length !== minSize) {
+            return row
+        }
+
+        return padRowToNextLevel(row, levels)
+    })
+}
+
+
+
+
+
+
 const allTickets = ref<TicketItem[]>([]);
 const getContactStatusInfo = (status: number | null | undefined) => {
-    return CONTACT_STATUSES.find(s => s.value === status) || CONTACT_STATUSES[0]
+    return CONTACT_STATUSES.find(s => s.value === status) || CONTACT_STATUSES[ 0 ]
 }
 
 const { $firebase } = useNuxtApp();
@@ -156,11 +207,11 @@ const removeTicketFromFirebase = (ticket: TicketItem, tripId?: number) => {
 
 // Bắt đầu countdown cho ticket
 interface TicketCountdown {
-    [ticketId: number]: number; // thời gian còn lại tính bằng giây
+    [ ticketId: number ]: number; // thời gian còn lại tính bằng giây
 }
 
 interface TicketInterval {
-    [ticketId: number]: number; // lưu ID interval để clear
+    [ ticketId: number ]: number; // lưu ID interval để clear
 }
 
 const countdowns = reactive<TicketCountdown>({});
@@ -169,17 +220,17 @@ const intervals: TicketInterval = {};
 // Bắt đầu countdown cho 1 vé
 const startCountdown = (ticketId: number) => {
     // Reset countdown 10 phút
-    countdowns[ticketId] = 10 * 60;
+    countdowns[ ticketId ] = 10 * 60;
 
     // Nếu vé này đã có interval thì clear trước
-    if (intervals[ticketId]) {
-        clearInterval(intervals[ticketId]);
+    if (intervals[ ticketId ]) {
+        clearInterval(intervals[ ticketId ]);
     }
 
     // Tạo interval riêng cho vé này
-    intervals[ticketId] = window.setInterval(() => {
-        if (countdowns[ticketId] > 0) {
-            countdowns[ticketId]--;
+    intervals[ ticketId ] = window.setInterval(() => {
+        if (countdowns[ ticketId ] > 0) {
+            countdowns[ ticketId ]--;
         } else {
             // Hết countdown -> bỏ chọn vé
             stopCountdown(ticketId);
@@ -188,18 +239,18 @@ const startCountdown = (ticketId: number) => {
                 removeLocalSelected(ticket);
                 removeTicketFromFirebase(ticket); // nếu muốn đồng bộ Firebase
             }
-            clearInterval(intervals[ticketId]);
-            delete intervals[ticketId];
+            clearInterval(intervals[ ticketId ]);
+            delete intervals[ ticketId ];
         }
     }, 1000);
 };
 
 // Dừng countdown (bỏ chọn)
 const stopCountdown = (ticketId: number) => {
-    countdowns[ticketId] = 0;
-    if (intervals[ticketId]) {
-        clearInterval(intervals[ticketId]);
-        delete intervals[ticketId];
+    countdowns[ ticketId ] = 0;
+    if (intervals[ ticketId ]) {
+        clearInterval(intervals[ ticketId ]);
+        delete intervals[ ticketId ];
         isMoveTickets.value = false;
         listMoveTickets.value = [];
     }
@@ -217,197 +268,197 @@ const activeMode = ref<'move' | 'copy' | null>(null);
 const actionTickets = ref<TicketItem[]>([]);
 
 // --- Click handler ---
-const handleSeatClick = async (ticket: TicketItem) => {
+const handleSeatClick = async (ticket: Ticket) => {
     if (!ticket?.id || !ticketsRef.value) return;
 
     const currentlySelected = isTicketSelected(ticket);
-    const phone = ticket.phone?.trim();
+    // const phone = ticket.seat?.phone?.trim();
     const userFullName = useUserStore.full_name || "N/A";
 
     // ====================== MODE MOVE ======================
     // ====================== MODE MOVE ======================
-    if (activeMode.value === MODES.MOVE) {
-        if (ticket.booked_status) {
-            notifyWarning("Ghế này đã có người đặt!");
-            return;
-        }
+    // if (activeMode.value === MODES.MOVE) {
+    //     if (ticket.booked_status) {
+    //         notifyWarning("Ghế này đã có người đặt!");
+    //         return;
+    //     }
 
-        const oldTicket = actionTickets.value.shift();
-        if (!oldTicket?.id) {
-            notifyError("Vé nguồn không hợp lệ.");
-            return;
-        }
+    //     const oldTicket = actionTickets.value.shift();
+    //     if (!oldTicket?.id) {
+    //         notifyError("Vé nguồn không hợp lệ.");
+    //         return;
+    //     }
 
-        try {
-            loadingTickets.value.push(ticket.id);
+    //     try {
+    //         loadingTickets.value.push(ticket.id);
 
-            const response = await API_MoveTickets(
-                valueSelectedTrip.value?.id || 0,
-                oldTicket.id,
-                ticket.id
-            );
+    //         const response = await API_MoveTickets(
+    //             valueSelectedTrip.value?.id || 0,
+    //             oldTicket.id,
+    //             ticket.id
+    //         );
 
-            if (!response.success) {
-                notifyError(response.message || "Di chuyển vé thất bại.");
-                actionTickets.value.unshift(oldTicket);
-                return;
-            }
+    //         if (!response.success) {
+    //             notifyError(response.message || "Di chuyển vé thất bại.");
+    //             actionTickets.value.unshift(oldTicket);
+    //             return;
+    //         }
 
-            const { newTicket, oldTicket: resetOld } = response.result;
+    //         const { newTicket, oldTicket: resetOld } = response.result;
 
-            const oldTripId = Number(resetOld.trip_id);
-            const newTripId = Number(newTicket.trip_id);
+    //         const oldTripId = Number(resetOld.trip_id);
+    //         const newTripId = Number(newTicket.trip_id);
 
-            // ============================================================
-            // 🔥🔥 FIREBASE SYNC — CHUẨN NHẤT
-            // ============================================================
+    //         // ============================================================
+    //         // 🔥🔥 FIREBASE SYNC — CHUẨN NHẤT
+    //         // ============================================================
 
-            // 1) PUSH VÉ CŨ ĐÃ RESET LÊN TRIP CŨ
-            // 1) XÓA node realtime cũ hoàn toàn (tránh bị click lại)
-            const oldRealtimeRef = $firebase.ref(
-                $firebase.db,
-                `tickets/${oldTripId}/${resetOld.id}`
-            );
-            $firebase.remove(oldRealtimeRef);
+    //         // 1) PUSH VÉ CŨ ĐÃ RESET LÊN TRIP CŨ
+    //         // 1) XÓA node realtime cũ hoàn toàn (tránh bị click lại)
+    //         const oldRealtimeRef = $firebase.ref(
+    //             $firebase.db,
+    //             `tickets/${oldTripId}/${resetOld.id}`
+    //         );
+    //         $firebase.remove(oldRealtimeRef);
 
-            // 2) Tạo realtime node mới cho newTicket (không đẩy full info lên)
-            const newRealtimeRef = $firebase.ref(
-                $firebase.db,
-                `tickets/${newTripId}/${newTicket.id}`
-            );
-            $firebase.set(newRealtimeRef, {
-                selected: false,
-                selectedBy: null,
-                countdown: null,
-                updatedAt: Date.now()
-            });
-
-
-
-            // 2) PUSH VÉ MỚI ĐÃ ĐƯỢC COPY INF0 LÊN TRIP MỚI
-            const newRef = $firebase.ref(
-                $firebase.db,
-                `tickets/${newTripId}/${newTicket.id}`
-            );
-
-            $firebase.set(newRef, {
-                ...newTicket,
-                selected: false,
-                selectedBy: null,
-                countdown: null,
-                updatedAt: Date.now()
-            });
-
-            // ============================================================
-            // 🔥🔥 LOCAL UI UPDATE
-            // ============================================================
-
-            // Xóa selected local vé cũ
-            removeLocalSelected(resetOld);
-            stopCountdown(resetOld.id);
-            selectedTickets.value = selectedTickets.value.filter(t => t.id !== resetOld.id);
-
-            // Update UI local 2 vé
-            updateTicketsOnUI(newTicket, resetOld);
-
-            // ============================================================
-            // 🔥🔥 UPDATE SUMMARY LOCAL
-            // ============================================================
-            await updateTripSummaryAfterMove(oldTripId, newTripId);
-
-            // ============================================================
-            // 🔥🔥 REFRESH NẾU ĐANG ĐỨNG TRONG TRIP ĐÓ
-            // ============================================================
-            const currentTripId = Number(valueSelectedTrip.value?.id);
-
-            if (currentTripId === oldTripId) {
-                await refreshTicketListForTrip(oldTripId);
-            }
-            if (currentTripId === newTripId) {
-                await refreshTicketListForTrip(newTripId);
-            }
-
-            notifySuccess(`Đã di chuyển ${resetOld.seat_name} → ${newTicket.seat_name}`);
-
-            if (actionTickets.value.length === 0) {
-                resetSelection();
-            }
-
-        } catch (err) {
-            console.error("MOVE ERROR:", err);
-            actionTickets.value.unshift(oldTicket);
-            notifyError("Không thể di chuyển vé.");
-        } finally {
-            loadingTickets.value = loadingTickets.value.filter(id => id !== ticket.id);
-        }
-
-        return;
-    }
+    //         // 2) Tạo realtime node mới cho newTicket (không đẩy full info lên)
+    //         const newRealtimeRef = $firebase.ref(
+    //             $firebase.db,
+    //             `tickets/${newTripId}/${newTicket.id}`
+    //         );
+    //         $firebase.set(newRealtimeRef, {
+    //             selected: false,
+    //             selectedBy: null,
+    //             countdown: null,
+    //             updatedAt: Date.now()
+    //         });
 
 
-    const groupOfPhone = (phoneVal: string | undefined | null) =>
-        props.tickets.filter(t => t.phone?.trim() === (phoneVal ?? ''));
 
-    // 1️⃣ Vé không có phone
-    if (!phone) {
-        // Bỏ các vé local có phone
-        const removedPhoneLocals = selectedTickets.value.filter(t => !!t.phone);
-        removedPhoneLocals.forEach(t => {
-            removeLocalSelected(t);
-            removeTicketFromFirebase(t);
-            stopCountdown(t.id!);
-        });
+    //         // 2) PUSH VÉ MỚI ĐÃ ĐƯỢC COPY INF0 LÊN TRIP MỚI
+    //         const newRef = $firebase.ref(
+    //             $firebase.db,
+    //             `tickets/${newTripId}/${newTicket.id}`
+    //         );
 
-        if (currentlySelected) {
-            removeLocalSelected(ticket);
-            removeTicketFromFirebase(ticket);
-            stopCountdown(ticket.id!);
-        } else {
-            addLocalSelected(ticket);
-            setTicketSelectedOnFirebase(ticket, userFullName);
-            startCountdown(ticket.id!);
-        }
-        return;
-    }
+    //         $firebase.set(newRef, {
+    //             ...newTicket,
+    //             selected: false,
+    //             selectedBy: null,
+    //             countdown: null,
+    //             updatedAt: Date.now()
+    //         });
 
-    // 2️⃣ Vé có phone → bỏ vé local không phone
-    const removedNoPhoneLocals = selectedTickets.value.filter(t => !t.phone);
-    removedNoPhoneLocals.forEach(t => {
-        removeLocalSelected(t);
-        removeTicketFromFirebase(t);
-        stopCountdown(t.id!);
-    });
+    //         // ============================================================
+    //         // 🔥🔥 LOCAL UI UPDATE
+    //         // ============================================================
 
-    // 2a️⃣ Bỏ vé cùng phone khác với vé mới
-    const removedDifferentPhoneLocals = selectedTickets.value.filter(t => t.phone && t.phone !== phone);
-    removedDifferentPhoneLocals.forEach(t => {
-        removeLocalSelected(t);
-        removeTicketFromFirebase(t);
-        stopCountdown(t.id!);
-    });
+    //         // Xóa selected local vé cũ
+    //         removeLocalSelected(resetOld);
+    //         stopCountdown(resetOld.id);
+    //         selectedTickets.value = selectedTickets.value.filter(t => t.id !== resetOld.id);
 
-    // Nhóm vé cùng phone mới
-    const group = groupOfPhone(phone);
+    //         // Update UI local 2 vé
+    //         updateTicketsOnUI(newTicket, resetOld);
 
-    // Kiểm tra xem nhóm đã có vé nào được chọn chưa
-    const groupSelected = group.some(t => isTicketSelected(t));
+    //         // ============================================================
+    //         // 🔥🔥 UPDATE SUMMARY LOCAL
+    //         // ============================================================
+    //         await updateTripSummaryAfterMove(oldTripId, newTripId);
 
-    // 3️⃣ Nếu vé đã chọn -> bỏ vé đó
-    if (currentlySelected) {
-        removeLocalSelected(ticket);
-        removeTicketFromFirebase(ticket);
-        stopCountdown(ticket.id!);
-        return;
-    }
+    //         // ============================================================
+    //         // 🔥🔥 REFRESH NẾU ĐANG ĐỨNG TRONG TRIP ĐÓ
+    //         // ============================================================
+    //         const currentTripId = Number(valueSelectedTrip.value?.id);
 
-    // 4️⃣ Nếu nhóm chưa chọn -> chọn toàn bộ nhóm
-    if (!groupSelected) {
-        group.forEach(t => {
-            addLocalSelected(t);
-            setTicketSelectedOnFirebase(t, userFullName);
-            startCountdown(t.id!);
-        });
-    }
+    //         if (currentTripId === oldTripId) {
+    //             await refreshTicketListForTrip(oldTripId);
+    //         }
+    //         if (currentTripId === newTripId) {
+    //             await refreshTicketListForTrip(newTripId);
+    //         }
+
+    //         notifySuccess(`Đã di chuyển ${resetOld.seat_name} → ${newTicket.seat_name}`);
+
+    //         if (actionTickets.value.length === 0) {
+    //             resetSelection();
+    //         }
+
+    //     } catch (err) {
+    //         console.error("MOVE ERROR:", err);
+    //         actionTickets.value.unshift(oldTicket);
+    //         notifyError("Không thể di chuyển vé.");
+    //     } finally {
+    //         loadingTickets.value = loadingTickets.value.filter(id => id !== ticket.id);
+    //     }
+
+    //     return;
+    // }
+
+
+    // const groupOfPhone = (phoneVal: string | undefined | null) =>
+    //     props.tickets.filter(t => t.phone?.trim() === (phoneVal ?? ''));
+
+    // // 1️⃣ Vé không có phone
+    // if (!phone) {
+    //     // Bỏ các vé local có phone
+    //     const removedPhoneLocals = selectedTickets.value.filter(t => !!t.phone);
+    //     removedPhoneLocals.forEach(t => {
+    //         removeLocalSelected(t);
+    //         removeTicketFromFirebase(t);
+    //         stopCountdown(t.id!);
+    //     });
+
+    //     if (currentlySelected) {
+    //         removeLocalSelected(ticket);
+    //         removeTicketFromFirebase(ticket);
+    //         stopCountdown(ticket.id!);
+    //     } else {
+    //         addLocalSelected(ticket);
+    //         setTicketSelectedOnFirebase(ticket, userFullName);
+    //         startCountdown(ticket.id!);
+    //     }
+    //     return;
+    // }
+
+    // // 2️⃣ Vé có phone → bỏ vé local không phone
+    // const removedNoPhoneLocals = selectedTickets.value.filter(t => !t.phone);
+    // removedNoPhoneLocals.forEach(t => {
+    //     removeLocalSelected(t);
+    //     removeTicketFromFirebase(t);
+    //     stopCountdown(t.id!);
+    // });
+
+    // // 2a️⃣ Bỏ vé cùng phone khác với vé mới
+    // const removedDifferentPhoneLocals = selectedTickets.value.filter(t => t.phone && t.phone !== phone);
+    // removedDifferentPhoneLocals.forEach(t => {
+    //     removeLocalSelected(t);
+    //     removeTicketFromFirebase(t);
+    //     stopCountdown(t.id!);
+    // });
+
+    // // Nhóm vé cùng phone mới
+    // const group = groupOfPhone(phone);
+
+    // // Kiểm tra xem nhóm đã có vé nào được chọn chưa
+    // const groupSelected = group.some(t => isTicketSelected(t));
+
+    // // 3️⃣ Nếu vé đã chọn -> bỏ vé đó
+    // if (currentlySelected) {
+    //     removeLocalSelected(ticket);
+    //     removeTicketFromFirebase(ticket);
+    //     stopCountdown(ticket.id!);
+    //     return;
+    // }
+
+    // // 4️⃣ Nếu nhóm chưa chọn -> chọn toàn bộ nhóm
+    // if (!groupSelected) {
+    //     group.forEach(t => {
+    //         addLocalSelected(t);
+    //         setTicketSelectedOnFirebase(t, userFullName);
+    //         startCountdown(t.id!);
+    //     });
+    // }
 };
 const resetSelection = () => {
     // 1) Reset mode action (MOVE / COPY)
@@ -434,24 +485,24 @@ const resetSelection = () => {
 const updateTicketsOnUI = (newTicket: TicketItem, resetOldTicket: TicketItem) => {
     const currentTripId = Number(valueSelectedTrip.value?.id);
 
-    listItemTicket.value = listItemTicket.value
-        .map(t => {
-            if (t.id === newTicket.id) return { ...t, ...newTicket };
-            if (t.id === resetOldTicket.id) return { ...t, ...resetOldTicket };
-            return t;
-        })
-        // ❗ Loại bỏ vé KHÔNG thuộc trip đang xem
-        .filter(t => Number(t.trip_id) === currentTripId);
+    // listTicket.value = listTicket.value
+    //     .map(t => {
+    //         if (t.id === newTicket.id) return { ...t, ...newTicket };
+    //         if (t.id === resetOldTicket.id) return { ...t, ...resetOldTicket };
+    //         return t;
+    //     })
+    //     // ❗ Loại bỏ vé KHÔNG thuộc trip đang xem
+    //     .filter(t => (t.trip_id) === currentTripId);
 };
 
 
 
 
-const refreshTicketListForTrip = async (tripId: number) => {
+const refreshTicketListForTrip = async (tripId: string) => {
     try {
         const res = await API_GetTicketByTripId(tripId);
         if (res.success && res.result) {
-            listItemTicket.value = res.result;
+            // listTicket.value = res.result;
         }
     } catch (err) {
         console.error("Lỗi tải danh sách vé:", err);
@@ -460,7 +511,7 @@ const refreshTicketListForTrip = async (tripId: number) => {
 
 const updateTripSummaryAfterMove = async (oldTripId: number, newTripId: number) => {
     try {
-        const [oldRes, newRes] = await Promise.all([
+        const [ oldRes, newRes ] = await Promise.all([
             API_GetTripSummaryById(oldTripId),
             API_GetTripSummaryById(newTripId),
         ]);
@@ -758,7 +809,7 @@ const startAction = (mode: 'move' | 'copy') => {
     activeMode.value = mode;
 
     // Snapshot danh sách vé
-    actionTickets.value = [...selectedTickets.value];
+    actionTickets.value = [ ...selectedTickets.value ];
 
     // Notify
     notifyAction(mode);
@@ -788,131 +839,156 @@ const isSelectedForMove = (ticket: TicketItem) => {
         class="text-center py-8 text-gray-500 min-h-[200px]" />
 
     <div v-else class="space-y-6 ">
+        <!-- {{ props.tickets }} -->
         <!-- Seat maps by floor - displayed horizontally LEFT TO RIGHT FULL WIDTH -->
         <div class="flex gap-3 w-full pb-4">
             <div v-for="floor in floors" :key="floor" class="flex-1">
 
                 <!-- Grid layout cho hàng ghế -->
                 <div class="space-y-1">
+
+
                     <!-- Each row -->
                     <div v-for="(row, rowIdx) in getFloorSeats(floor)" :key="rowIdx" class="flex gap-3 items-start">
-
                         <!-- Seats in this row -->
                         <div class="flex gap-1 flex-1">
-                            <div v-for="(ticket, colIdx) in row" :key="`${rowIdx}-${colIdx}`" class="flex-1">
-                                <!-- Ticket Card -->
 
-                                <div v-if="ticket" @click="ticket.seat_status ? handleSeatClick(ticket) : null"
-                                    class="relative w-full h-full min-h-[120px] border-2 rounded-lg overflow-hidden transition-shadow flex flex-col"
-                                    :class="[
-                                        !ticket.seat_status
-                                            ? 'border-none pointer-events-none opacity-40'
-                                            : isSelectedForMove(ticket)
+                            <!-- EACH CELL (LUÔN TỒN TẠI) -->
+                            <div v-for="(ticket, colIdx) in row" :key="`${rowIdx}-${colIdx}`"
+                                class="flex-1 min-h-[120px]">
+                                <!-- CELL WRAPPER -->
+                                <div class="relative w-full h-full rounded-lg">
+
+                                    <!-- ================= GHẾ THẬT ================= -->
+                                    <div v-if="ticket" @click="handleSeatClick(ticket)"
+                                        class="absolute inset-0 border-2 rounded-lg overflow-hidden transition-shadow flex flex-col"
+                                        :class="[
+                                            isSelectedForMove(ticket)
                                                 ? 'border-transparent cursor-pointer hover:shadow-lg'
                                                 : isTicketSelected(ticket)
                                                     ? 'border-[#0072bc] cursor-pointer hover:shadow-lg'
                                                     : 'border-gray-300 cursor-pointer hover:shadow-lg'
-                                    ]" v-loading="ticket.id != null && loadingTickets.includes(ticket.id)"
-                                    element-loading-text="Đang cập nhật...">
+                                        ]" v-loading="ticket.id != null && loadingTickets.includes(ticket.id)" element-loading-text="Đang cập nhật...">
 
-                                    <svg v-if="isSelectedForMove(ticket)"
-                                        viewBox="0 0 calc(100% + 4px) calc(100% + 4px)"
-                                        class="absolute -top-0.5 -left-0.5 w-[calc(100%+4px)] h-[calc(100%+4px)] pointer-events-none z-21">
-                                        <rect x="2" y="2" width="calc(100% - 4px)" height="calc(100% - 4px)" rx="6"
-                                            ry="6" fill="none" stroke="#0072bc" stroke-width="4" stroke-dasharray="8 4">
-                                            <animate attributeName="stroke-dashoffset" values="0;12" dur="1s"
-                                                repeatCount="indefinite" />
-                                        </rect>
-                                    </svg>
 
-                                    <!-- Header -->
-                                    <div v-if="isTicketBeingSelectedByAnyone(ticket)"
-                                        class="absolute bottom-0 left-0 w-full h-[70%] bg-gray-200 bg-opacity-50 flex flex-col items-center justify-center text-gray-700 text-sm font-semibold z-20 pointer-events-none rounded-t">
+                                        <!-- VIỀN CHUYỂN GHẾ -->
+                                        <svg v-if="isSelectedForMove(ticket)"
+                                            viewBox="0 0 calc(100% + 4px) calc(100% + 4px)"
+                                            class="absolute -top-0.5 -left-0.5 w-[calc(100%+4px)] h-[calc(100%+4px)] pointer-events-none z-20">
+                                            <rect x="2" y="2" width="calc(100% - 4px)" height="calc(100% - 4px)" rx="6"
+                                                ry="6" fill="none" stroke="#0072bc" stroke-width="4"
+                                                stroke-dasharray="8 4">
+                                                <animate attributeName="stroke-dashoffset" values="0;12" dur="1s"
+                                                    repeatCount="indefinite" />
+                                            </rect>
+                                        </svg>
 
-                                        <div>{{ getTicketSelectedBy(ticket) || 'N/A' }}</div>
-                                        <div v-if="ticket.id != null && countdowns[ticket.id] !== undefined"
-                                            class="mt-1">
-                                            {{ Math.floor(countdowns[ticket.id] / 60) }}:
-                                            {{ String(countdowns[ticket.id] % 60).padStart(2, '0') }}
+                                        <!-- BỊ CHỌN BỞI NGƯỜI KHÁC -->
+                                        <div v-if="isTicketBeingSelectedByAnyone(ticket)"
+                                            class="absolute bottom-0 left-0 w-full h-[70%] bg-gray-200 bg-opacity-50 flex flex-col items-center justify-center text-gray-700 text-sm font-semibold z-20 pointer-events-none rounded-t">
+                                            <div>{{ getTicketSelectedBy(ticket) || 'N/A' }}</div>
+                                            <div v-if="ticket.id != null && countdowns[ ticket.id ] !== undefined"
+                                                class="mt-1">
+                                                {{ Math.floor(countdowns[ ticket.id ] / 60) }}:
+                                                {{ String(countdowns[ ticket.id ] % 60).padStart(2, '0') }}
+                                            </div>
                                         </div>
 
-                                    </div>
+                                        <!-- ================= NỘI DUNG GHẾ ================= -->
+                                        <div class="p-1">
+                                            <div class="flex items-center justify-between mb-1 gap-2">
+                                                <span class="font-semibold text-[#339933] text-base">
+                                                    {{ ticket.seat?.name }}
+                                                </span>
 
+                                                <div v-if="ticket.booked_status">
+                                                    <el-tooltip
+                                                        :content="getContactStatusInfo(ticket.contact_status).label"
+                                                        placement="top" effect="dark">
+                                                        <div :class="[
+                                                            'border-1 rounded px-1 border-gray-300 transition-colors cursor-help',
+                                                            getContactStatusInfo(ticket.contact_status).color
+                                                        ]">
+                                                            {{ ticket.customer?.phone }}
+                                                        </div>
+                                                    </el-tooltip>
+                                                </div>
+                                            </div>
 
+                                            <div v-if="ticket.booked_status && ticket.customer?.name"
+                                                class="text-[15px] font-medium">
+                                                {{ ticket.customer?.name }}
+                                            </div>
 
+                                            <div v-if="ticket.booked_status" class="px-1">
+                                                <div v-if="ticket.point?.point_up"
+                                                    class="flex items-center gap-1 text-gray-600">
+                                                    <el-icon color="#CC0000">
+                                                        <Location />
+                                                    </el-icon>
+                                                    <span class="text-[14px] font-medium">
+                                                        {{ ticket.point?.point_up }}
+                                                    </span>
+                                                </div>
 
-                                    <div class="p-1">
-                                        <div class="flex items-center justify-between mb-1 gap-2">
-                                            <div class="">
-                                                <span class=" font-semibold text-[#339933] text-base">{{
-                                                    ticket.seat_name }}
+                                                <div v-if="ticket.point?.point_down"
+                                                    class="flex items-center gap-1 text-gray-600">
+                                                    <el-icon color="#0033FF">
+                                                        <Location />
+                                                    </el-icon>
+                                                    <span class="text-[14px] font-medium">
+                                                        {{ ticket.point?.point_down }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- ================= FOOTER ================= -->
+                                        <div class="mt-auto px-1">
+                                            <div v-if="ticket.booked_status" class="flex">
+                                                <span class="ml-auto pr-1 text-[12px] font-medium text-gray-600">
+                                                    ({{ ticket.id }})
                                                 </span>
                                             </div>
+
+                                            <div v-if="ticket.booked_status" class="px-1">
+                                                <span class="text-[14px] font-medium text-[#0072bc]">
+                                                    * {{ ticket.ticket_note }}
+                                                </span>
+                                            </div>
+
                                             <div v-if="ticket.booked_status">
-                                                <el-tooltip :content="getContactStatusInfo(ticket.contact_status).label"
-                                                    placement="top" effect="dark">
-                                                    <div :class="['border-1 rounded px-1 border-gray-300 transition-colors cursor-help',
-                                                        getContactStatusInfo(ticket.contact_status).color]">
-                                                        {{ ticket.phone }}
-                                                    </div>
-                                                </el-tooltip>
+                                                <div
+                                                    class="flex justify-between items-center text-[14px] font-medium text-gray-600">
+                                                    <span>
+                                                        {{ formatCurrencyWithoutSymbol(ticket.price?.money_paid || 0) }}/
+                                                        {{ formatCurrencyWithoutSymbol(ticket.price?.total_price || 0) }}
+                                                    </span>
+                                                    <span>{{ ticket.price?.payment_method }}</span>
+                                                </div>
+                                                <div class="h-[5px] bg-[#0072bc] rounded-lg" />
                                             </div>
-                                        </div>
-                                        <div v-if="ticket.booked_status && ticket.name"
-                                            class="text-base font-medium text-[15px]">
-                                            {{ ticket.name }}
-                                        </div>
-                                        <!-- Locations -->
-                                        <div v-if="ticket.booked_status" class="px-1">
-                                            <div class="flex items-center gap-1 text-gray-600" v-if="ticket.point_up">
-                                                <el-icon color="#CC0000">
-                                                    <Location />
-                                                </el-icon>
-                                                <span class="text-[14px] font-medium">{{ ticket.point_up }}</span>
-                                            </div>
-                                            <div class="flex items-center gap-1 text-gray-600" v-if="ticket.point_down">
-                                                <el-icon color="#0033FF">
-                                                    <Location />
-                                                </el-icon>
-                                                <span class="text-[14px] font-medium">{{ ticket.point_down }}</span>
+
+                                            <div v-if="ticket.booked_status" class="text-[12px] text-gray-600">
+                                                P: {{ ticket.user_created?.name }} / {{ ticket.office_created?.name }}
                                             </div>
                                         </div>
 
                                     </div>
-                                    <div class="mt-auto px-1">
-                                        <div v-if="ticket.booked_status" class="flex">
-                                            <span class="ml-auto pr-1 text-[12px] font-medium text-gray-600">({{
-                                                ticket.id }})</span>
-                                        </div>
-                                        <div v-if="ticket.booked_status" class="px-1">
-                                            <span class="text-[14px] font-medium text-[#0072bc]">* {{ ticket.note
-                                                }}</span>
-                                        </div>
 
-                                        <div v-if="ticket.booked_status">
-                                            <div
-                                                class="flex justify-between items-center text-[14px] font-medium text-gray-600">
-                                                <span>{{ formatCurrencyWithoutSymbol(ticket.money_paid || 0) }}/{{
-                                                    formatCurrencyWithoutSymbol(ticket.total_price || 0)
-                                                    }}</span>
-                                                <span>{{ ticket.payment_method }}</span>
-                                            </div>
-                                            <div class="h-[5px] bg-[#0072bc] rounded-lg" />
-                                        </div>
-                                        <div v-if="ticket.booked_status" class="text-[12px] text-gray-600">
-                                            P: {{ ticket.user_name }} / {{ ticket.office_name }}
-                                        </div>
-                                    </div>
+                                    <!-- ================= Ô TRỐNG ================= -->
+                                    <div v-else class="absolute inset-0" />
+
                                 </div>
-
-                                <!-- Empty placeholder -->
-                                <div v-else class="flex-1"></div>
                             </div>
+
                         </div>
                     </div>
+
                 </div>
             </div>
         </div>
+
 
         <!-- Empty state -->
         <div v-if="!tickets.length" class="text-center py-12 text-gray-500">
