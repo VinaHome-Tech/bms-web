@@ -1,28 +1,52 @@
-import { format, startOfDay } from "date-fns";
-import { API_GetListTripByRouteAndDate } from "~/services/booking-service/trip/bms_trip.api";
-import { listItemTrip } from "./useTripGlobal";
+import { format, parseISO, startOfDay } from "date-fns";
+import { API_GetListTripByCompany } from "~/services/booking-service/trip/bms-trip.api";
+import { listTrip } from "./useTripGlobal";
 
 export const useTripList = () => {
     const loadingListItemTrip = ref(false);
-    const fetchListItemTripByRouteAndDate = async (company_id: string, route_id: string, date: string | Date) => {
+    let requestId = 0;
+
+    const fetchListTripByRouteAndDate = async (
+        company_id: string,
+        route_id: string,
+        date: string | Date
+    ) => {
+        if (!company_id || !route_id || !date) {
+            notifyWarning("Thiếu thông tin tìm chuyến.");
+            return;
+        }
+
+        const currentRequest = ++requestId;
         loadingListItemTrip.value = true;
+
         try {
-            const normalizedDate = format(startOfDay(date as Date), "yyyy-MM-dd");
-            const response = await API_GetListTripByRouteAndDate(company_id, { route_id, date: normalizedDate });
-            if (response.success) {
-                listItemTrip.value = response.result || [];
+            const parsedDate = typeof date === "string" ? parseISO(date) : date;
+            const normalizedDate = format(startOfDay(parsedDate), "yyyy-MM-dd");
+
+            const response = await API_GetListTripByCompany(company_id, {
+                route_id,
+                date: normalizedDate,
+            });
+
+            if (currentRequest !== requestId) return;
+
+            if (response?.success) {
+                listTrip.value = response.result ?? [];
             } else {
-                ElMessage.error(response.message || "Lấy danh sách chuyến thất bại.");
+                notifyWarning(response?.message || "Tải danh sách chuyến thất bại.");
             }
         } catch (error) {
             console.error(error);
-            ElMessage.error("Lỗi khi tải danh sách chuyến.");
+            notifyError("Lỗi khi tải danh sách chuyến.");
         } finally {
-            loadingListItemTrip.value = false;
+            if (currentRequest === requestId) {
+                loadingListItemTrip.value = false;
+            }
         }
-    }
+    };
+
     return {
         loadingListItemTrip,
-        fetchListItemTripByRouteAndDate
-    }
-}
+        fetchListTripByRouteAndDate,
+    };
+};

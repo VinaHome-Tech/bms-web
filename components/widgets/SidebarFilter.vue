@@ -1,7 +1,7 @@
 // components/layout/trip/SidebarFilter.vue
 <script setup lang="ts">
 import Calendar from '~/components/widgets/Calendar.vue'
-import TripList from '~/components/widgets/TripList.vue'
+import TripList from '~/components/trip/TripList.vue'
 import { useRouteList } from '~/composables/route/useRouteList'
 import { useTripList } from '~/composables/trip/useTripList'
 import { useRouteActions } from '~/composables/route/useRouteActions'
@@ -10,28 +10,23 @@ import {
   valueSelectedDate,
   valueSelectedRoute
 } from '~/composables/route/useRouteGlobal'
-import { valueSelectedTrip, listItemTrip } from '~/composables/trip/useTripGlobal'
-import type { TripItem } from '~/types/trip/trip.interface'
+import { valueSelectedTrip, listTrip } from '~/composables/trip/useTripGlobal'
+import type { Trip } from '~/types/trip/trip.interface'
 const useUserStore = userStore();
 const { loadingRouteName, fetchListRouteName } = useRouteList()
-const { loadingListItemTrip, fetchListItemTripByRouteAndDate } = useTripList()
+const { loadingListItemTrip, fetchListTripByRouteAndDate } = useTripList()
 const { handleChangeRoute } = useRouteActions()
 const handleDateChange = (date: Date) => {
-  console.log('Selected date:', date)
   valueSelectedDate.value = date
 }
 
-const handleClickItemTrip = (trip: TripItem) => {
+const handleClickItemTrip = (trip: Trip) => {
   valueSelectedTrip.value = trip
 }
 watch([ valueSelectedDate, valueSelectedRoute ], async ([ newDate, newRoute ]) => {
   if (newDate && newRoute) {
-    await fetchListItemTripByRouteAndDate(useUserStore.company_id ?? '', newRoute as string, newDate);
+    await fetchListTripByRouteAndDate(useUserStore.company_id ?? '', newRoute as string, newDate);
     valueSelectedTrip.value = null;
-    // selectedTrip.value = null;
-    // if (!queryTripID.value) {
-    //   selectedTrip.value = null;
-    // }
   }
 });
 onMounted(async () => {
@@ -64,7 +59,12 @@ onMounted(async () => {
 
     <!-- Trip List -->
     <div class="mt-2">
-      <TripList :loading="loadingListItemTrip" :trips="listItemTrip" @trip-selected="handleClickItemTrip" />
+      <TripList 
+        :loading="loadingListItemTrip" 
+        :trips="listTrip" 
+        :selected-trip-id="valueSelectedTrip?.id"
+        @trip-selected="handleClickItemTrip" 
+      />
     </div>
   </el-aside>
 </template>

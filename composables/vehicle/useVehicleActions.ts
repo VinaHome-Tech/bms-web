@@ -2,7 +2,7 @@ import type { FormInstance } from "element-plus";
 import type { DTO_RQ_Office } from "~/types/office/office.interface";
 import type { DTO_RQ_Vehicle } from "~/types/vehicle/vehicle.interface";
 import { vehicleList } from "./useVehicleGlobal";
-import { API_CreateVehicle, API_DeleteVehicle, API_UpdateVehicle } from "~/services/resource-service/vehicle/bms_vehicle.api";
+import { API_CreateVehicle, API_DeleteVehicle, API_UpdateVehicle } from "~/services/resource-service/vehicle/bms-vehicle.api";
 
 export const useVehicleActions = () => {
     const useUserStore = userStore();

@@ -300,10 +300,10 @@ onMounted(async () => {
     <div class="flex items-center space-x-4">
 
 
-      <el-dropdown trigger="click">
-        <div class="flex items-center space-x-3 rounded-lg transition-colors cursor-pointer">
+      <el-dropdown>
+        <span class="flex items-center space-x-3 rounded-lg transition-colors cursor-pointer">
           <el-button :icon="Icons.Menu" circle />
-        </div>
+        </span>
 
         <template #dropdown>
           <el-menu :default-active="$route.path" unique-opened class="el-menu-vertical-demo">

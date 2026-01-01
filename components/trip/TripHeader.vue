@@ -1,23 +1,43 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { listItemTrip, valueSelectedTrip } from '~/composables/trip/useTripGlobal';
+import { listTrip, valueSelectedTrip } from '~/composables/trip/useTripGlobal';
 import { ArrowUpBold, ArrowRightBold, Printer, Finished, Delete, Timer, Plus, More, RefreshRight, Setting } from '@element-plus/icons-vue';
 import { format, formatDate } from 'date-fns';
 import InputNote from '~/components/inputs/inputNote.vue';
 import ChangeTimeTrip from '~/components/dialog/ChangeTimeTrip.vue';
-import EditTripInformationDialog from '~/components/dialog/EditTripInformationDialog.vue';
+
 import { useTicketList } from '~/composables/ticket/useTicketList';
-import type { DTO_RQ_ChangeTimeTrip, TripItem } from '~/types/trip/trip.interface';
-import { API_CancelTrip, API_ChangeTimeTrip, API_UpdateTripNote } from '~/services/booking-service/trip/bms_trip.api';
+import type { DTO_RQ_ChangeTimeTrip, Trip } from '~/types/trip/trip.interface';
+import { API_CancelTrip, API_ChangeTimeTrip, API_UpdateTripNote } from '~/services/booking-service/trip/bms-trip.api';
 import { listItemTicket } from '~/composables/ticket/useTicketGlobal';
+import { useTripActions } from '~/composables/trip/useTripActions';
+import DialogEditTripInfo from './dialog/DialogEditTripInfo.vue';
+import { licensePlateList } from '~/composables/vehicle/useVehicleGlobal';
+import { assistantList, driverList } from '~/composables/account/useAccountGlobal';
+import { useVehicleList } from '~/composables/vehicle/useVehicleList';
+import { useAccountList } from '~/composables/account/useAccountList';
+const useUserStore = userStore();
+const {
+    loadingLicensePlate,
+    fetchLicensePlateVehicle
+} = useVehicleList();
+const {
+    loadingDriver,
+    loadingAssistant,
+    fetchListDriver,
+    fetchListAssistant
+} = useAccountList();
+const {
+    handleSubmitUpdateTripInfo,
+    loadingSubmitUpdateTripInfo,
+    dialogEditTripInfo,
+    handleOpenDialogEditTrip,
+    handleCloseDialogEditTripInfo
+} = useTripActions();
 const showRouteInfo = ref(false);
-const dialogEditTrip = ref(false);
 const handleViewRoute = () => {
     // console.log('Xem lộ trình được click');
     showRouteInfo.value = !showRouteInfo.value;
-}
-const handleOpenDialogEditTrip = () => {
-    dialogEditTrip.value = true;
 }
 const dialogChangeTimeTrip = ref(false);
 const handleOpenDialogChangeTimeTrip = () => {
@@ -28,7 +48,7 @@ const {
 } = useTicketList();
 const handleReloadListTicket = async () => {
     console.log('Reload list ticket');
-    await fetchListTicketByTripId(valueSelectedTrip.value as TripItem);
+    await fetchListTicketByTripId(valueSelectedTrip.value as Trip);
 }
 const formatVND = (value: number) => {
     if (value == null) return '0';
@@ -36,7 +56,7 @@ const formatVND = (value: number) => {
 };
 const handleUpdateNote = async (newNote: string) => {
     if (valueSelectedTrip.value) {
-        const response = await API_UpdateTripNote(valueSelectedTrip.value.id || 0, newNote);
+        const response = await API_UpdateTripNote(valueSelectedTrip.value.id, newNote);
         if (response.success) {
             notifySuccess('Cập nhật ghi chú thành công.');
             valueSelectedTrip.value.note = newNote;
@@ -83,11 +103,11 @@ const handleCancelTrip = async () => {
         );
 
         // Nếu người dùng nhấn "Huỷ", gọi API
-        const response = await API_CancelTrip(valueSelectedTrip.value.id || 0);
+        const response = await API_CancelTrip(valueSelectedTrip.value.id);
         if (response.success) {
             notifySuccess('Hủy chuyến thành công.');
             // Cập nhật danh sách trips
-            listItemTrip.value = listItemTrip.value.filter(
+            listTrip.value = listTrip.value.filter(
                 trip => trip.id !== valueSelectedTrip.value?.id
             );
             valueSelectedTrip.value = null;
@@ -130,15 +150,15 @@ const handlePrintListSeatInTrip = () => {
         let html = `<table style="width: 100%; border-collapse: collapse; margin: 15px 0; table-layout: fixed;">`;
 
         for (let r = 1; r <= maxRow; r++) {
-      html += `<tr>`;
-      for (let c = 1; c <= maxCol; c++) {
-        const seat = seatList.find(s => s.seat_row === r && s.seat_column === c);
-        const isBooked = seat?.booked_status;
-        const cellStyle = isBooked
-          ? "background-color: #d4edda; color: #155724;"
-          : "background-color: #f8f9fa;";
-        
-        const seatInfo = seat ? `
+            html += `<tr>`;
+            for (let c = 1; c <= maxCol; c++) {
+                const seat = seatList.find(s => s.seat_row === r && s.seat_column === c);
+                const isBooked = seat?.booked_status;
+                const cellStyle = isBooked
+                    ? "background-color: #d4edda; color: #155724;"
+                    : "background-color: #f8f9fa;";
+
+                const seatInfo = seat ? `
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
             <div style="font-weight: bold; font-size: 14px; text-align: left;">${seat.seat_name}</div>
             ${seat.phone ? `<span style="font-size: 14px; text-align: right;">${seat.phone}</span>` : ""}
@@ -160,11 +180,11 @@ const handlePrintListSeatInTrip = () => {
             ` : ""}
           </div>
         ` : "";
-        
-        html += `<td style="${cellStyle} padding: 10px 8px; border: 1px solid #ddd; vertical-align: top; text-align: left; height: auto; word-wrap: break-word;">${seatInfo}</td>`;
-      }
-      html += `</tr>`;
-    }
+
+                html += `<td style="${cellStyle} padding: 10px 8px; border: 1px solid #ddd; vertical-align: top; text-align: left; height: auto; word-wrap: break-word;">${seatInfo}</td>`;
+            }
+            html += `</tr>`;
+        }
 
         html += `</table>`;
         return html;
@@ -256,6 +276,15 @@ const handlePrintListSeatInTrip = () => {
     }
 };
 
+watch(dialogEditTripInfo, async (open) => {
+  if (!open) return
+
+  await Promise.all([
+    fetchLicensePlateVehicle(useUserStore.company_id ?? ''),
+    fetchListDriver(useUserStore.company_id ?? ''),
+    fetchListAssistant(useUserStore.company_id ?? '')
+  ])
+})
 
 </script>
 
@@ -269,8 +298,8 @@ const handlePrintListSeatInTrip = () => {
                         <span class="text-[16px] font-semibold text-black">
                             {{ valueSelectedTrip.start_time?.substring(0, 5) }} •
                             {{ formatDate(valueSelectedTrip.start_date as Date, 'dd/MM/yyyy') }} •
-                            {{ valueSelectedTrip.route_name || 'Tuyến chưa xác định' }}
-                            [{{ valueSelectedTrip.id }}]
+                            {{ valueSelectedTrip.route?.route_name || 'Tuyến chưa xác định' }}
+                            
                         </span>
                     </template>
                     <template #icon="{ isActive }">
@@ -294,19 +323,19 @@ const handlePrintListSeatInTrip = () => {
                         <el-col :span="8">
                             <div>
                                 <span class="font-medium text-black text-[14px]">Biển số: </span>
-                                <span class="font-medium text-[#0072bc] text-[14px]">{{ valueSelectedTrip.license_plate
+                                <span class="font-medium text-[#0072bc] text-[14px]">{{ valueSelectedTrip.vehicle?.license_plate
                                     || ''
                                 }}</span>
                             </div>
                             <div>
                                 <span class="font-medium text-black text-[14px]">Số điện thoại xe: </span>
-                                <span class="font-medium text-[#0072bc] text-[14px]">{{ valueSelectedTrip.vehicle_phone
+                                <span class="font-medium text-[#0072bc] text-[14px]">{{ valueSelectedTrip.vehicle?.phone
                                 }}</span>
                             </div>
                             <div>
                                 <span class="font-medium text-black text-[14px]">Sơ đồ ghế: </span>
                                 <span class="font-medium text-[#0072bc] text-[14px]">{{
-                                    valueSelectedTrip.seat_chart_name }}</span>
+                                    valueSelectedTrip.seat_chart?.seat_chart_name }}</span>
                             </div>
                             <div>
                                 <span class="font-medium text-black text-[14px]">Khởi hành: </span>
@@ -367,7 +396,7 @@ const handlePrintListSeatInTrip = () => {
                 <div class="flex justify-between items-center">
                     <div class="mb-2">
                         <el-button :icon="Printer" @click="handlePrintListSeatInTrip">In phơi</el-button>
-                        <!-- <el-button :icon="Finished">Xuất bến</el-button> -->
+                        <el-button :icon="Finished">Xuất bến</el-button>
                         <el-button :icon="Delete" type="danger" plain @click="handleCancelTrip">Huỷ chuyến</el-button>
                         <el-button :icon="Timer" @click="handleOpenDialogChangeTimeTrip">Đổi giờ</el-button>
                         <el-button :icon="Plus" type="warning" plain>Thêm hàng</el-button>
@@ -407,7 +436,23 @@ const handlePrintListSeatInTrip = () => {
             </div>
         </div>
     </section>
-    <EditTripInformationDialog v-model="dialogEditTrip" :trip="valueSelectedTrip" />
+    <DialogEditTripInfo 
+        v-model="dialogEditTripInfo" 
+        :trip="valueSelectedTrip" 
+        :loading="loadingSubmitUpdateTripInfo"
+
+        :vehicles="licensePlateList" 
+        :loading-vehicles="loadingLicensePlate" 
+
+        :drivers="driverList"
+        :loading-drivers="loadingDriver"
+
+        :assistants="assistantList"
+        :loading-assistants="loadingAssistant"
+
+        @save="handleSubmitUpdateTripInfo"
+        @closed="handleCloseDialogEditTripInfo"
+    />
     <ChangeTimeTrip v-model="dialogChangeTimeTrip" :trip="valueSelectedTrip" :loading="loadingChangeTimeTrip"
         @updated="handleUpdateTimeTrip" />
 </template>

@@ -7,7 +7,7 @@ import TripTabSeats from '../tabs/TripTabSeats.vue'
 import TripTabTransit from '../tabs/TripTabTransit.vue'
 import TripTabCargo from '../tabs/TripTabCargo.vue'
 import { useTicketList } from '~/composables/ticket/useTicketList'
-import type { TripItem } from '~/types/trip/trip.interface'
+import type { Trip } from '~/types/trip/trip.interface'
 import { listItemTicket } from '~/composables/ticket/useTicketGlobal'
 const {
     loadingListTicket,
@@ -19,7 +19,7 @@ watch(
     async (newTrip) => {
         if (newTrip) {
             // Luôn tải lại tickets khi trip được chọn thay đổi
-            await fetchListTicketByTripId(newTrip as TripItem)
+            await fetchListTicketByTripId(newTrip as Trip)
         }
     },
     { immediate: true }
@@ -27,7 +27,7 @@ watch(
 const handleClick = async (tab: TabsPaneContext, event: Event) => {
     console.log(tab, event)
     if (tab.props.name === '1') {
-        await fetchListTicketByTripId(valueSelectedTrip.value as TripItem)
+        await fetchListTicketByTripId(valueSelectedTrip.value as Trip)
     } else if (tab.props.name === '2') {
         console.log('Hành khách tab clicked')
     } else if (tab.props.name === '3') {

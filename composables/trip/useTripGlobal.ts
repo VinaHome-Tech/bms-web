@@ -1,4 +1,4 @@
-import type { TripItem } from "~/types/trip/trip.interface";
+import type { Trip } from "~/types/trip/trip.interface";
 
-export const valueSelectedTrip = ref<TripItem | null>(null);
-export const listItemTrip = ref<TripItem[]>([]);
+export const valueSelectedTrip = ref<Trip | null>(null);
+export const listTrip = ref<Trip[]>([]);

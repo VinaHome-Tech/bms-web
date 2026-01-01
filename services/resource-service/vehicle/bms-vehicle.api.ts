@@ -42,7 +42,7 @@ export const API_DeleteVehicle = async (vehicle_id: string): Promise<ApiResponse
 export const API_GetListLicensePlateVehicleByCompanyId = async (company_id: string): Promise<ApiResponse<LicensePlateVehicle[]>> => {
   const { $apiFetch } = useNuxtApp()
   const config = useRuntimeConfig()
-  return await $apiFetch<ApiResponse<LicensePlateVehicle[]>>(`${config.public.apiGateWay}/v2/bms-vehicle/companies/${company_id}/vehicles/license-plates`, {
+  return await $apiFetch<ApiResponse<LicensePlateVehicle[]>>(`${config.public.apiGateWay}/v2/bms-vehicle/companies/${company_id}/vehicles/license-plate`, {
     method: "GET",
   })
 }

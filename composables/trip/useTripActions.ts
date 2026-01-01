@@ -1,22 +1,28 @@
-import type { TripItem } from "~/types/trip/trip.interface"
-import { listItemTrip, valueSelectedTrip } from "./useTripGlobal";
-import { API_UpdateTripInformation } from "~/services/booking-service/trip/bms_trip.api";
+import type { DTO_RQ_UpdateTrip, Trip } from "~/types/trip/trip.interface"
+import { listTrip, valueSelectedTrip } from "./useTripGlobal";
+import { API_UpdateTripInfo } from "~/services/booking-service/trip/bms-trip.api";
 
 export const useTripActions = () => {
-    const loadingUpdateTrip = ref(false);
-
-    const handleUpdateTripInformation = async (updatedTrip: TripItem) => {
-        loadingUpdateTrip.value = true;
+    const loadingSubmitUpdateTripInfo = ref(false);
+    const dialogEditTripInfo = ref(false);
+    const handleOpenDialogEditTrip = () => {
+        dialogEditTripInfo.value = true;
+    }
+    const handleCloseDialogEditTripInfo = () => {
+        dialogEditTripInfo.value = false;
+    }
+    const handleSubmitUpdateTripInfo = async (updatedTrip: DTO_RQ_UpdateTrip) => {
+        loadingSubmitUpdateTripInfo.value = true;
         try {
-            const response = await API_UpdateTripInformation(updatedTrip);
+            const response = await API_UpdateTripInfo(updatedTrip.id as string, updatedTrip);
             if (response.success && response.result) {
-                notifySuccess("Cập nhật thông tin chuyến đi thành công");
+                notifySuccess("Cập nhật thông tin chuyến thành công");
                 // Cập nhật lại thông tin chuyến đi đã chọn
                 valueSelectedTrip.value = {
                     ...valueSelectedTrip.value,
-                    ...updatedTrip
+                    ...response.result
                 };
-                listItemTrip.value = listItemTrip.value.map(trip => {
+                listTrip.value = listTrip.value.map(trip => {
                     if (trip.id === updatedTrip.id) {
                         return {
                             ...trip,
@@ -25,18 +31,23 @@ export const useTripActions = () => {
                     }
                     return trip;
                 });
+                await nextTick();
+                dialogEditTripInfo.value = false;
             } else {
-                notifyError(response.message || "Cập nhật thông tin chuyến thất bại");
+                notifyWarning(response.message || "Cập nhật thông tin chuyến thất bại");
             }
         } catch (error) {
             console.error(error);
             notifyError("Cập nhật thông tin chuyến thất bại");
         } finally {
-            loadingUpdateTrip.value = false;
+            loadingSubmitUpdateTripInfo.value = false;
         }
     }
     return {
-        handleUpdateTripInformation,
-        loadingUpdateTrip
+        handleSubmitUpdateTripInfo,
+        loadingSubmitUpdateTripInfo,
+        dialogEditTripInfo,
+        handleOpenDialogEditTrip,
+        handleCloseDialogEditTripInfo
     }
 }

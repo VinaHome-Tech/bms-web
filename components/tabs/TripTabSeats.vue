@@ -4,12 +4,12 @@ import type { DTO_RQ_Ticket, TicketItem } from '~/types/ticket/ticket.interface'
 import { computed } from 'vue'
 import { Location, Unlock, Delete, Edit, Rank, CloseBold, CopyDocument } from '@element-plus/icons-vue'
 import { formatCurrencyWithoutSymbol } from '~/lib/formatCurrency'
-import { listItemTrip, valueSelectedTrip } from '~/composables/trip/useTripGlobal';
+import { listTrip, valueSelectedTrip } from '~/composables/trip/useTripGlobal';
 import EditTicketDialog from '~/components/dialog/EditTicketDialog.vue'
 import { API_CancelTickets, API_GetTicketByTripId, API_MoveTickets, API_UpdateTickets } from '~/services/booking-service/ticket/bms_ticket.api';
 
 
-import { API_GetTripSummaryById } from '~/services/booking-service/trip/bms_trip.api';
+import { API_GetTripSummaryById } from '~/services/booking-service/trip/bms-trip.api';
 import { listItemTicket } from '~/composables/ticket/useTicketGlobal';
 
 
@@ -471,7 +471,7 @@ const updateTripSummaryAfterMove = async (oldTripId: number, newTripId: number) 
         const newData = newRes.result;
 
         // ===== 1. UPDATE listItemTrip (sidebar + list trips) =====
-        listItemTrip.value = listItemTrip.value.map(trip => {
+        listTrip.value = listTrip.value.map(trip => {
             const tid = Number(trip.id);
 
             if (tid === oldTripId) {
@@ -523,7 +523,7 @@ const updateTripSummaryAfterMove = async (oldTripId: number, newTripId: number) 
         // DEBUG
         console.log("----- SUMMARY UPDATE CHECK -----");
         console.log("valueSelectedTrip AFTER:", JSON.parse(JSON.stringify(valueSelectedTrip.value)));
-        console.log("listItemTrip AFTER:", JSON.parse(JSON.stringify(listItemTrip.value)));
+        console.log("listTrip AFTER:", JSON.parse(JSON.stringify(listTrip.value)));
 
     } catch (err) {
         console.error("❌ updateTripSummaryAfterMove error:", err);

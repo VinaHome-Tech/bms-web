@@ -28,7 +28,7 @@ export interface DTO_RQ_Vehicle {
 }
 
 export interface LicensePlateVehicle {
-    id: number;
-    license_plate: string;
+    id?: string;
+    license_plate?: string;
     phone?: string;
 }

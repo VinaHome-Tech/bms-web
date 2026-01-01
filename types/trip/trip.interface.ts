@@ -1,15 +1,53 @@
-export interface TripItem {
-    id?: number;
+export interface Trip {
+    id?: string;
     start_time?: string;
     start_date?: Date;
-    route_id?: number;
-    route_name?: string;
-    seat_chart_id?: number;
-    seat_chart_name?: string;
+    route?: {
+        id: string;
+        route_name: string;
+    }
+    seat_chart: {
+        id: string;
+        seat_chart_name: string;
+    }
+    vehicle?: {
+        id: string;
+        license_plate: string;
+        phone: string;
+    }
+    driver?: {
+        id: string;
+        name: string;
+        phone: string;
+    }[]
+    assistant?: {
+        id: string;
+        name: string;
+        phone: string;
+    }[]
+    note?: string;
+    confirmation_depart?: boolean;
     trip_type?: number;
-    vehicle_id?: number;
-    vehicle_phone?: string;
-    license_plate?: string;
+    total_seat: number;
+    ticket_booked: number;
+    total_price: number;
+    money_paid: number;
+}
+
+export interface DTO_RQ_ChangeTimeTrip {
+  id: string;
+  start_time: string;
+}
+
+export interface DTO_RQ_UpdateTrip {
+    id?: string;
+    start_time?: string;
+    note?: string;
+    vehicle?: {
+        id: string;
+        license_plate: string;
+        phone: string;
+    };
     driver?: {
         id: string;
         name: string;
@@ -20,15 +58,4 @@ export interface TripItem {
         name: string;
         phone: string;
     }[];
-    confirmation_depart?: boolean;
-    total_seat?: number;
-    ticket_booked?: number;
-    note?: string;
-    total_price?: number;
-    money_paid?: number;
-}
-
-export interface DTO_RQ_ChangeTimeTrip {
-  id: string;
-  start_time: string;
 }

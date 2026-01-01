@@ -42,15 +42,15 @@ export interface DTO_RQ_Account {
 }
 
 export interface Driver {
-    id: string;
-    name: string;
-    phone: string;
+    id?: string;
+    name?: string;
+    phone?: string;
 }
 
 export interface Assistant {
     id: string;
-    name: string;
-    phone: string;
+    name?: string;
+    phone?: string;
 }
 
 export interface AccountInfo {

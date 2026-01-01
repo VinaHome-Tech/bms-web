@@ -1,18 +1,16 @@
-import { API_GetListLicensePlateVehicleByCompanyId, API_GetListVehicleByCompanyId } from "~/services/resource-service/vehicle/bms_vehicle.api";
-import type { LicensePlateVehicle } from "~/types/vehicle/vehicle.interface";
-import { vehicleList } from "./useVehicleGlobal";
+import { API_GetListLicensePlateVehicleByCompanyId, API_GetListVehicleByCompanyId } from "~/services/resource-service/vehicle/bms-vehicle.api";
+import { licensePlateList, vehicleList } from "./useVehicleGlobal";
 
 export const useVehicleList = () => {
-    const licensePlate = ref<LicensePlateVehicle[]>([]);
     const loadingLicensePlate = ref(false);
     const fetchLicensePlateVehicle = async (companyID: string) => {
         loadingLicensePlate.value = true;
         try {
             const response = await API_GetListLicensePlateVehicleByCompanyId(companyID);
             if (response.success) {
-                licensePlate.value = response.result ?? [];
+                licensePlateList.value = response.result ?? [];
             } else {
-                notifyError(response.message || "Lỗi tải danh sách biển số xe");
+                notifyError(response.message || "Tải danh sách biển số xe thất bại.");
             }
         } catch (error) {
             console.error(error);
@@ -40,7 +38,6 @@ export const useVehicleList = () => {
         }   
     }
     return {
-        licensePlate,
         loadingLicensePlate,
         fetchLicensePlateVehicle,
         fetchListVehicle,
