@@ -1,5 +1,5 @@
 import type { DTO_RQ_Ticket, Ticket } from "~/types/ticket/ticket.interface";
-import { listTicket, lockedByOthers, selectedTickets } from "./useTicketGlobal";
+import { listTicket, loadingTickets, lockedByOthers, selectedTickets } from "./useTicketGlobal";
 import { valueSelectedTrip } from "../trip/useTripGlobal";
 import { API_UpdateTickets } from "~/services/booking-service/ticket/bms-ticket.api";
 
@@ -151,6 +151,89 @@ export const useTicketActions = () => {
 
 
 
+
+
+    const addLoadingTickets = (ticketIds: string[]) => {
+        ticketIds.forEach(id => {
+            if (!loadingTickets.value.includes(id)) {
+                loadingTickets.value.push(id)
+            }
+        })
+    }
+
+    const removeLoadingTickets = (ticketIds: string[]) => {
+        loadingTickets.value = loadingTickets.value.filter(
+            id => !ticketIds.includes(id)
+        )
+
+    }
+
+    const isLoadingTicket = (ticket: Ticket) =>
+        loadingTickets.value.includes(ticket.id)
+
+
+
+
+    const handleUpdateTickets = async (updatedTickets: DTO_RQ_Ticket) => {
+        const ticketIds = updatedTickets.ticket_ids ?? []
+
+        if (ticketIds.length === 0) return
+
+        // 🔥 LẤY CÁC TICKET ĐANG UPDATE (TỪ SELECTED)
+        const updatingTickets = selectedTickets.value.filter(t =>
+            ticketIds.includes(t.id)
+        )
+
+        // 🔥 BẬT LOADING
+        addLoadingTickets(updatingTickets.map(t => t.id))
+
+        console.log('Updating tickets:', updatedTickets)
+
+        try {
+            const response = await API_UpdateTickets(
+                valueSelectedTrip.value?.id ?? '',
+                updatedTickets
+            )
+
+            if (response.success) {
+                notifySuccess('Cập nhật thông tin vé thành công')
+                if (response.result) {
+                    listTicket.value = listTicket.value.map(t => {
+                        const updated = response.result?.find(ut => ut.id === t.id)
+                        return updated ? { ...t, ...updated } : t
+                    })
+                }
+
+                /* ============================
+               🔓 RELEASE WS CHO TẤT CẢ VÉ
+               ============================ */
+                const releasedTickets = selectedTickets.value.filter(
+                    t => ticketIds.includes(t.id)
+                )
+
+                releasedTickets.forEach(ticket => {
+                    emitUnselected(ticket) // 🔥 WS notify user khác
+                })
+
+                /* ============================
+                   🧹 CLEAR LOCAL SELECT
+                   ============================ */
+                selectedTickets.value = selectedTickets.value.filter(
+                    t => !ticketIds.includes(t.id)
+                )
+
+            } else {
+                notifyWarning(response.message || 'Cập nhật thông tin vé thất bại')
+            }
+        } catch (error) {
+            console.error(error)
+            notifyError('Cập nhật thông tin vé thất bại')
+        } finally {
+            // 🔥 TẮT LOADING
+            removeLoadingTickets(ticketIds)
+        }
+    }
+
     const dialogEditTicket = ref(false);
     const handleOpenDialogEditTicket = () => {
         dialogEditTicket.value = true;
@@ -158,33 +241,18 @@ export const useTicketActions = () => {
     const handleCloseDialogEditTicket = () => {
         dialogEditTicket.value = false;
     };
-
-    const handleUpdateTickets = async (updatedTickets: DTO_RQ_Ticket) => {
-        console.log('Updating tickets:', updatedTickets);
-        try {
-            const response = await API_UpdateTickets(valueSelectedTrip.value?.id ?? '', updatedTickets);
-            if (response.success && response.result) {
-                notifySuccess("Cập nhật thông tin vé thành công");
-            } else {
-                notifyWarning(response.message || "Cập nhật thông tin vé thất bại");
-            }
-        } catch (error) {
-            console.error(error);
-            notifyError("Cập nhật thông tin vé thất bại");
-        }
-    }
     return {
         handleClickTicket,
         isTicketSelected,
         dialogEditTicket,
         handleOpenDialogEditTicket,
         handleCloseDialogEditTicket,
-        lockedByOthers,
         isLockedByOther,
         lockedUserName,
         handleForceUnlock,
         handleRemoveAllSelectedTickets,
         handleUpdateTickets,
+        isLoadingTicket,
     }
 }
 

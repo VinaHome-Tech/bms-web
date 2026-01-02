@@ -11,7 +11,7 @@ import { API_CancelTickets, API_GetTicketByTripId, API_MoveTickets, API_UpdateTi
 
 import { API_GetTripSummaryById } from '~/services/booking-service/trip/bms-trip.api';
 import { useTicketActions } from '~/composables/ticket/useTicketActions';
-import { selectedTickets } from '~/composables/ticket/useTicketGlobal';
+import { lockedByOthers, selectedTickets } from '~/composables/ticket/useTicketGlobal';
 
 
 
@@ -102,12 +102,12 @@ const {
     dialogEditTicket,
     handleOpenDialogEditTicket,
     handleCloseDialogEditTicket,
-    lockedByOthers,
     isLockedByOther,
     lockedUserName,
     handleForceUnlock,
     handleRemoveAllSelectedTickets,
     handleUpdateTickets,
+    isLoadingTicket,
 } = useTicketActions();
 
 
@@ -494,20 +494,27 @@ const isSelectedForMove = (ticket: TicketItem) => {
                             class="relative w-full h-full rounded-lg">
 
                             <!-- ================= GHẾ THẬT ================= -->
-                            <div v-if="ticket" @click="!isLockedByOther(ticket) && handleClickTicket(ticket)"
+                            <div v-if="ticket"
+                                @click="!isLockedByOther(ticket) && !isLoadingTicket(ticket) && handleClickTicket(ticket)"
                                 class="relative border-2 rounded-lg overflow-hidden transition-shadow flex flex-col w-full h-full"
                                 :class="[
+                                    // 🔒 Bị người khác giữ
                                     isLockedByOther(ticket)
-                                        ? 'border-red-400 cursor-not-allowed'
-                                        : 'cursor-pointer hover:shadow-lg',
+                                        ? 'border-red-400 cursor-not-allowed opacity-80'
+                                        // 🔄 Đang update
+                                        : isLoadingTicket(ticket)
+                                            ? 'cursor-wait opacity-70'
+                                            // ✅ Bình thường
+                                            : 'cursor-pointer hover:shadow-lg',
 
+                                    // 🎯 trạng thái chọn
                                     isSelectedForMove(ticket)
                                         ? 'border-transparent'
                                         : isTicketSelected(ticket)
                                             ? 'border-[#0072bc]'
                                             : 'border-gray-300'
-                                ]" v-loading="ticket.id != null && loadingTickets.includes(ticket.id)"
-                                element-loading-text="Đang cập nhật...">
+                                ]" v-loading="isLoadingTicket(ticket)" element-loading-text="Đang cập nhật...">
+
 
 
 
@@ -556,7 +563,7 @@ const isSelectedForMove = (ticket: TicketItem) => {
                                                     'border-1 rounded px-1 border-gray-300 transition-colors cursor-help',
                                                     getContactStatusInfo(ticket.contact_status).color
                                                 ]">
-                                                    {{ ticket.customer?.phone }}
+                                                    <span>{{ ticket.customer?.phone }}</span>
                                                 </div>
                                             </el-tooltip>
                                         </div>
@@ -696,7 +703,8 @@ const isSelectedForMove = (ticket: TicketItem) => {
                     <div
                         class="bg-gray-100 px-4 py-2 rounded-l-xl text-sm font-medium text-gray-700 flex items-center justify-center flex-shrink-0">
                         <div class="flex items-center gap-x-2">
-                            <el-icon class="cursor-pointer hover:text-red-500 transition" @click="handleRemoveAllSelectedTickets">
+                            <el-icon class="cursor-pointer hover:text-red-500 transition"
+                                @click="handleRemoveAllSelectedTickets">
                                 <CloseBold />
                             </el-icon>
                             <span class="text-[16px]">
@@ -771,12 +779,8 @@ const isSelectedForMove = (ticket: TicketItem) => {
 
 
     </div>
-    <DialogEditTicket 
-        v-model="dialogEditTicket" 
-        :tickets="selectedTickets" 
-        @closed="handleCloseDialogEditTicket"
-        @save="handleUpdateTickets" 
-    />
+    <DialogEditTicket v-model="dialogEditTicket" :tickets="selectedTickets" @closed="handleCloseDialogEditTicket"
+        @save="handleUpdateTickets" />
 </template>
 <!-- VIỀN CHUYỂN GHẾ -->
 <!-- <svg v-if="isSelectedForMove(ticket)" viewBox="0 0 calc(100% + 4px) calc(100% + 4px)"
