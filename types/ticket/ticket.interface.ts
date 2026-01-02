@@ -122,3 +122,8 @@ export interface DTO_RQ_Ticket {
     contact_status?: number;
     ticket_note?: string;
 }
+export interface LockedSeat {
+    seatName?: string
+    userId?: string | null
+    userName?: string | null
+}

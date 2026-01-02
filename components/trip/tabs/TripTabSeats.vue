@@ -11,6 +11,7 @@ import { API_CancelTickets, API_GetTicketByTripId, API_MoveTickets, API_UpdateTi
 
 import { API_GetTripSummaryById } from '~/services/booking-service/trip/bms-trip.api';
 import { useTicketActions } from '~/composables/ticket/useTicketActions';
+import { selectedTickets } from '~/composables/ticket/useTicketGlobal';
 
 
 
@@ -98,13 +99,14 @@ const getFloorSeats = (floor: number): (Ticket | null)[][] => {
 const {
     handleClickTicket,
     isTicketSelected,
-    selectedTickets,
     dialogEditTicket,
     handleOpenDialogEditTicket,
     handleCloseDialogEditTicket,
     lockedByOthers,
     isLockedByOther,
     lockedUserName,
+    handleForceUnlock,
+    handleRemoveAllSelectedTickets,
 } = useTicketActions();
 
 
@@ -137,9 +139,22 @@ onMounted(() => {
 
     // USER KHÁC TRẢ VÉ
     $socket.on('seat-released', ({ ticketId }) => {
-        delete lockedByOthers.value[ ticketId ]
         console.log('🔓 seat released:', ticketId)
+
+        // 1. bỏ trạng thái bị người khác giữ
+        delete lockedByOthers.value[ ticketId ]
+
+        // 2. 🔥 NẾU CHÍNH MÌNH ĐANG GIỮ → BỎ LOCAL
+        const index = selectedTickets.value.findIndex(
+            t => t.id === ticketId
+        )
+
+        if (index !== -1) {
+            selectedTickets.value.splice(index, 1)
+            console.log('⚠️ Force unlock → removed from local:', ticketId)
+        }
     })
+
 })
 onUnmounted(() => {
     $socket.off('ticket:locked')
@@ -184,37 +199,7 @@ const ticketsRef = computed(() => {
     return $firebase.ref($firebase.db, `tickets/${tripId.value}`)
 })
 
-// --- Helpers ---
-// const isTicketSelected = (ticket: TicketItem) => {
-//     if (!ticket?.id) return false
-//     return selectedTickets.value.some(t => t.id === ticket.id)
-// }
 
-// Kiểm tra vé có đang được bất kỳ ai (bao gồm user hiện tại) chọn trên Firebase
-const isTicketBeingSelectedByAnyone = (ticket: TicketItem) => {
-    const t = allTickets.value.find(x => x.id === ticket.id)
-    return !!t && !!t.selected
-}
-
-// Lấy tên người đang chọn vé (nếu có)
-const getTicketSelectedBy = (ticket: TicketItem) => {
-    const t = allTickets.value.find(x => x.id === ticket.id)
-    return t?.selectedBy ?? null
-}
-
-
-// --- Firebase helpers ---
-const setTicketSelectedOnFirebase = (t: TicketItem, byName: string | null) => {
-    if (!ticketsRef.value || !t?.id) return
-    const ticketRef = $firebase.ref($firebase.db, `tickets/${tripId.value}/${t.id}`)
-    const selected = !!byName
-    $firebase.set(ticketRef, { ...t, selected, selectedBy: byName })
-}
-
-// --- Local add/remove for selectedTickets (user's own selected list) ---
-const addLocalSelected = (t: TicketItem) => {
-    if (!isTicketSelected(t)) selectedTickets.value.push(t)
-}
 const removeLocalSelected = (t: TicketItem) => {
     selectedTickets.value = selectedTickets.value.filter(x => x.id !== t.id)
 }
@@ -291,81 +276,7 @@ const MODES = {
 const activeMode = ref<'move' | 'copy' | null>(null);
 const actionTickets = ref<TicketItem[]>([]);
 
-// --- Click handler ---
-const handleSeatClick = async (ticket: Ticket) => {
-    if (!ticket?.id || !ticketsRef.value) return;
 
-    const currentlySelected = isTicketSelected(ticket);
-    // const phone = ticket.seat?.phone?.trim();
-    const userFullName = useUserStore.full_name || "N/A";
-
-
-
-
-    // const groupOfPhone = (phoneVal: string | undefined | null) =>
-    //     props.tickets.filter(t => t.phone?.trim() === (phoneVal ?? ''));
-
-    // // 1️⃣ Vé không có phone
-    // if (!phone) {
-    //     // Bỏ các vé local có phone
-    //     const removedPhoneLocals = selectedTickets.value.filter(t => !!t.phone);
-    //     removedPhoneLocals.forEach(t => {
-    //         removeLocalSelected(t);
-    //         removeTicketFromFirebase(t);
-    //         stopCountdown(t.id!);
-    //     });
-
-    //     if (currentlySelected) {
-    //         removeLocalSelected(ticket);
-    //         removeTicketFromFirebase(ticket);
-    //         stopCountdown(ticket.id!);
-    //     } else {
-    //         addLocalSelected(ticket);
-    //         setTicketSelectedOnFirebase(ticket, userFullName);
-    //         startCountdown(ticket.id!);
-    //     }
-    //     return;
-    // }
-
-    // // 2️⃣ Vé có phone → bỏ vé local không phone
-    // const removedNoPhoneLocals = selectedTickets.value.filter(t => !t.phone);
-    // removedNoPhoneLocals.forEach(t => {
-    //     removeLocalSelected(t);
-    //     removeTicketFromFirebase(t);
-    //     stopCountdown(t.id!);
-    // });
-
-    // // 2a️⃣ Bỏ vé cùng phone khác với vé mới
-    // const removedDifferentPhoneLocals = selectedTickets.value.filter(t => t.phone && t.phone !== phone);
-    // removedDifferentPhoneLocals.forEach(t => {
-    //     removeLocalSelected(t);
-    //     removeTicketFromFirebase(t);
-    //     stopCountdown(t.id!);
-    // });
-
-    // // Nhóm vé cùng phone mới
-    // const group = groupOfPhone(phone);
-
-    // // Kiểm tra xem nhóm đã có vé nào được chọn chưa
-    // const groupSelected = group.some(t => isTicketSelected(t));
-
-    // // 3️⃣ Nếu vé đã chọn -> bỏ vé đó
-    // if (currentlySelected) {
-    //     removeLocalSelected(ticket);
-    //     removeTicketFromFirebase(ticket);
-    //     stopCountdown(ticket.id!);
-    //     return;
-    // }
-
-    // // 4️⃣ Nếu nhóm chưa chọn -> chọn toàn bộ nhóm
-    // if (!groupSelected) {
-    //     group.forEach(t => {
-    //         addLocalSelected(t);
-    //         setTicketSelectedOnFirebase(t, userFullName);
-    //         startCountdown(t.id!);
-    //     });
-    // }
-};
 const resetSelection = () => {
     // 1) Reset mode action (MOVE / COPY)
     activeMode.value = null;
@@ -388,182 +299,13 @@ const resetSelection = () => {
     loadingTickets.value = [];
 };
 
-const updateTicketsOnUI = (newTicket: TicketItem, resetOldTicket: TicketItem) => {
-    const currentTripId = Number(valueSelectedTrip.value?.id);
 
-    // listTicket.value = listTicket.value
-    //     .map(t => {
-    //         if (t.id === newTicket.id) return { ...t, ...newTicket };
-    //         if (t.id === resetOldTicket.id) return { ...t, ...resetOldTicket };
-    //         return t;
-    //     })
-    //     // ❗ Loại bỏ vé KHÔNG thuộc trip đang xem
-    //     .filter(t => (t.trip_id) === currentTripId);
-};
-
-
-
-
-const refreshTicketListForTrip = async (tripId: string) => {
-    try {
-        const res = await API_GetTicketByTripId(tripId);
-        if (res.success && res.result) {
-            // listTicket.value = res.result;
-        }
-    } catch (err) {
-        console.error("Lỗi tải danh sách vé:", err);
-    }
-};
-
-const updateTripSummaryAfterMove = async (oldTripId: number, newTripId: number) => {
-    try {
-        const [ oldRes, newRes ] = await Promise.all([
-            API_GetTripSummaryById(oldTripId),
-            API_GetTripSummaryById(newTripId),
-        ]);
-
-        if (!oldRes.success || !newRes.success) return;
-
-        const oldData = oldRes.result;
-        const newData = newRes.result;
-
-        // ===== 1. UPDATE listItemTrip (sidebar + list trips) =====
-        listTrip.value = listTrip.value.map(trip => {
-            const tid = Number(trip.id);
-
-            if (tid === oldTripId) {
-                return {
-                    ...trip,
-                    total_booked: oldData.total_booked,
-                    total_price: oldData.total_price,
-                    money_paid: oldData.money_paid,
-                    total_surcharge: oldData.total_surcharge
-                };
-            }
-
-            if (tid === newTripId) {
-                return {
-                    ...trip,
-                    total_booked: newData.total_booked,
-                    total_price: newData.total_price,
-                    money_paid: newData.money_paid,
-                    total_surcharge: newData.total_surcharge
-                };
-            }
-
-            return trip;
-        });
-
-        // ===== 2. UPDATE TRIP ĐANG ĐƯỢC SELECT =====
-        if (valueSelectedTrip.value) {
-            const current = Number(valueSelectedTrip.value.id);
-
-            if (current === oldTripId) {
-                Object.assign(valueSelectedTrip.value, {
-                    total_booked: oldData.total_booked,
-                    total_price: oldData.total_price,
-                    money_paid: oldData.money_paid,
-                    total_surcharge: oldData.total_surcharge
-                });
-            }
-
-            if (current === newTripId) {
-                Object.assign(valueSelectedTrip.value, {
-                    total_booked: newData.total_booked,
-                    total_price: newData.total_price,
-                    money_paid: newData.money_paid,
-                    total_surcharge: newData.total_surcharge
-                });
-            }
-        }
-
-        // DEBUG
-        console.log("----- SUMMARY UPDATE CHECK -----");
-        console.log("valueSelectedTrip AFTER:", JSON.parse(JSON.stringify(valueSelectedTrip.value)));
-        console.log("listTrip AFTER:", JSON.parse(JSON.stringify(listTrip.value)));
-
-    } catch (err) {
-        console.error("❌ updateTripSummaryAfterMove error:", err);
-        notifyError("Không thể cập nhật thông tin chuyến. Vui lòng tải lại trang.");
-    }
-};
 
 // Số lượng vé đã book
 const bookedTicketsCount = computed(() =>
     selectedTickets.value.filter(t => t.booked_status === true).length
 );
 
-
-// --- Realtime sync: get ALL tickets under trip and keep local derived list updated ---
-// const syncAllTickets = () => {
-//     if (!ticketsRef.value) return
-
-//     $firebase.onValue(ticketsRef.value, (snapshot) => {
-//         const data = snapshot.val() || {}
-//         const ticketsArray: TicketItem[] = Object.values(data)
-
-//         console.log('🔥 Firebase Raw Data:', data)
-//         console.log('🔥 Tickets Array:', ticketsArray)
-
-//         // allTickets giữ snapshot realtime
-//         allTickets.value = ticketsArray
-
-//         // Cập nhật thông tin realtime vào props.tickets mà không mất vé chưa chỉnh sửa
-//         props.tickets.forEach(ticket => {
-//             const updated = allTickets.value.find(t => t.id === ticket.id)
-//             if (updated) {
-//                 Object.assign(ticket, updated)
-//             }
-//         })
-
-
-//         // Cập nhật selectedTickets của user hiện tại
-//         selectedTickets.value = allTickets.value.filter(
-//             t => t.selected && t.selectedBy === (useUserStore.full_name || '')
-//         )
-//         console.log('👤 selectedTickets (current user):', selectedTickets.value)
-//     })
-// }
-
-
-// watch(tripId, (newTripId, oldTripId) => {
-//     console.log("🔥 Trip changed → re-sync Firebase");
-
-//     // Tắt listener cũ
-//     if (oldTripId) {
-//         const oldRef = $firebase.ref($firebase.db, `tickets/${oldTripId}`);
-//         $firebase.off(oldRef);
-//     }
-
-// })
-
-// lifecycle
-// onMounted(() => {
-//     syncAllTickets()
-// })
-
-onBeforeUnmount(() => {
-    if (ticketsRef.value) {
-        // Tắt listener
-        $firebase.off(ticketsRef.value);
-
-        const user = useUserStore.full_name;
-
-        allTickets.value.forEach(t => {
-            if (t.selectedBy === user) {
-                removeTicketFromFirebase(t); // 🔥 truyền đúng từng ticket
-            }
-        });
-    }
-});
-
-
-
-
-
-
-
-/// Dialog Edit Ticket
 
 
 
@@ -716,17 +458,6 @@ const startAction = (mode: 'move' | 'copy') => {
     notifyAction(mode);
 };
 
-// Move Tickets
-const handleMoveTickets = () => startAction('move');
-const handleCancelMoveTickets = () => {
-    if (activeMode.value === 'move') resetActionState();
-};
-
-// Copy Tickets
-const handleCopyTickets = () => startAction('copy');
-const handleCancelCopyTickets = () => {
-    if (activeMode.value === 'copy') resetActionState();
-};
 
 // Kiểm tra xem vé có đang được chọn để MOVE
 const isSelectedForMove = (ticket: TicketItem) => {
@@ -781,18 +512,33 @@ const isSelectedForMove = (ticket: TicketItem) => {
 
 
                                 <!-- BỊ CHỌN BỞI NGƯỜI KHÁC -->
-                                <!-- BỊ CHỌN BỞI NGƯỜI KHÁC -->
-                                <div v-if="isLockedByOther(ticket)" class="absolute bottom-0 left-0 w-full h-[70%]
-         bg-gray-200 bg-opacity-60
-         flex flex-col items-center justify-center
-         text-gray-700 text-sm font-semibold
-         z-20 pointer-events-none rounded-t">
+                                <div v-if="isLockedByOther(ticket)" class="absolute inset-0 z-20">
+                                    <!-- LỚP CHẶN CLICK (không cho click vé) -->
+                                    <div class="absolute bottom-0 left-0 w-full h-[70%]
+           bg-gray-200 bg-opacity-60
+           pointer-events-none
+           rounded-t"></div>
 
-                                    <div class="text-center">
-                                        {{ lockedUserName(ticket) || '' }}
+                                    <!-- LỚP NỘI DUNG (CHO CLICK) -->
+                                    <div class="absolute bottom-0 left-0 w-full h-[70%]
+           flex flex-col items-center justify-center
+           text-gray-700 text-sm font-semibold
+           z-30">
+                                        <div class="text-center">
+                                            {{ lockedUserName(ticket) || '' }}
+                                        </div>
+
+                                        <div class="mt-1">
+                                            <el-button type="danger" size="small" :icon="Unlock" circle
+                                                @click.stop="handleForceUnlock(ticket)" />
+                                        </div>
+
+                                        <div>
+                                            <span class="text-[12px]">05:00</span>
+                                        </div>
                                     </div>
-                                    <div class="text-xs mt-1">Đang chọn</div>
                                 </div>
+
 
 
                                 <!-- ================= NỘI DUNG GHẾ ================= -->
@@ -949,7 +695,7 @@ const isSelectedForMove = (ticket: TicketItem) => {
                     <div
                         class="bg-gray-100 px-4 py-2 rounded-l-xl text-sm font-medium text-gray-700 flex items-center justify-center flex-shrink-0">
                         <div class="flex items-center gap-x-2">
-                            <el-icon class="cursor-pointer hover:text-red-500 transition" @click="resetSelection">
+                            <el-icon class="cursor-pointer hover:text-red-500 transition" @click="handleRemoveAllSelectedTickets">
                                 <CloseBold />
                             </el-icon>
                             <span class="text-[16px]">

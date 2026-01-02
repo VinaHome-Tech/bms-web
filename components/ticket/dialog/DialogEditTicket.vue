@@ -193,7 +193,6 @@ const handleDeleteTicket = () => {
                     >
                         {{ ticket.seat?.name }}
                     </el-tag>
-                    {{ props.tickets }}
                 </div>
                 <el-tabs v-model="activeName" type="border-card">
                     <el-tab-pane label="Thông tin chung" name="1">
