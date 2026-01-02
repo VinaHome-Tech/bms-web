@@ -1,122 +1,117 @@
 <script setup lang="ts">
-// import type { CancelTicketType } from '~/types/ticketType'
+import { ref, computed, watch } from 'vue'
 import { Checked, Printer, Delete } from '@element-plus/icons-vue'
-// import type { AgentNameType } from '~/types/agentType';
-// import { getAgencyListByCompany } from '~/services/agentAPI';
-import { formatCurrency } from '~/lib/formatCurrency';
-// import type { TabsPaneContext } from 'element-plus'
-// import { API_GetHistoryTicket } from '~/services/historyTicketAPI';
-// import type { DTO_RP_HistoryTicket } from '~/types/historyTicketType';
-import { format } from 'date-fns';
-import type { DTO_RQ_Ticket, TicketItem } from '~/types/ticket/ticket.interface';
-// import { useTicketActions } from '~/composables/ticket/useTicketActions';
-function getActLabel(act: string): string {
-    switch (act) {
-        case 'UPDATE':
-            return 'Cập nhật';
-        case 'COPY':
-            return 'Sao chép';
-        case 'MOVE':
-            return 'Di chuyển';
-        case 'UPDATE_CONTACT':
-            return 'Liên hệ';
-        default:
-            return act; // Nếu không có mapping, hiển thị nguyên giá trị
-    }
-}
-function getContactStatusLabel(status: number): string {
-    const statusMap: Record<number, string> = {
-        1: 'Chưa gọi',
-        2: 'Phòng vé đã gọi',
-        3: 'Phòng vé gọi không nghe',
-        4: 'Tài xế đã gọi',
-        5: 'Tài xế gọi không nghe',
-        6: 'Số điện thoại không đúng',
-        7: 'Đã gọi cho tài xế',
-        8: 'Thuê bao không gọi được',
-        9: 'Tài xế báo hủy',
-        10: 'Đã nhận tin',
-        11: 'Đã nhận tin trung chuyển',
-        12: 'Sai địa chỉ đón',
-        13: 'Chuyển chuyến khác',
-    };
+import type { DTO_RQ_Ticket, Ticket } from '~/types/ticket/ticket.interface'
 
-    return statusMap[ status ] || '-';
-}
 const props = defineProps<{
     modelValue: boolean
-    selectedTickets?: TicketItem[]
+    tickets?: Ticket[]
 }>()
 
 const emit = defineEmits<{
     (e: 'update:modelValue', value: boolean): void
     (e: 'save', data: DTO_RQ_Ticket): void
-    // (e: 'print', data: DTO_RQ_Ticket): void
     (e: 'close'): void
 }>()
 
 const visible = ref(props.modelValue)
 const activeName = ref('1')
-const formData = ref<DTO_RQ_Ticket>({
-    total_price: 0,
-    money_paid: 0,
-    surcharge: 0,
-    payment_method: 'TTTX',
+const showCustomerExtra = ref(false)
+const showPaymentExtra = ref(false)
 
-
-    name: undefined,
-    email: undefined,
-    phone: undefined,
-    date_of_birth: undefined,
-    gender: undefined,
-    note: undefined,
-
-    point_up: undefined,
-    point_down: undefined,
-    transit_up: false,
-    transit_down: false,
-
+// Hàm tạo dữ liệu mặc định
+const createEmptyFormData = (): DTO_RQ_Ticket => ({
+    customer: { name: undefined, email: undefined, phone: undefined, date_of_birth: undefined, gender: undefined, note: undefined },
+    point: { point_up: undefined, time_up: undefined, point_down: undefined, time_down: undefined, transit_up: false, transit_down: false },
+    user_created: { id: undefined, name: undefined },
+    office_created: { id: undefined, name: undefined },
+    price: { total_price: undefined, surcharge: undefined, money_paid: undefined, payment_method: undefined },
+    contact_status: undefined,
+    ticket_note: undefined,
 })
 
-// Computed
+// Hàm chuyển đổi Ticket thành DTO_RQ_Ticket
+const convertTicketToFormData = (ticket: Ticket): DTO_RQ_Ticket => ({
+    customer: {
+        name: ticket.customer?.name,
+        phone: ticket.customer?.phone,
+        email: ticket.customer?.email,
+        gender: ticket.customer?.gender,
+        date_of_birth: ticket.customer?.date_of_birth,
+        note: ticket.customer?.note,
+    },
+    point: {
+        point_up: ticket.point?.point_up,
+        point_down: ticket.point?.point_down,
+        time_up: ticket.point?.time_up,
+        time_down: ticket.point?.time_down,
+        transit_up: ticket.point?.transit_up ?? false,
+        transit_down: ticket.point?.transit_down ?? false,
+    },
+    user_created: {
+        id: ticket.user_created?.id,
+        name: ticket.user_created?.name,
+    },
+    office_created: {
+        id: ticket.office_created?.id,
+        name: ticket.office_created?.name,
+    },
+    price: {
+        total_price: Number(ticket.price?.total_price) || 0,
+        surcharge: Number(ticket.price?.surcharge) || 0,
+        money_paid: Number(ticket.price?.money_paid) || 0,
+        payment_method: ticket.price?.payment_method || 'TTTX',
+    },
+    contact_status: ticket.contact_status,
+    ticket_note: ticket.ticket_note,
+})
+
+const formData = ref<DTO_RQ_Ticket>(createEmptyFormData())
+const originalData = ref<DTO_RQ_Ticket>(createEmptyFormData())
+
+// Computed - Format Price
+const formatPrice = (price: number | undefined): string => {
+    if (!price) return '0'
+    return String(price).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+}
+
+const parsePrice = (val: string): number => parseInt(val.replace(/\D/g, ''), 10) || 0
+
+// Computed - Display Total Price
 const displayTotalPrice = computed({
-    get() {
-        const price = formData.value.total_price
-        return String(price).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-    },
-    set(val: string) {
-        formData.value.total_price = parseInt(val.replace(/\D/g, ''), 10) || 0
+    get: () => formatPrice(formData.value.price?.total_price),
+    set: (val: string) => {
+        if (!formData.value.price) formData.value.price = {}
+        formData.value.price.total_price = parsePrice(val)
     },
 })
+
+// Computed - Display Surcharge Price
 const displaySurchargePrice = computed({
-    get() {
-        const price = formData.value.surcharge
-        return String(price).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-    },
-    set(val: string) {
-        formData.value.surcharge = parseInt(val.replace(/\D/g, ''), 10) || 0
+    get: () => formatPrice(formData.value.price?.surcharge),
+    set: (val: string) => {
+        if (!formData.value.price) formData.value.price = {}
+        formData.value.price.surcharge = parsePrice(val)
     },
 })
+
+// Computed - Display Money Paid Price
 const displayMoneyPaidPrice = computed({
-    get() {
-        const price = formData.value.money_paid
-        return String(price).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-    },
-    set(val: string) {
-        formData.value.money_paid = parseInt(val.replace(/\D/g, ''), 10) || 0
+    get: () => formatPrice(formData.value.price?.money_paid),
+    set: (val: string) => {
+        if (!formData.value.price) formData.value.price = {}
+        formData.value.price.money_paid = parsePrice(val)
     },
 })
-// Tính tổng tiền (giá vé + phụ thu)
+
+// Computed - Display Final Price
 const displayFinalPrice = computed(() => {
-    const totalPrice = formData.value.total_price || 0
-    const surcharge = formData.value.surcharge || 0
-    const finalPrice = totalPrice + surcharge
-    return String(finalPrice).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+    const totalPrice = formData.value.price?.total_price || 0
+    const surcharge = formData.value.price?.surcharge || 0
+    return formatPrice(totalPrice + surcharge)
 })
 
-
-
-// Watch modelValue
+// Watch modelValue prop - Chỉ thay đổi visible khi prop thay đổi
 watch(
     () => props.modelValue,
     (val) => {
@@ -124,7 +119,7 @@ watch(
     }
 )
 
-// Watch visible
+// Watch visible ref - Emit khi visible thay đổi
 watch(
     () => visible.value,
     (val) => {
@@ -132,61 +127,34 @@ watch(
     }
 )
 
-// Lưu dữ liệu gốc từ localSelectedTickets
-const originalData = ref({})
-// Watch localSelectedTickets
+// Watch tickets - Chỉ load dữ liệu, KHÔNG tự động mở dialog
 watch(
-    () => props.selectedTickets,
+    () => props.tickets,
     (newVal) => {
         if (!newVal || newVal.length === 0) {
-            visible.value = false
             return
         }
 
-        const ticket = newVal[ 0 ]
-
-        // Lưu dữ liệu gốc từ ticket
-        originalData.value = {
-
-                name: ticket?.name || null,
-                phone: ticket?.phone || null,
-                email: ticket?.email || null,
-                gender: ticket?.gender || null,
-                date_of_birth: ticket?.date_of_birth || null,
-                note: ticket?.note || null,
-
-                point_up: ticket?.point_up || null,
-                point_down: ticket?.point_down || null,
-                transit_up: ticket?.transit_up || false,
-                transit_down: ticket?.transit_down || false,
-
-                total_price: Number(ticket?.total_price) || 0,
-                surcharge: Number(ticket?.surcharge) || 0,
-                money_paid: Number(ticket?.money_paid) || 0,
-                payment_method: ticket?.payment_method || 'TTTX',
-
-        }
-
-        // Set formData từ ticket data
-        formData.value = JSON.parse(JSON.stringify(originalData.value))
+        const ticketData = convertTicketToFormData(newVal[0])
+        originalData.value = ticketData
+        formData.value = { ...ticketData }
     },
     { immediate: true, deep: true }
 )
 
-
 // Methods
 const resetFormData = () => {
-    // Reset về dữ liệu gốc từ localSelectedTickets
-    formData.value = JSON.parse(JSON.stringify(originalData.value))
+    formData.value = { ...originalData.value }
 }
 
 const handleClose = () => {
-    visible.value = false
-    activeName.value = '1'
     resetFormData()
+    activeName.value = '1'
+    showCustomerExtra.value = false
+    showPaymentExtra.value = false
+    visible.value = false
     emit('close')
 }
-
 
 const handleSave = () => {
     emit('save', formData.value)
@@ -194,40 +162,46 @@ const handleSave = () => {
 }
 
 const handlePrint = () => {
-    emit('print', formData.value)
+    console.log('Print ticket')
 }
-const showCustomerExtra = ref(false)
-const showPaymentExtra = ref(false)
+
+const handleDeleteTicket = () => {
+    console.log('Delete ticket')
+}
 </script>
+
 <template>
-    <el-dialog v-model="visible" align-center width="700" @close="handleClose" style="padding: 0px;">
+    <el-dialog v-model="visible" align-center width="700" @close="handleClose" style="padding: 0px">
         <template #header>
             <div class="pt-[10px] pl-2">
                 <span class="text-[16px] font-semibold text-white">Cập nhật thông tin vé</span>
             </div>
-
         </template>
 
-
-
-        <!-- Nội dung form chỉnh sửa thông tin vé ở đây -->
-        <div class="">
-            <div v-if="props.selectedTickets && props.selectedTickets.length > 0">
-                <h3 class="text-[14px] font-medium px-2 pt-1">Đang chọn ({{ props.selectedTickets.length }} vé):
+        <!-- Form Content -->
+        <div>
+            <div v-if="props.tickets && props.tickets.length > 0">
+                <h3 class="text-[14px] font-medium px-2 pt-1">
+                    Đang chọn ({{ props.tickets.length }} vé):
                 </h3>
                 <div class="mb-1 px-2">
-                    <el-tag v-for="ticket in props.selectedTickets" :key="ticket.id" class="m-1" type="primary">{{
-                        ticket.seat_name }}</el-tag>
+                    <el-tag
+                        v-for="ticket in props.tickets"
+                        :key="ticket.id"
+                        class="m-1"
+                        type="primary"
+                    >
+                        {{ ticket.seat?.name }}
+                    </el-tag>
+                    {{ props.tickets }}
                 </div>
                 <el-tabs v-model="activeName" type="border-card">
                     <el-tab-pane label="Thông tin chung" name="1">
-
                         <el-form :model="formData" class="h-full overflow-hidden flex flex-col w-full">
                             <div class="overflow-y-auto flex-1 w-full">
                                 <!-- Customer Section -->
-                                <div class="">
-                                    <h5
-                                        class="text-xs font-bold text-gray-600 uppercase mb-2 pb-1 border-b border-gray-300">
+                                <div>
+                                    <h5 class="text-xs font-bold text-gray-600 uppercase mb-2 pb-1 border-b border-gray-300">
                                         THÔNG TIN HÀNH KHÁCH
                                     </h5>
                                     <el-row :gutter="12" class="w-full">
@@ -236,8 +210,11 @@ const showPaymentExtra = ref(false)
                                                 <template #label>
                                                     <span class="text-[14px] font-medium">Điện thoại</span>
                                                 </template>
-                                                <el-input v-model="formData.phone"
-                                                    placeholder="Nhập điện thoại" class="w-full" />
+                                                <el-input
+                                                    v-model="formData.customer!.phone"
+                                                    placeholder="Nhập điện thoại"
+                                                    class="w-full"
+                                                />
                                             </el-form-item>
                                         </el-col>
                                         <el-col :span="12" class="w-1/2">
@@ -245,37 +222,55 @@ const showPaymentExtra = ref(false)
                                                 <template #label>
                                                     <span class="text-[14px] font-medium">Họ tên</span>
                                                 </template>
-                                                <el-input v-model="formData.name" placeholder="Nhập họ tên"
-                                                    class="w-full" />
+                                                <el-input
+                                                    v-model="formData.customer!.name"
+                                                    placeholder="Nhập họ tên"
+                                                    class="w-full"
+                                                />
                                             </el-form-item>
                                         </el-col>
                                     </el-row>
 
-                                    <!-- Additional Customer Info - Collapsible -->
-                                    <el-button text type="primary" size="small"
-                                        @click="showCustomerExtra = !showCustomerExtra" class="px-0 mt-[-18px]">
+                                    <!-- Additional Customer Info -->
+                                    <el-button
+                                        text
+                                        type="primary"
+                                        size="small"
+                                        @click="showCustomerExtra = !showCustomerExtra"
+                                        class="px-0 mt-[-18px]"
+                                    >
                                         <span v-if="!showCustomerExtra">+ Thêm thông tin</span>
                                         <span v-else>- Ẩn thông tin</span>
                                     </el-button>
 
                                     <el-collapse-transition>
-                                        <div v-show="showCustomerExtra"
-                                            class="space-y-3 pl-2 border-l-2 border-blue-200 w-full">
+                                        <div
+                                            v-show="showCustomerExtra"
+                                            class="space-y-3 pl-2 border-l-2 border-blue-200 w-full"
+                                        >
                                             <el-row :gutter="12" class="w-full">
                                                 <el-col :span="12" class="w-1/2">
                                                     <el-form-item label-position="top">
                                                         <template #label>
                                                             <span class="text-[14px] font-medium">Email</span>
                                                         </template>
-                                                        <el-input v-model="formData.email" clearable
-                                                            placeholder="Nhập email" class="w-full" />
+                                                        <el-input
+                                                            v-model="formData.customer!.email"
+                                                            clearable
+                                                            placeholder="Nhập email"
+                                                            class="w-full"
+                                                        />
                                                     </el-form-item>
                                                     <el-form-item label-position="top" class="mt-[-10px]">
                                                         <template #label>
                                                             <span class="text-[14px] font-medium">Giới tính</span>
                                                         </template>
-                                                        <el-select v-model="formData.gender" placeholder="Chọn"
-                                                            clearable class="w-full">
+                                                        <el-select
+                                                            v-model="formData.customer!.gender"
+                                                            placeholder="Chọn"
+                                                            clearable
+                                                            class="w-full"
+                                                        >
                                                             <el-option label="Nam" :value="1" />
                                                             <el-option label="Nữ" :value="2" />
                                                             <el-option label="Khác" :value="3" />
@@ -287,15 +282,23 @@ const showPaymentExtra = ref(false)
                                                         <template #label>
                                                             <span class="text-[14px] font-medium">Ngày sinh</span>
                                                         </template>
-                                                        <el-date-picker v-model="formData.date_of_birth"
-                                                            clearable type="date" placeholder="Chọn" class="w-full" />
+                                                        <el-date-picker
+                                                            v-model="formData.customer!.date_of_birth"
+                                                            clearable
+                                                            type="date"
+                                                            placeholder="Chọn"
+                                                            class="w-full"
+                                                        />
                                                     </el-form-item>
                                                     <el-form-item label-position="top" class="mt-[-10px]">
                                                         <template #label>
                                                             <span class="text-[14px] font-medium">Đại lý</span>
                                                         </template>
-                                                        <el-select placeholder="Chọn"
-                                                            clearable class="w-full">
+                                                        <el-select
+                                                            placeholder="Chọn"
+                                                            clearable
+                                                            class="w-full"
+                                                        >
                                                             <el-option label="Đại lý 1" value="A1" />
                                                             <el-option label="Đại lý 2" value="A2" />
                                                         </el-select>
@@ -307,17 +310,20 @@ const showPaymentExtra = ref(false)
                                 </div>
 
                                 <!-- Route Section -->
-                                <div class="">
+                                <div>
                                     <el-row :gutter="12" class="w-full">
                                         <el-col :span="12" class="w-1/2">
                                             <el-form-item label-position="top">
                                                 <template #label>
                                                     <span class="text-[14px] font-medium">Điểm đón</span>
                                                 </template>
-                                                <el-input v-model="formData.point_up" placeholder="Nhập điểm đón"
-                                                    class="w-full" />
+                                                <el-input
+                                                    v-model="formData.point!.point_up"
+                                                    placeholder="Nhập điểm đón"
+                                                    class="w-full"
+                                                />
                                             </el-form-item>
-                                            <el-checkbox v-model="formData.transit_up" class="mt-[-18px]">
+                                            <el-checkbox v-model="formData.point!.transit_up" class="mt-[-18px]">
                                                 <span class="text-[14px] font-medium">Có trung chuyển đón</span>
                                             </el-checkbox>
                                         </el-col>
@@ -326,10 +332,13 @@ const showPaymentExtra = ref(false)
                                                 <template #label>
                                                     <span class="text-[14px] font-medium">Điểm trả</span>
                                                 </template>
-                                                <el-input v-model="formData.point_down"
-                                                    placeholder="Nhập điểm trả" class="w-full" />
+                                                <el-input
+                                                    v-model="formData.point!.point_down"
+                                                    placeholder="Nhập điểm trả"
+                                                    class="w-full"
+                                                />
                                             </el-form-item>
-                                            <el-checkbox v-model="formData.transit_down" class="mt-[-18px]">
+                                            <el-checkbox v-model="formData.point!.transit_down" class="mt-[-18px]">
                                                 <span class="text-[14px] font-medium">Có trung chuyển trả</span>
                                             </el-checkbox>
                                         </el-col>
@@ -337,21 +346,24 @@ const showPaymentExtra = ref(false)
                                 </div>
 
                                 <!-- Note Section -->
-                                <div class="">
+                                <div>
                                     <el-form-item label-position="top">
                                         <template #label>
                                             <span class="text-[14px] font-medium">Ghi chú</span>
                                         </template>
-                                        <el-input v-model="formData.note" type="textarea"
-                                            placeholder="Nhập ghi chú" :autosize="{ minRows: 2, maxRows: 2 }"
-                                            class="w-full" />
+                                        <el-input
+                                            v-model="formData.ticket_note"
+                                            type="textarea"
+                                            placeholder="Nhập ghi chú"
+                                            :autosize="{ minRows: 2, maxRows: 2 }"
+                                            class="w-full"
+                                        />
                                     </el-form-item>
                                 </div>
 
                                 <!-- Payment Section -->
-                                <div class="">
-                                    <h5
-                                        class="text-xs font-bold text-gray-600 uppercase mb-2 pb-1 border-b border-gray-300">
+                                <div>
+                                    <h5 class="text-xs font-bold text-gray-600 uppercase mb-2 pb-1 border-b border-gray-300">
                                         THÔNG TIN THANH TOÁN
                                     </h5>
 
@@ -361,7 +373,11 @@ const showPaymentExtra = ref(false)
                                                 <template #label>
                                                     <span class="text-[14px] font-medium">Giá vé</span>
                                                 </template>
-                                                <el-input v-model="displayTotalPrice" placeholder="0" class="w-full" />
+                                                <el-input
+                                                    v-model="displayTotalPrice"
+                                                    placeholder="0"
+                                                    class="w-full"
+                                                />
                                             </el-form-item>
                                         </el-col>
                                         <el-col :span="12" class="w-1/2">
@@ -369,8 +385,11 @@ const showPaymentExtra = ref(false)
                                                 <template #label>
                                                     <span class="text-[14px] font-medium">Hình thức thanh toán</span>
                                                 </template>
-                                                <el-select v-model="formData.payment_method" placeholder="Chọn"
-                                                    class="w-full">
+                                                <el-select
+                                                    v-model="formData.price!.payment_method"
+                                                    placeholder="Chọn"
+                                                    class="w-full"
+                                                >
                                                     <el-option label="Thanh toán trên xe" value="TTTX" />
                                                     <el-option label="Thanh toán tại quầy" value="TTTQ" />
                                                     <el-option label="Thanh toán trực tuyến" value="ONLINE" />
@@ -381,23 +400,35 @@ const showPaymentExtra = ref(false)
                                             </el-form-item>
                                         </el-col>
                                     </el-row>
-                                    <el-button text type="primary" size="small"
-                                        @click="showPaymentExtra = !showPaymentExtra" class="px-0 mt-[-18px]">
+
+                                    <el-button
+                                        text
+                                        type="primary"
+                                        size="small"
+                                        @click="showPaymentExtra = !showPaymentExtra"
+                                        class="px-0 mt-[-18px]"
+                                    >
                                         <span v-if="!showPaymentExtra">+ Thêm thông tin</span>
                                         <span v-else>- Ẩn thông tin</span>
                                     </el-button>
 
                                     <el-collapse-transition>
-                                        <div v-show="showPaymentExtra"
-                                            class="space-y-3 pl-2 border-l-2 border-blue-200 w-full">
+                                        <div
+                                            v-show="showPaymentExtra"
+                                            class="space-y-3 pl-2 border-l-2 border-blue-200 w-full"
+                                        >
                                             <el-row :gutter="12" class="w-full">
                                                 <el-col :span="12" class="w-1/2">
                                                     <el-form-item label-position="top" class="mb-3">
                                                         <template #label>
                                                             <span class="text-[14px] font-medium">Đã thu</span>
                                                         </template>
-                                                        <el-input v-model="displayMoneyPaidPrice" placeholder="0"
-                                                            clearable class="w-full" />
+                                                        <el-input
+                                                            v-model="displayMoneyPaidPrice"
+                                                            placeholder="0"
+                                                            clearable
+                                                            class="w-full"
+                                                        />
                                                     </el-form-item>
                                                 </el-col>
                                                 <el-col :span="12" class="w-1/2">
@@ -405,8 +436,12 @@ const showPaymentExtra = ref(false)
                                                         <template #label>
                                                             <span class="text-[14px] font-medium">Phụ thu</span>
                                                         </template>
-                                                        <el-input v-model="displaySurchargePrice" placeholder="0"
-                                                            clearable class="w-full" />
+                                                        <el-input
+                                                            v-model="displaySurchargePrice"
+                                                            placeholder="0"
+                                                            clearable
+                                                            class="w-full"
+                                                        />
                                                     </el-form-item>
                                                 </el-col>
                                             </el-row>
@@ -415,10 +450,61 @@ const showPaymentExtra = ref(false)
                                 </div>
                             </div>
                         </el-form>
-
-
                     </el-tab-pane>
-                    <el-tab-pane label="Lịch sử" name="2">
+                </el-tabs>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <template #footer>
+            <div class="flex justify-between items-center p-4 bg-gray-50 border-t border-gray-200">
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[14px] text-gray-600">Tổng tiền:</span>
+                        <span class="text-base font-bold text-red-600">{{ displayFinalPrice }} đ</span>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <el-button
+                        color="#0072bc"
+                        :icon="Checked"
+                        :disabled="!props.tickets || props.tickets.length === 0"
+                        @click="handleSave"
+                    >
+                        Cập nhật
+                    </el-button>
+                    <el-button type="warning" :icon="Printer" @click="handlePrint">
+                        In vé
+                    </el-button>
+                    <el-button type="danger" :icon="Delete" @click="handleDeleteTicket">
+                        Hủy vé
+                    </el-button>
+                    <el-button @click="handleClose">
+                        Đóng
+                    </el-button>
+                </div>
+            </div>
+        </template>
+    </el-dialog>
+</template>
+
+<style scoped>
+:deep(.el-dialog__header) {
+    background-color: #0072bc;
+    padding-bottom: 10px;
+}
+
+:deep(.el-dialog__headerbtn) {
+    color: white;
+}
+
+:deep(.el-dialog__footer) {
+    padding-top: 0;
+}
+</style>
+
+<!-- <el-tab-pane label="Lịch sử" name="2">
                         <el-table v-loading="loadingHistory" :data="historyTicket" style="width: 100%">
                             <el-table-column label="Thời gian" width="140">
                                 <template #default="scope">
@@ -446,7 +532,7 @@ const showPaymentExtra = ref(false)
                             <el-table-column label="Thông tin">
                                 <template #default="scope">
                                     <div>
-                                        <!-- Hiển thị đầy đủ cho dòng cuối cùng (dòng đầu tiên theo thời gian) -->
+                                      
                                         <template v-if="scope.$index === historyTicket.length - 1">
                                             <div v-if="scope.row.ticket_customer_name">Họ tên: <span
                                                     class="text-black font-semibold">{{ scope.row.ticket_customer_name
@@ -485,7 +571,7 @@ const showPaymentExtra = ref(false)
                                             </div>
                                         </template>
 
-                                        <!-- Chỉ hiển thị thông tin khác biệt so với lần có giá trị trước đó -->
+                                    
                                         <template v-else>
                                             <div
                                                 v-if="hasFieldChanged(scope.$index, 'ticket_customer_name', scope.row.ticket_customer_name)">
@@ -537,7 +623,7 @@ const showPaymentExtra = ref(false)
                                                     class="text-gray-500">Không</span>
                                             </div>
 
-                                            <!-- Hiển thị thông báo nếu không có thay đổi -->
+
                                             <div v-if="scope.row.ticket_customer_name === historyTicket[ scope.$index + 1 ]?.ticket_customer_name &&
                                                 scope.row.ticket_phone === historyTicket[ scope.$index + 1 ]?.ticket_phone &&
                                                 scope.row.contact_status === historyTicket[ scope.$index + 1 ]?.contact_status &&
@@ -558,56 +644,4 @@ const showPaymentExtra = ref(false)
                                 </template>
                             </el-table-column>
                         </el-table>
-                    </el-tab-pane>
-
-                </el-tabs>
-
-
-            </div>
-        </div>
-
-        <template #footer>
-            <div class="flex justify-between items-center p-4 bg-gray-50 border-t border-gray-200">
-                <!-- Tổng tiền bên trái -->
-                <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-2">
-                        <span class="text-[14px] text-gray-600">Tổng tiền:</span>
-                        <span class="text-base font-bold text-red-600">{{ displayFinalPrice }} đ</span>
-                    </div>
-                </div>
-
-                <!-- Buttons bên phải -->
-                <div class="flex">
-                    <el-button color="#0072bc" :icon="Checked"
-                        :disabled="!props.selectedTickets || props.selectedTickets.length === 0"
-                        @click="handleSave">
-                        Cập nhật
-                    </el-button>
-                    <el-button type="warning" :icon="Printer" @click="handlePrint">
-                        In vé
-                    </el-button>
-                    <el-button type="danger" :icon="Delete">
-                        Hủy vé
-                    </el-button>
-                    <el-button @click="handleClose">
-                        Đóng
-                    </el-button>
-                </div>
-            </div>
-        </template>
-    </el-dialog>
-</template>
-<style>
-.el-dialog__header {
-    background-color: #0072bc;
-    padding-bottom: 10px;
-}
-
-.el-dialog__headerbtn {
-    color: white;
-}
-
-.el-dialog__footer {
-    padding-top: 0;
-}
-</style>
+                    </el-tab-pane> -->
