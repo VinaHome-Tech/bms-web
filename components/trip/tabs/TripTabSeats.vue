@@ -1,6 +1,6 @@
 <!-- eslint-disable @typescript-eslint/no-dynamic-delete -->
 <script setup lang="ts">
-import type { DTO_RQ_Ticket, Ticket, TicketItem } from '~/types/ticket/ticket.interface'
+import type { Ticket, TicketItem } from '~/types/ticket/ticket.interface'
 import { computed } from 'vue'
 import { Location, Unlock, Delete, Edit, Rank, CloseBold, CopyDocument } from '@element-plus/icons-vue'
 import { formatCurrencyWithoutSymbol } from '~/lib/formatCurrency'
@@ -107,6 +107,7 @@ const {
     lockedUserName,
     handleForceUnlock,
     handleRemoveAllSelectedTickets,
+    handleUpdateTickets,
 } = useTicketActions();
 
 
@@ -173,7 +174,7 @@ const getContactStatusInfo = (status: number | null | undefined) => {
 
 const { $firebase } = useNuxtApp();
 const useUserStore = userStore();
-const useOffice = useOfficeStore();
+const useOfficeStore = officeStore();
 // const selectedTickets = ref<TicketItem[]>([]); // Vé user hiện tại chọn
 
 const isMoveTickets = ref(false);
@@ -312,60 +313,60 @@ const bookedTicketsCount = computed(() =>
 const loadingTickets = ref<number[]>([]);
 
 // Actions: Cập nhật thông tin vé
-const handleUpdateTickets = async (data: DTO_RQ_Ticket) => {
-    const ids = selectedTickets.value
-        .map(ticket => ticket.id)
-        .filter((id): id is number => id !== undefined && id !== null);
-    const tripID = valueSelectedTrip.value?.id;
-    if (tripID === undefined || tripID === null) {
-        notifyError('Dữ liệu chuyến không hợp lệ. Vui lòng thử lại.');
-        return;
-    }
-    const user = {
-        user_id: useUserStore.id,
-        user_name: useUserStore.full_name,
-        office_id: useOffice.id,
-        office_name: useOffice.name
-    }
-    try {
-        loadingTickets.value.push(...ids);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const response = await API_UpdateTickets(tripID, ids, data, user);
-        if (response.success && response.result) {
-            notifySuccess('Cập nhật thông tin vé thành công.');
-            // Cập nhật local
-            response.result.forEach((updatedTicket: TicketItem) => {
-                const local = props.tickets.find(t => t.id === updatedTicket.id);
-                if (local) {
-                    Object.assign(local, updatedTicket); // cập nhật thông tin local
-                }
-                // Đồng bộ lên Firebase để các user khác cũng nhận được
-                const itemRef = $firebase.ref($firebase.db, `tickets/${tripId.value}/${updatedTicket.id}`);
-                $firebase.set(itemRef, {
-                    ...updatedTicket,
-                    selected: false,
-                    selectedBy: null,
-                    updatedAt: Date.now() // để trigger real-time sync
-                });
-            });
-            const bookedTickets = props.tickets.filter(t => t.booked_status === true);
-            if (valueSelectedTrip.value) {
-                valueSelectedTrip.value.ticket_booked = bookedTickets.length;
-                valueSelectedTrip.value.total_price = bookedTickets.reduce((sum, t) => sum + (t.total_price || 0), 0);
-                valueSelectedTrip.value.money_paid = bookedTickets.reduce((sum, t) => sum + (t.money_paid || 0), 0);
-            }
-        } else {
-            notifyError(response.message || 'Cập nhật thông tin vé thất bại. Vui lòng thử lại.');
-        }
-    } catch (error) {
-        console.error('Error updating tickets:', error);
-        notifyError('Cập nhật thông tin vé thất bại. Vui lòng thử lại.');
-    } finally {
-        loadingTickets.value = loadingTickets.value.filter(id => !ids.includes(id));
-        dialogEditTicket.value = false;
-        handleClearAll();
-    }
-};
+// const handleUpdateTickets = async (data: DTO_RQ_Ticket) => {
+//     const ids = selectedTickets.value
+//         .map(ticket => ticket.id)
+//         .filter((id): id is number => id !== undefined && id !== null);
+//     const tripID = valueSelectedTrip.value?.id;
+//     if (tripID === undefined || tripID === null) {
+//         notifyError('Dữ liệu chuyến không hợp lệ. Vui lòng thử lại.');
+//         return;
+//     }
+//     const user = {
+//         user_id: useUserStore.id,
+//         user_name: useUserStore.full_name,
+//         office_id: useOffice.id,
+//         office_name: useOffice.name
+//     }
+//     try {
+//         loadingTickets.value.push(...ids);
+//         await new Promise(resolve => setTimeout(resolve, 1000));
+//         const response = await API_UpdateTickets(tripID, ids, data, user);
+//         if (response.success && response.result) {
+//             notifySuccess('Cập nhật thông tin vé thành công.');
+//             // Cập nhật local
+//             response.result.forEach((updatedTicket: TicketItem) => {
+//                 const local = props.tickets.find(t => t.id === updatedTicket.id);
+//                 if (local) {
+//                     Object.assign(local, updatedTicket); // cập nhật thông tin local
+//                 }
+//                 // Đồng bộ lên Firebase để các user khác cũng nhận được
+//                 const itemRef = $firebase.ref($firebase.db, `tickets/${tripId.value}/${updatedTicket.id}`);
+//                 $firebase.set(itemRef, {
+//                     ...updatedTicket,
+//                     selected: false,
+//                     selectedBy: null,
+//                     updatedAt: Date.now() // để trigger real-time sync
+//                 });
+//             });
+//             const bookedTickets = props.tickets.filter(t => t.booked_status === true);
+//             if (valueSelectedTrip.value) {
+//                 valueSelectedTrip.value.ticket_booked = bookedTickets.length;
+//                 valueSelectedTrip.value.total_price = bookedTickets.reduce((sum, t) => sum + (t.total_price || 0), 0);
+//                 valueSelectedTrip.value.money_paid = bookedTickets.reduce((sum, t) => sum + (t.money_paid || 0), 0);
+//             }
+//         } else {
+//             notifyError(response.message || 'Cập nhật thông tin vé thất bại. Vui lòng thử lại.');
+//         }
+//     } catch (error) {
+//         console.error('Error updating tickets:', error);
+//         notifyError('Cập nhật thông tin vé thất bại. Vui lòng thử lại.');
+//     } finally {
+//         loadingTickets.value = loadingTickets.value.filter(id => !ids.includes(id));
+//         dialogEditTicket.value = false;
+//         handleClearAll();
+//     }
+// };
 
 // Action: Huỷ vé
 const handleCancelTickets = async () => {
@@ -770,8 +771,12 @@ const isSelectedForMove = (ticket: TicketItem) => {
 
 
     </div>
-    <DialogEditTicket v-model="dialogEditTicket" :tickets="selectedTickets" @closed="handleCloseDialogEditTicket"
-        @save="handleUpdateTickets" />
+    <DialogEditTicket 
+        v-model="dialogEditTicket" 
+        :tickets="selectedTickets" 
+        @closed="handleCloseDialogEditTicket"
+        @save="handleUpdateTickets" 
+    />
 </template>
 <!-- VIỀN CHUYỂN GHẾ -->
 <!-- <svg v-if="isSelectedForMove(ticket)" viewBox="0 0 calc(100% + 4px) calc(100% + 4px)"

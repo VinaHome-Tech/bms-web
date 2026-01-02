@@ -4,7 +4,7 @@ import { API_LogoutBMS } from "~/services/identity-service/auth/bms-auth.api";
 
 export const useAuth = () => {
     const useUserStore = userStore();
-    const officeStore = useOfficeStore();
+    const useOfficeStore = officeStore();
     const handleManualLogout = async (): Promise<void> => {
         try {
             const cookie_access_token = useCookie('access_token');
@@ -17,7 +17,7 @@ export const useAuth = () => {
             notifyWarning('Đăng xuất thành công!');
         } finally {
             useUserStore.resetUserInfo();
-            officeStore.resetOfficeStore();
+            useOfficeStore.resetOfficeStore();
             await navigateTo('/');
         }
     };

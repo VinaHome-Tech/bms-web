@@ -19,17 +19,21 @@ export const API_GetListTicketByTripId = async (tripID: string, data: { seat_cha
     }
 }
 
-export const API_UpdateTickets = async (tripID: number, ticketIds: number[], data: DTO_RQ_Ticket, user: any): Promise<ApiResponse<TicketItem[]>> => {
+export const API_UpdateTickets = async (tripID: string, data: DTO_RQ_Ticket): Promise<ApiResponse<Ticket[]>> => {
     const { $apiFetch } = useNuxtApp()
     const config = useRuntimeConfig()
-    return await $apiFetch<ApiResponse<TicketItem[]>>(`${config.public.apiGateWay}/v3/bms-ticket/trip/${tripID}/update-tickets`, {
-        method: "POST",
-        body: {
-            ticket_ids: ticketIds,
-            data,
-            user
-        },
-    })
+    try {
+        return await $apiFetch<ApiResponse<Ticket[]>>(`${config.public.apiGateWay}/v3/bms-ticket/trips/${tripID}/update-tickets`, {
+            method: "POST",
+            body: data,
+        })
+    } catch (error: any) {
+        return {
+            success: false,
+            message: error?.data?.message || 'Lỗi hệ thống',
+            statusCode: error?.data?.statusCode || error?.statusCode || 500,
+        } as ApiResponse<Ticket[]>
+    }
 }
 export const API_CancelTickets = async (tripID: number, ticketIds: number[], user: any): Promise<ApiResponse<TicketItem[]>> => {
     const { $apiFetch } = useNuxtApp()

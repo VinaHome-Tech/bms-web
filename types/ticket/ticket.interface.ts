@@ -89,15 +89,16 @@ export interface Ticket {
 }
 
 export interface DTO_RQ_Ticket {
-   customer?: {
-       name?: string;
-       email?: string;
-       phone?: string;
-       date_of_birth?: Date;
-       gender?: number;
-       note?: string;
-   };
-   point?: {
+    ticket_ids?: string[];
+    customer?: {
+        name?: string;
+        email?: string;
+        phone?: string;
+        date_of_birth?: Date;
+        gender?: number;
+        note?: string;
+    };
+    point?: {
         point_up?: string;
         time_up?: string;
         point_down?: string;
@@ -113,13 +114,20 @@ export interface DTO_RQ_Ticket {
         id?: string;
         name?: string;
     };
+    user_updated?: {
+        id?: string;
+        name?: string;
+    };
+    office_updated?: {
+        id?: string;
+        name?: string;
+    };
     price?: {
         total_price?: number;
         surcharge?: number;
         money_paid?: number;
         payment_method?: string;
     };
-    contact_status?: number;
     ticket_note?: string;
 }
 export interface LockedSeat {

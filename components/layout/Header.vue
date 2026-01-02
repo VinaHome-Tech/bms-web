@@ -31,6 +31,7 @@ import { formatCurrency } from '~/lib/formatCurrency';
 // import ChangePasswordDialog from '../dialog/ChangePasswordDialog.vue';
 import SendCommentDialog from '../dialog/SendCommentDialog.vue';
 
+
 const Icons: Record<string, Component> = {
   Menu,
   Search,
@@ -52,7 +53,7 @@ const Icons: Record<string, Component> = {
 const { handleManualLogout } = useAuth();
 
 const useUserStore = userStore();
-const officeStore = useOfficeStore();
+const useOfficeStore = officeStore();
 
 
 const notifications = ref([
@@ -291,7 +292,7 @@ const handleMenuItemClick = async (routePath: string | undefined) => {
 const dialogFormSendComment = ref(false)
 onMounted(async () => {
   await useUserStore.loadUserInfo();
-  await officeStore.loadOfficeStore();
+  await useOfficeStore.loadOfficeStore();
 });
 </script>
 <template>
@@ -340,7 +341,7 @@ onMounted(async () => {
           <div class="flex flex-col">
             <span class="text-lg font-semibold text-black">{{ useUserStore.company_name || '' }}</span>
             <span class="w-fit text-xs text-black bg-green-300 px-2 py-0.5 rounded">
-              {{ officeStore.name || '' }}
+              {{ useOfficeStore.name || '' }}
             </span>
           </div>
           <template #fallback>

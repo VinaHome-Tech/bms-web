@@ -35,6 +35,6 @@ export interface OfficePhoneType {
   type: string;
 }
 export interface OfficeStoreType{
-  id: number | null;
+  id: string | null;
   name: string | null;
 }

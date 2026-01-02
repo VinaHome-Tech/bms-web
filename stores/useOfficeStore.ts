@@ -1,7 +1,7 @@
 import type { OfficeStoreType } from "~/types/officeType";
 
 const LOCAL_KEY = "office_store";
-export const useOfficeStore = defineStore("office", {
+export const officeStore = defineStore("office", {
   state: (): OfficeStoreType => ({
     id: null,
     name: null,
@@ -26,8 +26,8 @@ export const useOfficeStore = defineStore("office", {
       }
     },
     resetOfficeStore() {
-      this.id = 0;
-      this.name = "";
+      this.id = null;
+      this.name = null;
       if (import.meta.client) {
         localStorage.removeItem(LOCAL_KEY)
       }

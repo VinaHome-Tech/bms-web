@@ -13,7 +13,8 @@ const emit = defineEmits<{
     (e: 'save', data: DTO_RQ_Ticket): void
     (e: 'close'): void
 }>()
-
+const useUserStore = userStore();
+const useOfficeStore = officeStore();
 const visible = ref(props.modelValue)
 const activeName = ref('1')
 const showCustomerExtra = ref(false)
@@ -25,13 +26,15 @@ const createEmptyFormData = (): DTO_RQ_Ticket => ({
     point: { point_up: undefined, time_up: undefined, point_down: undefined, time_down: undefined, transit_up: false, transit_down: false },
     user_created: { id: undefined, name: undefined },
     office_created: { id: undefined, name: undefined },
+    user_updated: { id: undefined, name: undefined },
+    office_updated: { id: undefined, name: undefined },
     price: { total_price: undefined, surcharge: undefined, money_paid: undefined, payment_method: undefined },
-    contact_status: undefined,
     ticket_note: undefined,
 })
 
 // Hàm chuyển đổi Ticket thành DTO_RQ_Ticket
 const convertTicketToFormData = (ticket: Ticket): DTO_RQ_Ticket => ({
+    ticket_ids: props.tickets?.map(t => t.id) || [],
     customer: {
         name: ticket.customer?.name,
         phone: ticket.customer?.phone,
@@ -56,13 +59,20 @@ const convertTicketToFormData = (ticket: Ticket): DTO_RQ_Ticket => ({
         id: ticket.office_created?.id,
         name: ticket.office_created?.name,
     },
+    user_updated: {
+        id: useUserStore.id?.trim(),
+        name: useUserStore.full_name?.trim(),
+    },
+    office_updated: {
+        id: useOfficeStore.id?.trim(),
+        name: useOfficeStore.name?.trim(),
+    },
     price: {
         total_price: Number(ticket.price?.total_price) || 0,
         surcharge: Number(ticket.price?.surcharge) || 0,
         money_paid: Number(ticket.price?.money_paid) || 0,
         payment_method: ticket.price?.payment_method || 'TTTX',
     },
-    contact_status: ticket.contact_status,
     ticket_note: ticket.ticket_note,
 })
 
@@ -168,6 +178,10 @@ const handlePrint = () => {
 const handleDeleteTicket = () => {
     console.log('Delete ticket')
 }
+onMounted(() => {
+    useUserStore.loadUserInfo();
+    useOfficeStore.loadOfficeStore();
+})
 </script>
 
 <template>

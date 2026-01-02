@@ -4,10 +4,10 @@ definePageMeta({
   middleware: ['auth'],
 })
 const useUserStore = userStore();
-const officeStore = useOfficeStore();
+const useOfficeStore = officeStore();
 onMounted(async () => {
     await useUserStore.loadUserInfo();
-    await officeStore.loadOfficeStore();
+    await useOfficeStore.loadOfficeStore();
 });
 </script>
 <template>

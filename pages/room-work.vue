@@ -4,15 +4,16 @@ import { SwitchButton } from '@element-plus/icons-vue'
 import { API_GetListOfficeRoomWorkByCompanyId } from '~/services/resource-service/office/bms-office.api'
 import type { OfficeRoomWork } from '~/types/office/office.interface'
 import { API_LogoutBMS } from '~/services/identity-service/auth/bms-auth.api'
+import { officeStore } from '#imports'
 definePageMeta({
   middleware: ['auth'],
   layout: false,
 })
 // const { handleManualLogout } = useAuth();
 const useUserStore = userStore();
-const officeStore = useOfficeStore();
+const useOfficeStore = officeStore();
 
-const selectedOffice = ref<number | null>(null)
+const selectedOffice = ref<string | null>(null)
 const searchQuery = ref('')
 const filterByAvailability = ref(false)
 
@@ -31,7 +32,7 @@ const filteredOffices = computed(() => {
   return result
 })
 
-const selectOffice = (officeId: number) => {
+const selectOffice = (officeId: string) => {
   selectedOffice.value = officeId
 }
 
@@ -39,7 +40,7 @@ const confirmSelection = () => {
   if (selectedOffice.value) {
     const office = offices.value.find(o => o.id === selectedOffice.value);
     if (office) {
-      officeStore.setOfficeStore({
+      useOfficeStore.setOfficeStore({
         id: office.id,
         name: office.name,
       });
@@ -81,7 +82,7 @@ const handleManualLogout = async (): Promise<void> => {
     notifyWarning('Đăng xuất thành công!');
   } finally {
     useUserStore.resetUserInfo();
-    officeStore.resetOfficeStore();
+    useOfficeStore.resetOfficeStore();
     await navigateTo('/');
   }
 };
@@ -181,7 +182,7 @@ onMounted(async () => {
           'bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transition-all duration-300',
           selectedOffice === office.id ? 'ring-4 ring-blue-500 transform scale-100' : 'hover:shadow-lg',
           !office.status ? 'opacity-60 cursor-not-allowed' : ''
-        ]" @click="office.status && selectOffice(office.id as number)">
+        ]" @click="office.status && selectOffice(office.id ?? '')">
           <div class="p-4">
             <h3 class="text-base font-semibold text-gray-800 mb-2">{{ office.name }}</h3>
             <div class="text-gray-600 mb-1">
