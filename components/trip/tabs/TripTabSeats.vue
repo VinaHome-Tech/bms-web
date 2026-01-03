@@ -11,7 +11,7 @@ import { API_CancelTickets, API_GetTicketByTripId, API_MoveTickets, API_UpdateTi
 
 import { API_GetTripSummaryById } from '~/services/booking-service/trip/bms-trip.api';
 import { useTicketActions } from '~/composables/ticket/useTicketActions';
-import { lockedByOthers, selectedTickets } from '~/composables/ticket/useTicketGlobal';
+import { listTicket, lockedByOthers, selectedTickets } from '~/composables/ticket/useTicketGlobal';
 
 
 
@@ -108,61 +108,146 @@ const {
     handleRemoveAllSelectedTickets,
     handleUpdateTickets,
     isLoadingTicket,
+    addLoadingTickets,
+    removeLoadingTickets,
+    handleCancelTickets,
 } = useTicketActions();
 
 
 
 
 const { $socket } = useNuxtApp()
+const countdownTimers = new Map<string, ReturnType<typeof setInterval>>()
+const startCountdown = (ticketId: string) => {
+    if (countdownTimers.has(ticketId)) return
+    const timer = setInterval(() => {
+        const lock = lockedByOthers.value[ ticketId ]
+        if (!lock) {
+            clearInterval(timer)
+            countdownTimers.delete(ticketId)
+            return
+        }
+        const remain = Math.floor(
+            (lock.lockedUntil - Date.now()) / 1000
+        )
+        lock.remaining = Math.max(remain, 0)
+
+        if (remain <= 0) {
+            clearInterval(timer)
+            countdownTimers.delete(ticketId)
+        }
+    }, 1000)
+    countdownTimers.set(ticketId, timer)
+}
 
 onMounted(() => {
+    if (!$socket.connected) {
+        console.log('🔌 Connecting WS...')
+        $socket.connect()
+    }
     if (!valueSelectedTrip.value?.id) return
 
-    // JOIN ROOM
-    $socket.emit('join-trip', { tripId: valueSelectedTrip.value?.id })
-    console.log('➡️ FE join-trip:', valueSelectedTrip.value?.id)
-    // USER KHÁC CHỌN VÉ
-    $socket.on('ticket:locked', (data) => {
-        const { trip_id, tickets } = data
+    const tripId = valueSelectedTrip.value.id
 
-        if (trip_id !== valueSelectedTrip.value?.id) return
+    /* ======================
+       JOIN TRIP
+       ====================== */
+    $socket.emit('join-trip', { tripId })
+
+    /* ======================
+       🔒 LOCK VÉ
+       ====================== */
+    $socket.on('ticket:locked', ({ trip_id, tickets }) => {
+        if (trip_id !== tripId) return
 
         tickets.forEach(t => {
             lockedByOthers.value[ t.id ] = {
                 seatName: t.seat_name,
                 userId: t.user_select_id,
                 userName: t.user_select_name,
+                lockedUntil: t.locked_until,
+                remaining: Math.max(
+                    Math.floor((t.locked_until - Date.now()) / 1000),
+                    0
+                ),
             }
-        })
 
-        console.log('🔒 lockedByOthers:', lockedByOthers.value)
+            startCountdown(t.id)
+        })
     })
 
-    // USER KHÁC TRẢ VÉ
+    /* ======================
+       🔓 UNLOCK VÉ
+       ====================== */
     $socket.on('seat-released', ({ ticketId }) => {
-        console.log('🔓 seat released:', ticketId)
-
-        // 1. bỏ trạng thái bị người khác giữ
         delete lockedByOthers.value[ ticketId ]
 
-        // 2. 🔥 NẾU CHÍNH MÌNH ĐANG GIỮ → BỎ LOCAL
+        if (countdownTimers.has(ticketId)) {
+            clearInterval(countdownTimers.get(ticketId)!)
+            countdownTimers.delete(ticketId)
+        }
+
         const index = selectedTickets.value.findIndex(
             t => t.id === ticketId
         )
-
         if (index !== -1) {
             selectedTickets.value.splice(index, 1)
-            console.log('⚠️ Force unlock → removed from local:', ticketId)
         }
     })
 
+    /* ======================
+       🔄 LOADING REALTIME
+       ====================== */
+    $socket.on('ticket:updating', ({ trip_id, ticket_ids }) => {
+        if (trip_id !== tripId) return
+        addLoadingTickets(ticket_ids)
+    })
+
+    $socket.on('ticket:updated', ({ trip_id, ticket_ids }) => {
+        if (trip_id !== tripId) return
+        removeLoadingTickets(ticket_ids)
+    })
+
+    /* ======================
+       📦 DATA UPDATED (🔥 THIẾU Ở BẠN)
+       ====================== */
+    $socket.on('ticket:data-updated', ({ trip_id, tickets }) => {
+        if (trip_id !== tripId) return
+
+        console.log('📦 WS ticket data updated:', tickets)
+
+        listTicket.value = listTicket.value.map(t => {
+            const updated = tickets.find((u: any) => u.id === t.id)
+            return updated ? { ...t, ...updated } : t
+        })
+    })
 })
+
+
 onUnmounted(() => {
     $socket.off('ticket:locked')
     $socket.off('seat-released')
+    $socket.off('ticket:updating')
+    $socket.off('ticket:updated')
+    $socket.off('ticket:data-updated')
+
+    // 🔥 clear toàn bộ countdown
+    countdownTimers.forEach(timer => clearInterval(timer))
+    countdownTimers.clear()
+    if ($socket.connected) {
+        console.log('🔌 Disconnecting WS...')
+        $socket.disconnect()
+    }
 })
 
 
+
+const lockedRemainTime = (ticket: Ticket) => {
+    const remain = lockedByOthers.value[ ticket.id ]?.remaining ?? 0
+    const m = Math.floor(remain / 60).toString().padStart(2, '0')
+    const s = (remain % 60).toString().padStart(2, '0')
+    return `${m}:${s}`
+}
 
 
 
@@ -228,32 +313,32 @@ const countdowns = reactive<TicketCountdown>({});
 const intervals: TicketInterval = {};
 
 // Bắt đầu countdown cho 1 vé
-const startCountdown = (ticketId: number) => {
-    // Reset countdown 10 phút
-    countdowns[ ticketId ] = 10 * 60;
+// const startCountdown = (ticketId: number) => {
+//     // Reset countdown 10 phút
+//     countdowns[ ticketId ] = 10 * 60;
 
-    // Nếu vé này đã có interval thì clear trước
-    if (intervals[ ticketId ]) {
-        clearInterval(intervals[ ticketId ]);
-    }
+//     // Nếu vé này đã có interval thì clear trước
+//     if (intervals[ ticketId ]) {
+//         clearInterval(intervals[ ticketId ]);
+//     }
 
-    // Tạo interval riêng cho vé này
-    intervals[ ticketId ] = window.setInterval(() => {
-        if (countdowns[ ticketId ] > 0) {
-            countdowns[ ticketId ]--;
-        } else {
-            // Hết countdown -> bỏ chọn vé
-            stopCountdown(ticketId);
-            const ticket = allTickets.value.find(t => t.id === ticketId);
-            if (ticket && isTicketSelected(ticket)) {
-                removeLocalSelected(ticket);
-                removeTicketFromFirebase(ticket); // nếu muốn đồng bộ Firebase
-            }
-            clearInterval(intervals[ ticketId ]);
-            delete intervals[ ticketId ];
-        }
-    }, 1000);
-};
+//     // Tạo interval riêng cho vé này
+//     intervals[ ticketId ] = window.setInterval(() => {
+//         if (countdowns[ ticketId ] > 0) {
+//             countdowns[ ticketId ]--;
+//         } else {
+//             // Hết countdown -> bỏ chọn vé
+//             stopCountdown(ticketId);
+//             const ticket = allTickets.value.find(t => t.id === ticketId);
+//             if (ticket && isTicketSelected(ticket)) {
+//                 removeLocalSelected(ticket);
+//                 removeTicketFromFirebase(ticket); // nếu muốn đồng bộ Firebase
+//             }
+//             clearInterval(intervals[ ticketId ]);
+//             delete intervals[ ticketId ];
+//         }
+//     }, 1000);
+// };
 
 // Dừng countdown (bỏ chọn)
 const stopCountdown = (ticketId: number) => {
@@ -369,60 +454,7 @@ const loadingTickets = ref<number[]>([]);
 // };
 
 // Action: Huỷ vé
-const handleCancelTickets = async () => {
-    const ids = selectedTickets.value
-        .map(ticket => ticket.id)
-        .filter((id): id is number => id !== undefined && id !== null);
-    const tripID = valueSelectedTrip.value?.id;
-    if (tripID === undefined || tripID === null) {
-        notifyError('Dữ liệu chuyến không hợp lệ. Vui lòng thử lại.');
-        return;
-    }
-    const user = {
-        user_id: useUserStore.id,
-        user_name: useUserStore.full_name,
-        office_id: useOffice.id,
-        office_name: useOffice.name
-    }
 
-    try {
-        loadingTickets.value.push(...ids);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const response = await API_CancelTickets(tripID, ids, user);
-        if (response.success && response.result) {
-            notifySuccess('Hủy vé thành công.');
-            // Cập nhật local
-            response.result.forEach((canceledTicket: TicketItem) => {
-                const local = props.tickets.find(t => t.id === canceledTicket.id);
-                if (local) {
-                    Object.assign(local, canceledTicket); // cập nhật thông tin local
-                }
-                // Đồng bộ lên Firebase để các user khác cũng nhận được
-                const itemRef = $firebase.ref($firebase.db, `tickets/${tripId.value}/${canceledTicket.id}`);
-                $firebase.set(itemRef, {
-                    ...canceledTicket,
-                    selected: false,
-                    selectedBy: null,
-                    updatedAt: Date.now() // để trigger real-time sync
-                });
-            });
-            const bookedTickets = props.tickets.filter(t => t.booked_status === true);
-            if (valueSelectedTrip.value) {
-                valueSelectedTrip.value.ticket_booked = bookedTickets.length;
-                valueSelectedTrip.value.total_price = bookedTickets.reduce((sum, t) => sum + (t.total_price || 0), 0);
-                valueSelectedTrip.value.money_paid = bookedTickets.reduce((sum, t) => sum + (t.money_paid || 0), 0);
-            }
-        } else {
-            notifyError(response.message || 'Hủy vé thất bại. Vui lòng thử lại.');
-        }
-    } catch (error) {
-        console.error('Error canceling tickets:', error);
-        notifyError('Hủy vé thất bại. Vui lòng thử lại.');
-    } finally {
-        loadingTickets.value = loadingTickets.value.filter(id => !ids.includes(id));
-        handleClearAll();
-    }
-}
 
 // Reset toàn bộ state
 const resetActionState = () => {
@@ -542,7 +574,9 @@ const isSelectedForMove = (ticket: TicketItem) => {
                                         </div>
 
                                         <div>
-                                            <span class="text-[12px]">05:00</span>
+                                            <span class="text-[12px] text-red-600 font-semibold">
+                                                {{ lockedRemainTime(ticket) }}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -602,10 +636,6 @@ const isSelectedForMove = (ticket: TicketItem) => {
                                             </el-tooltip>
                                         </div>
                                     </div>
-                                </div>
-
-                                <!-- ================= FOOTER ================= -->
-                                <div class="mt-auto px-1 pt-1">
                                     <div v-if="ticket.booked_status" class="flex">
                                         <span class="ml-auto pr-1 text-[12px] font-medium text-gray-600">
                                             ({{ ticket.id }})
@@ -617,6 +647,11 @@ const isSelectedForMove = (ticket: TicketItem) => {
                                             * {{ ticket.ticket_note }}
                                         </span>
                                     </div>
+                                </div>
+
+                                <!-- ================= FOOTER ================= -->
+                                <div class="mt-auto px-1 pt-1">
+
 
                                     <div v-if="ticket.booked_status">
                                         <div
@@ -624,7 +659,8 @@ const isSelectedForMove = (ticket: TicketItem) => {
                                             <span>
                                                 {{ formatCurrencyWithoutSymbol(ticket.price?.money_paid || 0)
                                                 }}/
-                                                {{ formatCurrencyWithoutSymbol(ticket.price?.total_price || 0)
+                                                {{ formatCurrencyWithoutSymbol((ticket.price?.total_price || 0) +
+                                                    (ticket.price?.surcharge || 0))
                                                 }}
                                             </span>
                                             <span class="text-[12px]">{{ ticket.price?.payment_method }}</span>

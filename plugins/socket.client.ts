@@ -6,8 +6,8 @@ export default defineNuxtPlugin(() => {
 
   const socket: Socket = io(config.public.WS_URL, {
     transports: ['websocket'],
-    autoConnect: true,
-    withCredentials: true,
+    autoConnect: false,
+    withCredentials: false,
   })
 
   socket.on('connect', () => {

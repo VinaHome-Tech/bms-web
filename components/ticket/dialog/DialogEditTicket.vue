@@ -178,9 +178,9 @@ const handlePrint = () => {
 const handleDeleteTicket = () => {
     console.log('Delete ticket')
 }
-onMounted(() => {
-    useUserStore.loadUserInfo();
-    useOfficeStore.loadOfficeStore();
+onMounted(async () => {
+    await useUserStore.loadUserInfo();
+    await useOfficeStore.loadOfficeStore();
 })
 </script>
 

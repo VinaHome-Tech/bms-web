@@ -1,10 +1,11 @@
-import type { DTO_RQ_Ticket, Ticket } from "~/types/ticket/ticket.interface";
+import type { DTO_RQ_CancelTicket, DTO_RQ_Ticket, Ticket } from "~/types/ticket/ticket.interface";
 import { listTicket, loadingTickets, lockedByOthers, selectedTickets } from "./useTicketGlobal";
-import { valueSelectedTrip } from "../trip/useTripGlobal";
-import { API_UpdateTickets } from "~/services/booking-service/ticket/bms-ticket.api";
+import { listTrip, valueSelectedTrip } from "../trip/useTripGlobal";
+import { API_CancelTickets, API_UpdateTickets } from "~/services/booking-service/ticket/bms-ticket.api";
 
 export const useTicketActions = () => {
     const useUserStore = userStore();
+    const useOfficeStore = officeStore();
     const { $socket } = useNuxtApp()
 
 
@@ -153,6 +154,9 @@ export const useTicketActions = () => {
 
 
 
+
+
+
     const addLoadingTickets = (ticketIds: string[]) => {
         ticketIds.forEach(id => {
             if (!loadingTickets.value.includes(id)) {
@@ -176,25 +180,23 @@ export const useTicketActions = () => {
 
     const handleUpdateTickets = async (updatedTickets: DTO_RQ_Ticket) => {
         const ticketIds = updatedTickets.ticket_ids ?? []
-
         if (ticketIds.length === 0) return
-
-        // 🔥 LẤY CÁC TICKET ĐANG UPDATE (TỪ SELECTED)
         const updatingTickets = selectedTickets.value.filter(t =>
             ticketIds.includes(t.id)
         )
-
-        // 🔥 BẬT LOADING
+        // 🔥 LOCAL LOADING (USER HIỆN TẠI)
         addLoadingTickets(updatingTickets.map(t => t.id))
-
-        console.log('Updating tickets:', updatedTickets)
-
+        // 🔥 REALTIME LOADING (USER KHÁC)
+        $socket.emit('ticket:updating', {
+            trip_id: valueSelectedTrip.value?.id,
+            ticket_ids: ticketIds,
+            user_name: useUserStore.full_name,
+        })
         try {
             const response = await API_UpdateTickets(
                 valueSelectedTrip.value?.id ?? '',
                 updatedTickets
             )
-
             if (response.success) {
                 notifySuccess('Cập nhật thông tin vé thành công')
                 if (response.result) {
@@ -202,26 +204,49 @@ export const useTicketActions = () => {
                         const updated = response.result?.find(ut => ut.id === t.id)
                         return updated ? { ...t, ...updated } : t
                     })
-                }
 
-                /* ============================
-               🔓 RELEASE WS CHO TẤT CẢ VÉ
-               ============================ */
+                    if (!valueSelectedTrip.value) return
+
+                    valueSelectedTrip.value = {
+                        ...valueSelectedTrip.value,
+                        ticket_booked: listTicket.value.filter(
+                            t => t.booked_status === true
+                        ).length,
+                        total_price: listTicket.value
+                            .filter(t => t.booked_status === true)
+                            .reduce(
+                                (sum, t) => sum + (t.price?.total_price ?? 0) + (t.price?.surcharge ?? 0),
+                                0
+                            ),
+
+                        money_paid: listTicket.value
+                            .filter(t => t.booked_status === true)
+                            .reduce(
+                                (sum, t) => sum + (t.price?.money_paid ?? 0),
+                                0
+                            ),
+                    }
+
+                    listTrip.value = listTrip.value.map(trip => {
+                        if (trip.id === valueSelectedTrip.value?.id) {
+                            return { ...trip, ...valueSelectedTrip.value }
+                        }
+                        return trip
+                    })
+
+
+                }
+                // 🔓 RELEASE WS
                 const releasedTickets = selectedTickets.value.filter(
                     t => ticketIds.includes(t.id)
                 )
-
                 releasedTickets.forEach(ticket => {
-                    emitUnselected(ticket) // 🔥 WS notify user khác
+                    emitUnselected(ticket)
                 })
-
-                /* ============================
-                   🧹 CLEAR LOCAL SELECT
-                   ============================ */
+                // 🧹 CLEAR LOCAL SELECT
                 selectedTickets.value = selectedTickets.value.filter(
                     t => !ticketIds.includes(t.id)
                 )
-
             } else {
                 notifyWarning(response.message || 'Cập nhật thông tin vé thất bại')
             }
@@ -229,10 +254,119 @@ export const useTicketActions = () => {
             console.error(error)
             notifyError('Cập nhật thông tin vé thất bại')
         } finally {
-            // 🔥 TẮT LOADING
+            // 🔥 TẮT LOADING LOCAL
             removeLoadingTickets(ticketIds)
+            // 🔥 TẮT LOADING REALTIME
+            $socket.emit('ticket:updated', {
+                trip_id: valueSelectedTrip.value?.id,
+                ticket_ids: ticketIds,
+            })
         }
     }
+
+    const handleCancelTickets = async () => {
+        if (
+            !useUserStore.id ||
+            !useUserStore.full_name ||
+            !useOfficeStore.id ||
+            !useOfficeStore.name
+        ) {
+            notifyWarning('Thiếu thông tin tài khoản')
+            return
+        }
+        const ticketIds = selectedTickets.value.map(t => t.id)
+        const canceledTickets: DTO_RQ_CancelTicket = {
+            ticket_ids: ticketIds,
+            user_updated: {
+                id: useUserStore.id,
+                name: useUserStore.full_name,
+            },
+            office_updated: {
+                id: useOfficeStore.id,
+                name: useOfficeStore.name,
+            },
+        }
+        if (ticketIds.length === 0) return
+        const updatingTickets = selectedTickets.value.filter(t =>
+            ticketIds.includes(t.id)
+        )
+        // 🔥 LOCAL LOADING (USER HIỆN TẠI)
+        addLoadingTickets(updatingTickets.map(t => t.id))
+        // 🔥 REALTIME LOADING (USER KHÁC)
+        $socket.emit('ticket:updating', {
+            trip_id: valueSelectedTrip.value?.id,
+            ticket_ids: ticketIds,
+            user_name: useUserStore.full_name,
+        })
+        try {
+            const response = await API_CancelTickets(
+                valueSelectedTrip.value?.id ?? '',
+                canceledTickets
+            )
+            if (response.success) {
+                notifySuccess('Hủy vé thành công')
+                if (response.result) {
+                    listTicket.value = listTicket.value.map(t => {
+                        const updated = response.result?.find(ut => ut.id === t.id)
+                        return updated ? { ...t, ...updated } : t
+                    })
+                    if (!valueSelectedTrip.value) return
+
+                    valueSelectedTrip.value = {
+                        ...valueSelectedTrip.value,
+                        ticket_booked: listTicket.value.filter(
+                            t => t.booked_status === true
+                        ).length,
+                        total_price: listTicket.value
+                            .filter(t => t.booked_status === true)
+                            .reduce(
+                                (sum, t) => sum + (t.price?.total_price ?? 0) + (t.price?.surcharge ?? 0),
+                                0
+                            ),
+
+                        money_paid: listTicket.value
+                            .filter(t => t.booked_status === true)
+                            .reduce(
+                                (sum, t) => sum + (t.price?.money_paid ?? 0),
+                                0
+                            ),
+                    }
+
+                    listTrip.value = listTrip.value.map(trip => {
+                        if (trip.id === valueSelectedTrip.value?.id) {
+                            return { ...trip, ...valueSelectedTrip.value }
+                        }
+                        return trip
+                    })
+                }
+                // 🔓 RELEASE WS
+                const releasedTickets = selectedTickets.value.filter(
+                    t => ticketIds.includes(t.id)
+                )
+                releasedTickets.forEach(ticket => {
+                    emitUnselected(ticket)
+                })
+                // 🧹 CLEAR LOCAL SELECT
+                selectedTickets.value = selectedTickets.value.filter(
+                    t => !ticketIds.includes(t.id)
+                )
+            } else {
+                notifyWarning(response.message || 'Hủy vé thất bại')
+            }
+        } catch (error) {
+            console.error(error)
+            notifyError('Hủy vé thất bại')
+        } finally {
+            // 🔥 TẮT LOADING LOCAL
+            removeLoadingTickets(ticketIds)
+            // 🔥 TẮT LOADING REALTIME
+            $socket.emit('ticket:updated', {
+                trip_id: valueSelectedTrip.value?.id,
+                ticket_ids: ticketIds,
+            })
+        }
+    }
+
 
     const dialogEditTicket = ref(false);
     const handleOpenDialogEditTicket = () => {
@@ -253,6 +387,9 @@ export const useTicketActions = () => {
         handleRemoveAllSelectedTickets,
         handleUpdateTickets,
         isLoadingTicket,
+        addLoadingTickets,
+        removeLoadingTickets,
+        handleCancelTickets,
     }
 }
 

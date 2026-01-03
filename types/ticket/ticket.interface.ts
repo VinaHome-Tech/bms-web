@@ -134,4 +134,18 @@ export interface LockedSeat {
     seatName?: string
     userId?: string | null
     userName?: string | null
+    lockedUntil: number
+    remaining: number
+}
+
+export interface DTO_RQ_CancelTicket {
+    ticket_ids?: string[];
+    user_updated?: {
+        id: string;
+        name: string;
+    };
+    office_updated?: {
+        id: string;
+        name: string;
+    };
 }

@@ -15,22 +15,20 @@ const {
 } = useTicketList()
 const activeName = ref('1')
 watch(
-    () => valueSelectedTrip.value,
-    async (newTrip) => {
-        if (newTrip) {
-            // Luôn tải lại tickets khi trip được chọn thay đổi
-            
-            if (valueSelectedTrip.value?.trip_type === 2) {
-                activeName.value = '4'
-            } else {
-                await fetchListTicketByTripId(newTrip as Trip)
-                activeName.value = '1'
-                
-            }
-        }
-    },
-    { immediate: true }
+  () => valueSelectedTrip.value?.id,
+  async (tripId, oldTripId) => {
+    if (!tripId || tripId === oldTripId) return
+
+    if (valueSelectedTrip.value?.trip_type === 2) {
+      activeName.value = '4'
+    } else {
+      await fetchListTicketByTripId(valueSelectedTrip.value as Trip)
+      activeName.value = '1'
+    }
+  },
+  { immediate: true }
 )
+
 const handleClick = async (tab: TabsPaneContext, event: Event) => {
     console.log(tab, event)
     if (tab.props.name === '1') {
