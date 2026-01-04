@@ -85,6 +85,8 @@ export interface Ticket {
     };
     contact_status?: number;
     ticket_note?: string;
+    ticket_code?: string;
+    trip_id: string;
     booked_status?: boolean;
 }
 
@@ -140,6 +142,19 @@ export interface LockedSeat {
 
 export interface DTO_RQ_CancelTicket {
     ticket_ids?: string[];
+    user_updated?: {
+        id: string;
+        name: string;
+    };
+    office_updated?: {
+        id: string;
+        name: string;
+    };
+}
+
+export interface DTO_RQ_MoveTicket {
+    from_ticket_id: string;
+    to_ticket_id: string;
     user_updated?: {
         id: string;
         name: string;

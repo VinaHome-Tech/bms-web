@@ -11,7 +11,7 @@ import { API_CancelTickets, API_GetTicketByTripId, API_MoveTickets, API_UpdateTi
 
 import { API_GetTripSummaryById } from '~/services/booking-service/trip/bms-trip.api';
 import { useTicketActions } from '~/composables/ticket/useTicketActions';
-import { listTicket, lockedByOthers, selectedTickets } from '~/composables/ticket/useTicketGlobal';
+import { activeModeTicket, listTicket, lockedByOthers, selectedTickets } from '~/composables/ticket/useTicketGlobal';
 
 
 
@@ -111,6 +111,7 @@ const {
     addLoadingTickets,
     removeLoadingTickets,
     handleCancelTickets,
+    handleStartActionTicket,
 } = useTicketActions();
 
 
@@ -141,6 +142,7 @@ const startCountdown = (ticketId: string) => {
 }
 
 onMounted(() => {
+
     if (!$socket.connected) {
         console.log('🔌 Connecting WS...')
         $socket.connect()
@@ -212,14 +214,25 @@ onMounted(() => {
        📦 DATA UPDATED (🔥 THIẾU Ở BẠN)
        ====================== */
     $socket.on('ticket:data-updated', ({ trip_id, tickets }) => {
-        if (trip_id !== tripId) return
+        // if (trip_id !== tripId) return
 
         console.log('📦 WS ticket data updated:', tickets)
 
         listTicket.value = listTicket.value.map(t => {
             const updated = tickets.find((u: any) => u.id === t.id)
-            return updated ? { ...t, ...updated } : t
+            if (updated) {
+                // Unselect if the ticket is now unbooked
+                if (!updated.booked_status) {
+                    const index = selectedTickets.value.findIndex(sel => sel.id === updated.id)
+                    if (index !== -1) {
+                        selectedTickets.value.splice(index, 1)
+                    }
+                }
+                return { ...t, ...updated }
+            }
+            return t
         })
+
     })
 })
 
@@ -258,17 +271,12 @@ const getContactStatusInfo = (status: number | null | undefined) => {
 }
 
 const { $firebase } = useNuxtApp();
-const useUserStore = userStore();
-const useOfficeStore = officeStore();
-// const selectedTickets = ref<TicketItem[]>([]); // Vé user hiện tại chọn
+
 
 const isMoveTickets = ref(false);
 const listMoveTickets = ref<TicketItem[]>([]);
 
-const isCopyTickets = ref(false);
-const listCopyTickets = ref<TicketItem[]>([]);
 
-// --- Clear all local selected (and unselect on firebase) ---
 const handleClearAll = () => {
     selectedTickets.value.forEach(t => removeTicketFromFirebase(t))
     selectedTickets.value = []
@@ -276,19 +284,10 @@ const handleClearAll = () => {
     listMoveTickets.value = [];
 }
 
-// Tất cả vé từ Firebase, bao gồm selectedBy người khác
-
-const tripId = computed(() => valueSelectedTrip.value?.id)
-
-const ticketsRef = computed(() => {
-    if (!tripId.value) return null
-    return $firebase.ref($firebase.db, `tickets/${tripId.value}`)
-})
 
 
-const removeLocalSelected = (t: TicketItem) => {
-    selectedTickets.value = selectedTickets.value.filter(x => x.id !== t.id)
-}
+
+
 const removeTicketFromFirebase = (ticket: TicketItem, tripId?: number) => {
     const tid = tripId ?? ticket.trip_id;
     const ref = $firebase.ref($firebase.db, `tickets/${tid}/${ticket.id}`);
@@ -312,33 +311,7 @@ interface TicketInterval {
 const countdowns = reactive<TicketCountdown>({});
 const intervals: TicketInterval = {};
 
-// Bắt đầu countdown cho 1 vé
-// const startCountdown = (ticketId: number) => {
-//     // Reset countdown 10 phút
-//     countdowns[ ticketId ] = 10 * 60;
 
-//     // Nếu vé này đã có interval thì clear trước
-//     if (intervals[ ticketId ]) {
-//         clearInterval(intervals[ ticketId ]);
-//     }
-
-//     // Tạo interval riêng cho vé này
-//     intervals[ ticketId ] = window.setInterval(() => {
-//         if (countdowns[ ticketId ] > 0) {
-//             countdowns[ ticketId ]--;
-//         } else {
-//             // Hết countdown -> bỏ chọn vé
-//             stopCountdown(ticketId);
-//             const ticket = allTickets.value.find(t => t.id === ticketId);
-//             if (ticket && isTicketSelected(ticket)) {
-//                 removeLocalSelected(ticket);
-//                 removeTicketFromFirebase(ticket); // nếu muốn đồng bộ Firebase
-//             }
-//             clearInterval(intervals[ ticketId ]);
-//             delete intervals[ ticketId ];
-//         }
-//     }, 1000);
-// };
 
 // Dừng countdown (bỏ chọn)
 const stopCountdown = (ticketId: number) => {
@@ -353,11 +326,6 @@ const stopCountdown = (ticketId: number) => {
 
 
 
-const MODES = {
-    MOVE: 'move',
-    COPY: 'copy',
-    NONE: null
-};
 
 const activeMode = ref<'move' | 'copy' | null>(null);
 const actionTickets = ref<TicketItem[]>([]);
@@ -397,61 +365,7 @@ const bookedTicketsCount = computed(() =>
 
 const loadingTickets = ref<number[]>([]);
 
-// Actions: Cập nhật thông tin vé
-// const handleUpdateTickets = async (data: DTO_RQ_Ticket) => {
-//     const ids = selectedTickets.value
-//         .map(ticket => ticket.id)
-//         .filter((id): id is number => id !== undefined && id !== null);
-//     const tripID = valueSelectedTrip.value?.id;
-//     if (tripID === undefined || tripID === null) {
-//         notifyError('Dữ liệu chuyến không hợp lệ. Vui lòng thử lại.');
-//         return;
-//     }
-//     const user = {
-//         user_id: useUserStore.id,
-//         user_name: useUserStore.full_name,
-//         office_id: useOffice.id,
-//         office_name: useOffice.name
-//     }
-//     try {
-//         loadingTickets.value.push(...ids);
-//         await new Promise(resolve => setTimeout(resolve, 1000));
-//         const response = await API_UpdateTickets(tripID, ids, data, user);
-//         if (response.success && response.result) {
-//             notifySuccess('Cập nhật thông tin vé thành công.');
-//             // Cập nhật local
-//             response.result.forEach((updatedTicket: TicketItem) => {
-//                 const local = props.tickets.find(t => t.id === updatedTicket.id);
-//                 if (local) {
-//                     Object.assign(local, updatedTicket); // cập nhật thông tin local
-//                 }
-//                 // Đồng bộ lên Firebase để các user khác cũng nhận được
-//                 const itemRef = $firebase.ref($firebase.db, `tickets/${tripId.value}/${updatedTicket.id}`);
-//                 $firebase.set(itemRef, {
-//                     ...updatedTicket,
-//                     selected: false,
-//                     selectedBy: null,
-//                     updatedAt: Date.now() // để trigger real-time sync
-//                 });
-//             });
-//             const bookedTickets = props.tickets.filter(t => t.booked_status === true);
-//             if (valueSelectedTrip.value) {
-//                 valueSelectedTrip.value.ticket_booked = bookedTickets.length;
-//                 valueSelectedTrip.value.total_price = bookedTickets.reduce((sum, t) => sum + (t.total_price || 0), 0);
-//                 valueSelectedTrip.value.money_paid = bookedTickets.reduce((sum, t) => sum + (t.money_paid || 0), 0);
-//             }
-//         } else {
-//             notifyError(response.message || 'Cập nhật thông tin vé thất bại. Vui lòng thử lại.');
-//         }
-//     } catch (error) {
-//         console.error('Error updating tickets:', error);
-//         notifyError('Cập nhật thông tin vé thất bại. Vui lòng thử lại.');
-//     } finally {
-//         loadingTickets.value = loadingTickets.value.filter(id => !ids.includes(id));
-//         dialogEditTicket.value = false;
-//         handleClearAll();
-//     }
-// };
+
 
 // Action: Huỷ vé
 
@@ -638,7 +552,7 @@ const isSelectedForMove = (ticket: TicketItem) => {
                                     </div>
                                     <div v-if="ticket.booked_status" class="flex">
                                         <span class="ml-auto pr-1 text-[12px] font-medium text-gray-600">
-                                            ({{ ticket.id }})
+                                            ({{ ticket.ticket_code }})
                                         </span>
                                     </div>
 
@@ -762,16 +676,13 @@ const isSelectedForMove = (ticket: TicketItem) => {
                     <div
                         class="bg-purple-50 px-4 py-2 rounded-r-xl flex gap-2 items-center justify-center flex-shrink-0">
 
-                        <!-- Edit -->
-                        <el-tooltip content="Cập nhật thông tin vé" placement="top">
-                            <el-button type="warning" :icon="Edit" circle @click="handleOpenDialogEditTicket" />
-                        </el-tooltip>
+
 
                         <!-- ========== COPY MODE ========== -->
                         <template v-if="bookedTicketsCount > 0">
 
                             <!-- Cancel Copy -->
-                            <div v-if="activeMode === 'copy'">
+                            <div v-if="activeModeTicket === 'COPY'">
                                 <el-tooltip content="Huỷ sao chép vé" placement="top">
                                     <el-button type="info" :icon="CloseBold" circle @click="resetSelection" />
                                 </el-tooltip>
@@ -781,12 +692,12 @@ const isSelectedForMove = (ticket: TicketItem) => {
                             <div>
                                 <el-tooltip content="Sao chép vé" placement="top">
                                     <el-button color="#626aef" :icon="CopyDocument" circle
-                                        @click="() => startAction('copy')" />
+                                        @click="() => handleStartActionTicket('COPY')" />
                                 </el-tooltip>
                             </div>
 
                             <!-- ========== MOVE MODE ========== -->
-                            <div v-if="activeMode === 'move'">
+                            <div v-if="activeModeTicket === 'MOVE'">
                                 <el-tooltip content="Huỷ di chuyển vé" placement="top">
                                     <el-button type="info" :icon="CloseBold" circle @click="resetSelection" />
                                 </el-tooltip>
@@ -794,7 +705,8 @@ const isSelectedForMove = (ticket: TicketItem) => {
 
                             <div>
                                 <el-tooltip content="Di chuyển vé" placement="top">
-                                    <el-button type="primary" :icon="Rank" circle @click="() => startAction('move')" />
+                                    <el-button type="primary" :icon="Rank" circle
+                                        @click="() => handleStartActionTicket('MOVE')" />
                                 </el-tooltip>
                             </div>
 
@@ -805,6 +717,10 @@ const isSelectedForMove = (ticket: TicketItem) => {
                                 </el-tooltip>
                             </div>
                         </template>
+                        <!-- Edit -->
+                        <el-tooltip content="Cập nhật thông tin vé" placement="top">
+                            <el-button type="success" :icon="Edit" circle @click="handleOpenDialogEditTicket" />
+                        </el-tooltip>
 
                     </div>
                 </div>
